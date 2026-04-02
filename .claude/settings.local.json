@@ -2,7 +2,9 @@
   "permissions": {
     "allow": [
       "Bash(npx create-next-app@latest . --typescript --tailwind --eslint --app --src-dir --import-alias \"@/*\" --yes)",
-      "Bash(mv plano.md /tmp/plano.md)"
+      "Bash(mv plano.md /tmp/plano.md)",
+      "Bash(npm install:*)",
+      "Bash(npx shadcn@latest init --yes --defaults)"
     ]
   }
 }
