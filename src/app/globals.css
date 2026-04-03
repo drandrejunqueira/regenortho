@@ -8,21 +8,7 @@
   --color-background: var(--background);
   --color-foreground: var(--foreground);
   --font-sans: var(--font-sans);
-  --font-mono: var(--font-geist-mono);
-  --font-heading: var(--font-sans);
-  --color-sidebar-ring: var(--sidebar-ring);
-  --color-sidebar-border: var(--sidebar-border);
-  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
-  --color-sidebar-accent: var(--sidebar-accent);
-  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
-  --color-sidebar-primary: var(--sidebar-primary);
-  --color-sidebar-foreground: var(--sidebar-foreground);
-  --color-sidebar: var(--sidebar);
-  --color-chart-5: var(--chart-5);
-  --color-chart-4: var(--chart-4);
-  --color-chart-3: var(--chart-3);
-  --color-chart-2: var(--chart-2);
-  --color-chart-1: var(--chart-1);
+  --font-mono: var(--font-mono);
   --color-ring: var(--ring);
   --color-input: var(--input);
   --color-border: var(--border);
@@ -39,82 +25,85 @@
   --color-popover: var(--popover);
   --color-card-foreground: var(--card-foreground);
   --color-card: var(--card);
-  --radius-sm: calc(var(--radius) * 0.6);
-  --radius-md: calc(var(--radius) * 0.8);
+  --radius-sm: calc(var(--radius) * 0.5);
+  --radius-md: calc(var(--radius) * 0.75);
   --radius-lg: var(--radius);
-  --radius-xl: calc(var(--radius) * 1.4);
-  --radius-2xl: calc(var(--radius) * 1.8);
-  --radius-3xl: calc(var(--radius) * 2.2);
-  --radius-4xl: calc(var(--radius) * 2.6);
+  --radius-xl: calc(var(--radius) * 1.5);
+  /* Obsidian surface tokens */
+  --color-surface: var(--surface);
+  --color-surface-low: var(--surface-low);
+  --color-surface-card: var(--surface-card);
+  --color-surface-high: var(--surface-high);
+  --color-surface-highest: var(--surface-highest);
+  --color-on-surface: var(--on-surface);
+  --color-on-surface-variant: var(--on-surface-variant);
+  --color-outline-variant: var(--outline-variant);
+  --color-outline: var(--outline);
+  /* Brand */
+  --color-teal: var(--teal);
+  --color-teal-container: var(--teal-container);
+  --color-on-teal: var(--on-teal);
+  --color-gold: var(--gold);
+  --color-gold-container: var(--gold-container);
+  --color-tertiary: var(--tertiary);
+  --color-tertiary-container: var(--tertiary-container);
 }
 
+/* Always dark — Obsidian system */
 :root {
-  --background: oklch(1 0 0);
-  --foreground: oklch(0.145 0 0);
-  --card: oklch(1 0 0);
-  --card-foreground: oklch(0.145 0 0);
-  --popover: oklch(1 0 0);
-  --popover-foreground: oklch(0.145 0 0);
-  --primary: oklch(0.205 0 0);
-  --primary-foreground: oklch(0.985 0 0);
-  --secondary: oklch(0.97 0 0);
-  --secondary-foreground: oklch(0.205 0 0);
-  --muted: oklch(0.97 0 0);
-  --muted-foreground: oklch(0.556 0 0);
-  --accent: oklch(0.97 0 0);
-  --accent-foreground: oklch(0.205 0 0);
-  --destructive: oklch(0.577 0.245 27.325);
-  --border: oklch(0.922 0 0);
-  --input: oklch(0.922 0 0);
-  --ring: oklch(0.708 0 0);
-  --chart-1: oklch(0.87 0 0);
-  --chart-2: oklch(0.556 0 0);
-  --chart-3: oklch(0.439 0 0);
-  --chart-4: oklch(0.371 0 0);
-  --chart-5: oklch(0.269 0 0);
-  --radius: 0.625rem;
-  --sidebar: oklch(0.985 0 0);
-  --sidebar-foreground: oklch(0.145 0 0);
-  --sidebar-primary: oklch(0.205 0 0);
-  --sidebar-primary-foreground: oklch(0.985 0 0);
-  --sidebar-accent: oklch(0.97 0 0);
-  --sidebar-accent-foreground: oklch(0.205 0 0);
-  --sidebar-border: oklch(0.922 0 0);
-  --sidebar-ring: oklch(0.708 0 0);
-}
-
-.dark {
-  --background: oklch(0.145 0 0);
-  --foreground: oklch(0.985 0 0);
-  --card: oklch(0.205 0 0);
-  --card-foreground: oklch(0.985 0 0);
-  --popover: oklch(0.205 0 0);
-  --popover-foreground: oklch(0.985 0 0);
-  --primary: oklch(0.922 0 0);
-  --primary-foreground: oklch(0.205 0 0);
-  --secondary: oklch(0.269 0 0);
-  --secondary-foreground: oklch(0.985 0 0);
-  --muted: oklch(0.269 0 0);
-  --muted-foreground: oklch(0.708 0 0);
-  --accent: oklch(0.269 0 0);
-  --accent-foreground: oklch(0.985 0 0);
-  --destructive: oklch(0.704 0.191 22.216);
-  --border: oklch(1 0 0 / 10%);
-  --input: oklch(1 0 0 / 15%);
-  --ring: oklch(0.556 0 0);
-  --chart-1: oklch(0.87 0 0);
-  --chart-2: oklch(0.556 0 0);
-  --chart-3: oklch(0.439 0 0);
-  --chart-4: oklch(0.371 0 0);
-  --chart-5: oklch(0.269 0 0);
-  --sidebar: oklch(0.205 0 0);
-  --sidebar-foreground: oklch(0.985 0 0);
-  --sidebar-primary: oklch(0.488 0.243 264.376);
-  --sidebar-primary-foreground: oklch(0.985 0 0);
-  --sidebar-accent: oklch(0.269 0 0);
-  --sidebar-accent-foreground: oklch(0.985 0 0);
-  --sidebar-border: oklch(1 0 0 / 10%);
-  --sidebar-ring: oklch(0.556 0 0);
+  color-scheme: dark;
+  --background: #10141a;
+  --foreground: #dfe2eb;
+  --card: #1c2026;
+  --card-foreground: #dfe2eb;
+  --popover: #31353c;
+  --popover-foreground: #dfe2eb;
+  --primary: #61d8dd;
+  --primary-foreground: #003739;
+  --secondary: #e6c364;
+  --secondary-foreground: #003739;
+  --muted: #262a31;
+  --muted-foreground: #bec9c9;
+  --accent: #006e72;
+  --accent-foreground: #7df2f7;
+  --destructive: #ffb4ab;
+  --border: rgba(62,73,73,0.3);
+  --input: #31353c;
+  --ring: #61d8dd;
+  --radius: 0.875rem;
+  /* Surfaces */
+  --surface: #10141a;
+  --surface-low: #181c22;
+  --surface-card: #1c2026;
+  --surface-high: #262a31;
+  --surface-highest: #31353c;
+  --on-surface: #dfe2eb;
+  --on-surface-variant: #bec9c9;
+  --outline-variant: #3e4949;
+  --outline: #889393;
+  /* Brand */
+  --teal: #61d8dd;
+  --teal-container: #006e72;
+  --on-teal: #003739;
+  --gold: #e6c364;
+  --gold-container: #785d00;
+  --tertiary: #d3bbff;
+  --tertiary-container: #744bbf;
+  /* Charts */
+  --chart-1: #61d8dd;
+  --chart-2: #e6c364;
+  --chart-3: #d3bbff;
+  --chart-4: #006e72;
+  --chart-5: #ffb4ab;
+  /* Sidebar */
+  --sidebar: #181c22;
+  --sidebar-foreground: #dfe2eb;
+  --sidebar-primary: #61d8dd;
+  --sidebar-primary-foreground: #003739;
+  --sidebar-accent: #1c2026;
+  --sidebar-accent-foreground: #61d8dd;
+  --sidebar-border: rgba(62,73,73,0.2);
+  --sidebar-ring: #61d8dd;
 }
 
 @layer base {
@@ -123,8 +112,25 @@
   }
   body {
     @apply bg-background text-foreground;
+    font-family: 'Plus Jakarta Sans', sans-serif;
+    background-color: #10141a;
+    color: #dfe2eb;
   }
   html {
-    @apply font-sans;
+    font-family: 'Plus Jakarta Sans', sans-serif;
   }
+  /* Material Symbols */
+  .material-symbols-outlined {
+    font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+    vertical-align: middle;
+    line-height: 1;
+  }
+  /* Technical/data font */
+  .font-technical {
+    font-family: 'Space Mono', monospace;
+  }
+  /* Custom scrollbar */
+  ::-webkit-scrollbar { width: 4px; height: 4px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb { background: #3e4949; border-radius: 10px; }
 }

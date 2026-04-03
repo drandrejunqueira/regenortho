@@ -1,0 +1,359 @@
+<!DOCTYPE html>
+
+<html class="dark" lang="pt-BR"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&amp;family=Space+Mono:wght@400;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<style>
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+        body {
+            font-family: 'Plus Jakarta Sans', sans-serif;
+            background-color: #10141a;
+            color: #dfe2eb;
+        }
+        .font-mono-data {
+            font-family: 'Space Mono', monospace;
+        }
+        /* Custom scrollbar for clinical feel */
+        ::-webkit-scrollbar {
+            width: 4px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #10141a;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #3e4949;
+            border-radius: 10px;
+        }
+    </style>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    colors: {
+                        "surface-bright": "#353940",
+                        "tertiary-fixed": "#ebdcff",
+                        "on-tertiary-fixed": "#260059",
+                        "on-primary-fixed": "#002021",
+                        "on-surface-variant": "#bec9c9",
+                        "tertiary-fixed-dim": "#d3bbff",
+                        "on-tertiary-container": "#e9daff",
+                        "outline": "#889393",
+                        "error": "#ffb4ab",
+                        "primary": "#61d8dd",
+                        "surface-container-low": "#181c22",
+                        "on-error-container": "#ffdad6",
+                        "on-secondary-fixed": "#241a00",
+                        "on-secondary": "#3d2e00",
+                        "on-error": "#690005",
+                        "secondary-container": "#785d00",
+                        "on-tertiary-fixed-variant": "#572ba0",
+                        "inverse-surface": "#dfe2eb",
+                        "background": "#10141a",
+                        "error-container": "#93000a",
+                        "on-secondary-fixed-variant": "#584400",
+                        "inverse-on-surface": "#2d3137",
+                        "on-primary-fixed-variant": "#004f52",
+                        "surface-container-high": "#262a31",
+                        "surface-tint": "#61d8dd",
+                        "secondary-fixed": "#ffe08f",
+                        "inverse-primary": "#00696d",
+                        "surface": "#10141a",
+                        "surface-dim": "#10141a",
+                        "tertiary": "#d3bbff",
+                        "surface-container-highest": "#31353c",
+                        "tertiary-container": "#744bbf",
+                        "primary-container": "#006e72",
+                        "outline-variant": "#3e4949",
+                        "surface-container-lowest": "#0a0e14",
+                        "primary-fixed": "#80f4f9",
+                        "on-background": "#dfe2eb",
+                        "primary-fixed-dim": "#61d8dd",
+                        "on-primary-container": "#7df2f7",
+                        "surface-variant": "#31353c",
+                        "surface-container": "#1c2026",
+                        "secondary-fixed-dim": "#e6c364",
+                        "on-tertiary": "#3f0689",
+                        "secondary": "#e6c364",
+                        "on-secondary-container": "#fdd977",
+                        "on-primary": "#003739",
+                        "on-surface": "#dfe2eb"
+                    },
+                    fontFamily: {
+                        "headline": ["Plus Jakarta Sans"],
+                        "body": ["Plus Jakarta Sans"],
+                        "label": ["Space Mono"]
+                    },
+                    borderRadius: {"DEFAULT": "0.25rem", "lg": "0.5rem", "xl": "0.75rem", "full": "9999px"},
+                },
+            },
+        }
+    </script>
+</head>
+<body class="overflow-hidden">
+<!-- SideNavBar (Shared Component) -->
+<aside class="fixed left-0 top-0 h-full w-[220px] bg-[#181C22] flex flex-col py-6 px-4 z-50">
+<div class="mb-10 px-2">
+<h1 class="text-lg font-bold text-[#dfe2eb] tracking-tighter">Regem Orto</h1>
+<p class="text-[10px] text-[#61d8dd] tracking-widest uppercase opacity-80">Sistema de Gestão</p>
+</div>
+<nav class="flex-1 space-y-1">
+<div class="flex items-center px-3 py-2 text-[#dfe2eb]/60 font-['Plus_Jakarta_Sans'] text-sm font-medium tracking-tight hover:text-[#61d8dd] hover:bg-[#1c2026] transition-colors rounded-lg group cursor-pointer">
+<span class="material-symbols-outlined mr-3 text-lg" data-icon="dashboard">dashboard</span>
+<span>Dashboard</span>
+</div>
+<div class="flex items-center px-3 py-2 text-[#dfe2eb]/60 font-['Plus_Jakarta_Sans'] text-sm font-medium tracking-tight hover:text-[#61d8dd] hover:bg-[#1c2026] transition-colors rounded-lg group cursor-pointer">
+<span class="material-symbols-outlined mr-3 text-lg" data-icon="leaderboard">leaderboard</span>
+<span>CRM de Leads</span>
+</div>
+<!-- ACTIVE: Agenda -->
+<div class="flex items-center px-3 py-2 text-[#61d8dd] border-l-2 border-[#61d8dd] bg-transparent font-['Plus_Jakarta_Sans'] text-sm font-medium tracking-tight cursor-pointer">
+<span class="material-symbols-outlined mr-3 text-lg" data-icon="calendar_today">calendar_today</span>
+<span>Agenda</span>
+</div>
+<div class="flex items-center px-3 py-2 text-[#dfe2eb]/60 font-['Plus_Jakarta_Sans'] text-sm font-medium tracking-tight hover:text-[#61d8dd] hover:bg-[#1c2026] transition-colors rounded-lg group cursor-pointer">
+<span class="material-symbols-outlined mr-3 text-lg" data-icon="ads_click">ads_click</span>
+<span>Tráfego Pago</span>
+</div>
+<div class="flex items-center px-3 py-2 text-[#dfe2eb]/60 font-['Plus_Jakarta_Sans'] text-sm font-medium tracking-tight hover:text-[#61d8dd] hover:bg-[#1c2026] transition-colors rounded-lg group cursor-pointer">
+<span class="material-symbols-outlined mr-3 text-lg" data-icon="bar_chart">bar_chart</span>
+<span>Relatórios</span>
+</div>
+<div class="flex items-center px-3 py-2 text-[#dfe2eb]/60 font-['Plus_Jakarta_Sans'] text-sm font-medium tracking-tight hover:text-[#61d8dd] hover:bg-[#1c2026] transition-colors rounded-lg group cursor-pointer">
+<span class="material-symbols-outlined mr-3 text-lg" data-icon="group">group</span>
+<span>Pacientes</span>
+</div>
+<div class="flex items-center px-3 py-2 text-[#dfe2eb]/60 font-['Plus_Jakarta_Sans'] text-sm font-medium tracking-tight hover:text-[#61d8dd] hover:bg-[#1c2026] transition-colors rounded-lg group cursor-pointer">
+<span class="material-symbols-outlined mr-3 text-lg" data-icon="payments">payments</span>
+<span>Financeiro</span>
+</div>
+<div class="flex items-center px-3 py-2 text-[#dfe2eb]/60 font-['Plus_Jakarta_Sans'] text-sm font-medium tracking-tight hover:text-[#61d8dd] hover:bg-[#1c2026] transition-colors rounded-lg group cursor-pointer">
+<span class="material-symbols-outlined mr-3 text-lg" data-icon="settings">settings</span>
+<span>Configurações</span>
+</div>
+</nav>
+<div class="mt-auto pt-6 border-t border-[#dfe2eb]/10 space-y-1">
+<div class="flex items-center px-3 py-2 text-[#dfe2eb]/60 font-['Plus_Jakarta_Sans'] text-sm font-medium tracking-tight cursor-pointer">
+<span class="material-symbols-outlined mr-3 text-lg" data-icon="account_circle">account_circle</span>
+<span>Dr. André</span>
+</div>
+<div class="flex items-center px-3 py-2 text-error/80 font-['Plus_Jakarta_Sans'] text-sm font-medium tracking-tight cursor-pointer">
+<span class="material-symbols-outlined mr-3 text-lg" data-icon="logout">logout</span>
+<span>Sair</span>
+</div>
+</div>
+</aside>
+<!-- TopNavBar (Shared Component) -->
+<header class="fixed top-0 right-0 h-[60px] w-[calc(100%-220px)] bg-[#0A0E14]/60 backdrop-blur-xl flex justify-between items-center px-8 z-40">
+<div class="flex items-center gap-6">
+<h2 class="font-['Space_Mono'] text-[#61d8dd] font-bold text-lg uppercase tracking-wider">Agenda</h2>
+<div class="h-4 w-px bg-outline-variant/30"></div>
+<div class="flex gap-6 text-sm">
+<span class="text-[#61d8dd] font-bold cursor-pointer">Visão Geral</span>
+<span class="text-[#dfe2eb]/60 hover:text-[#61d8dd] transition-colors cursor-pointer">Configurações</span>
+</div>
+</div>
+<div class="flex items-center gap-4">
+<button class="text-sm font-medium text-[#dfe2eb]/60 hover:text-[#61d8dd] transition-all">Exportar</button>
+<button class="bg-gradient-to-br from-[#006e72] to-[#61d8dd] text-[#002021] font-bold px-4 py-2 rounded-lg text-sm active:scale-95 transition-all flex items-center gap-2">
+<span class="material-symbols-outlined text-sm" data-icon="add">add</span>
+                Novo Registro
+            </button>
+<div class="flex items-center gap-3 ml-4">
+<span class="material-symbols-outlined text-[#dfe2eb]/60 cursor-pointer hover:text-primary transition-colors" data-icon="notifications">notifications</span>
+<div class="w-8 h-8 rounded-full overflow-hidden border border-primary/20">
+<img class="w-full h-full object-cover" data-alt="Portrait of a professional male doctor in clinical setting with soft natural lighting" src="https://lh3.googleusercontent.com/aida-public/AB6AXuCI2E9kXcq5Ev2gF6QNm7frfQmHabLhHANeb0pEBHkzmfIksG-_fo7BOtJC8IBjTfIi6a0vuMaQoLgFPJZdMwdwZ4h5YoLHpQziXTqUIdbaCED6VwQaIFJr4JcZosJZDS2iMMpluuIy8ijGWWSBldMoJb50hEWd2AAFbax3_1PBhqx7anBeEP6aNuCB7Yo15U8PeB-KVpBlfqE4sXImv2pGh8JeZ1wJgHA4oGXJoqB9HGaovdR7TUJE0tGCEh0Yuzy0Cpm4ZKdlMq2z"/>
+</div>
+</div>
+</div>
+</header>
+<!-- Main Content Area -->
+<main class="ml-[220px] pt-[60px] h-screen flex overflow-hidden">
+<!-- Calendar Grid -->
+<section class="flex-1 flex flex-col p-6 overflow-hidden">
+<!-- Calendar Header (Days) -->
+<div class="grid grid-cols-[80px_1fr_1fr_1fr_1fr_1fr] border-b border-outline-variant/10 pb-4">
+<div class="flex items-center justify-center">
+<span class="text-xs font-mono-data text-outline">GMT-3</span>
+</div>
+<div class="flex flex-col items-center">
+<span class="text-[10px] font-mono-data text-outline uppercase tracking-widest">Seg</span>
+<span class="text-2xl font-bold text-on-surface">12</span>
+</div>
+<div class="flex flex-col items-center opacity-40">
+<span class="text-[10px] font-mono-data text-outline uppercase tracking-widest">Ter</span>
+<span class="text-2xl font-bold">13</span>
+</div>
+<div class="flex flex-col items-center opacity-40">
+<span class="text-[10px] font-mono-data text-outline uppercase tracking-widest">Qua</span>
+<span class="text-2xl font-bold">14</span>
+</div>
+<div class="flex flex-col items-center opacity-40">
+<span class="text-[10px] font-mono-data text-outline uppercase tracking-widest">Qui</span>
+<span class="text-2xl font-bold">15</span>
+</div>
+<div class="flex flex-col items-center opacity-40">
+<span class="text-[10px] font-mono-data text-outline uppercase tracking-widest">Sex</span>
+<span class="text-2xl font-bold">16</span>
+</div>
+</div>
+<!-- Scrollable Slots -->
+<div class="flex-1 overflow-y-auto relative">
+<div class="grid grid-cols-[80px_1fr_1fr_1fr_1fr_1fr] min-h-[1200px]">
+<!-- Time Column -->
+<div class="border-r border-outline-variant/5">
+<!-- Hours 07 to 19 -->
+<div class="h-[80px] flex items-start justify-center pt-2"><span class="text-[11px] font-mono-data text-outline">07:00</span></div>
+<div class="h-[80px] flex items-start justify-center pt-2"><span class="text-[11px] font-mono-data text-outline">08:00</span></div>
+<div class="h-[80px] flex items-start justify-center pt-2"><span class="text-[11px] font-mono-data text-outline">09:00</span></div>
+<div class="h-[80px] flex items-start justify-center pt-2"><span class="text-[11px] font-mono-data text-outline">10:00</span></div>
+<div class="h-[80px] flex items-start justify-center pt-2"><span class="text-[11px] font-mono-data text-outline">11:00</span></div>
+<div class="h-[80px] flex items-start justify-center pt-2"><span class="text-[11px] font-mono-data text-outline">12:00</span></div>
+<div class="h-[80px] flex items-start justify-center pt-2"><span class="text-[11px] font-mono-data text-outline">13:00</span></div>
+<div class="h-[80px] flex items-start justify-center pt-2"><span class="text-[11px] font-mono-data text-outline">14:00</span></div>
+<div class="h-[80px] flex items-start justify-center pt-2"><span class="text-[11px] font-mono-data text-outline">15:00</span></div>
+<div class="h-[80px] flex items-start justify-center pt-2"><span class="text-[11px] font-mono-data text-outline">16:00</span></div>
+<div class="h-[80px] flex items-start justify-center pt-2"><span class="text-[11px] font-mono-data text-outline">17:00</span></div>
+<div class="h-[80px] flex items-start justify-center pt-2"><span class="text-[11px] font-mono-data text-outline">18:00</span></div>
+<div class="h-[80px] flex items-start justify-center pt-2"><span class="text-[11px] font-mono-data text-outline">19:00</span></div>
+</div>
+<!-- Monday Column (Data Focus) -->
+<div class="relative border-r border-outline-variant/5 bg-surface-container-low/20">
+<!-- Horizontal Grid Lines (visual aid) -->
+<div class="absolute inset-0 pointer-events-none">
+<div class="h-[80px] border-b border-outline-variant/5"></div>
+<div class="h-[80px] border-b border-outline-variant/5"></div>
+<div class="h-[80px] border-b border-outline-variant/5"></div>
+<div class="h-[80px] border-b border-outline-variant/5"></div>
+<div class="h-[80px] border-b border-outline-variant/5"></div>
+<div class="h-[80px] border-b border-outline-variant/5"></div>
+<div class="h-[80px] border-b border-outline-variant/5"></div>
+<div class="h-[80px] border-b border-outline-variant/5"></div>
+<div class="h-[80px] border-b border-outline-variant/5"></div>
+<div class="h-[80px] border-b border-outline-variant/5"></div>
+<div class="h-[80px] border-b border-outline-variant/5"></div>
+<div class="h-[80px] border-b border-outline-variant/5"></div>
+</div>
+<!-- Monday Events -->
+<!-- 08:00 Marcos R. (Consultation - Teal) -->
+<div class="absolute top-[80px] left-1 right-1 h-[75px] bg-primary/10 border-l-4 border-primary p-2 rounded-r-md cursor-pointer group hover:bg-primary/20 transition-all">
+<p class="text-[10px] font-mono-data text-primary font-bold">08:00 - 08:45</p>
+<h4 class="text-sm font-bold text-on-surface">Marcos R.</h4>
+<p class="text-[10px] text-on-surface-variant flex items-center gap-1">
+<span class="material-symbols-outlined text-[12px]" data-icon="stethoscope">stethoscope</span>
+                                Consulta Orto
+                            </p>
+</div>
+<!-- 10:00 Ana M. (Procedure - Gold) -->
+<div class="absolute top-[240px] left-1 right-1 h-[120px] bg-secondary/10 border-l-4 border-secondary p-2 rounded-r-md cursor-pointer group hover:bg-secondary/20 transition-all">
+<div class="flex justify-between">
+<p class="text-[10px] font-mono-data text-secondary font-bold">10:00 - 11:30</p>
+<span class="material-symbols-outlined text-secondary text-sm" data-icon="verified" data-weight="fill">verified</span>
+</div>
+<h4 class="text-sm font-bold text-on-surface">Ana M.</h4>
+<p class="text-[10px] text-on-surface-variant flex items-center gap-1">
+<span class="material-symbols-outlined text-[12px]" data-icon="biotech">biotech</span>
+                                Procedimento PRP
+                            </p>
+</div>
+<!-- 14:00 BLOQUEADO (Surgery/Block - Red) -->
+<div class="absolute top-[560px] left-1 right-1 h-[160px] bg-error/10 border-l-4 border-error p-3 rounded-r-md flex flex-col justify-center items-center text-center opacity-90">
+<span class="material-symbols-outlined text-error mb-1" data-icon="block">block</span>
+<h4 class="text-xs font-mono-data font-bold text-error tracking-tighter uppercase">BLOQUEADO</h4>
+<p class="text-[9px] text-error/80">Bloco Cirúrgico - Hospital Vita</p>
+</div>
+<!-- 16:30 Paulo F. (Consultation - Teal) -->
+<div class="absolute top-[760px] left-1 right-1 h-[75px] bg-primary/10 border-l-4 border-primary p-2 rounded-r-md cursor-pointer group hover:bg-primary/20 transition-all">
+<p class="text-[10px] font-mono-data text-primary font-bold">16:30 - 17:15</p>
+<h4 class="text-sm font-bold text-on-surface">Paulo F.</h4>
+<p class="text-[10px] text-on-surface-variant flex items-center gap-1">
+<span class="material-symbols-outlined text-[12px]" data-icon="history">history</span>
+                                Retorno Pós-Op
+                            </p>
+</div>
+</div>
+<!-- Other Columns (Placeholder styling) -->
+<div class="border-r border-outline-variant/5"></div>
+<div class="border-r border-outline-variant/5"></div>
+<div class="border-r border-outline-variant/5"></div>
+<div class=""></div>
+</div>
+</div>
+</section>
+<!-- Right Summary Panel -->
+<aside class="w-[300px] bg-surface-container-low border-l border-outline-variant/10 p-6 flex flex-col gap-8 overflow-y-auto">
+<!-- Mini Calendar View (Atmospheric) -->
+<div>
+<h3 class="text-xs font-bold text-on-surface-variant mb-4 uppercase tracking-[2px]">Resumo de Hoje</h3>
+<div class="bg-surface-container rounded-xl p-4 space-y-4">
+<div class="flex justify-between items-end">
+<div>
+<p class="text-[10px] font-mono-data text-primary uppercase">Segunda-feira</p>
+<h2 class="text-xl font-bold">12 de Out</h2>
+</div>
+<span class="material-symbols-outlined text-primary" data-icon="event_note">event_note</span>
+</div>
+<div class="grid grid-cols-2 gap-2">
+<div class="bg-surface-container-high p-3 rounded-lg">
+<p class="text-2xl font-mono-data font-bold text-primary">04</p>
+<p class="text-[10px] text-on-surface-variant uppercase">Consultas</p>
+</div>
+<div class="bg-surface-container-high p-3 rounded-lg">
+<p class="text-2xl font-mono-data font-bold text-secondary">02</p>
+<p class="text-[10px] text-on-surface-variant uppercase">Proced.</p>
+</div>
+</div>
+</div>
+</div>
+<!-- Status Counts -->
+<div class="space-y-4">
+<h3 class="text-xs font-bold text-on-surface-variant uppercase tracking-[2px]">Status dos Agendamentos</h3>
+<div class="space-y-2">
+<div class="flex items-center justify-between bg-surface-container/40 p-3 rounded-lg">
+<div class="flex items-center gap-3">
+<div class="w-2 h-2 rounded-full bg-primary shadow-[0_0_8px_rgba(97,216,221,0.5)]"></div>
+<span class="text-sm">Confirmados</span>
+</div>
+<span class="font-mono-data font-bold">03</span>
+</div>
+<div class="flex items-center justify-between bg-surface-container/40 p-3 rounded-lg">
+<div class="flex items-center gap-3">
+<div class="w-2 h-2 rounded-full bg-secondary shadow-[0_0_8px_rgba(230,195,100,0.5)]"></div>
+<span class="text-sm">Pendentes</span>
+</div>
+<span class="font-mono-data font-bold">02</span>
+</div>
+<div class="flex items-center justify-between bg-surface-container/40 p-3 rounded-lg">
+<div class="flex items-center gap-3">
+<div class="w-2 h-2 rounded-full bg-error shadow-[0_0_8px_rgba(255,180,171,0.5)]"></div>
+<span class="text-sm">Faltas</span>
+</div>
+<span class="font-mono-data font-bold">01</span>
+</div>
+</div>
+</div>
+<!-- Next Up Prompt -->
+<div class="mt-auto bg-gradient-to-br from-primary-container/20 to-surface-container-highest p-4 rounded-xl border border-primary/10">
+<div class="flex items-center gap-2 text-primary mb-2">
+<span class="material-symbols-outlined text-sm" data-icon="notifications_active">notifications_active</span>
+<span class="text-[10px] font-bold uppercase tracking-wider">Próximo Paciente</span>
+</div>
+<h4 class="font-bold text-on-surface">Marcos R.</h4>
+<p class="text-xs text-on-surface-variant mt-1">Check-in realizado às 07:55</p>
+<button class="w-full mt-4 bg-primary text-on-primary font-bold py-2 rounded-lg text-xs hover:opacity-90 transition-all">
+                    Chamar para Sala
+                </button>
+</div>
+</aside>
+</main>
+<!-- Floating Action Button Contextual -->
+<button class="fixed bottom-8 right-[320px] w-14 h-14 bg-primary text-on-primary rounded-full shadow-2xl flex items-center justify-center hover:scale-105 active:scale-95 transition-all z-30">
+<span class="material-symbols-outlined" data-icon="add_task">add_task</span>
+</button>
+</body></html>
