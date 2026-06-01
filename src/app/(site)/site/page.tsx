@@ -37,12 +37,12 @@ const TREATMENTS_CARDS = [
 ]
 
 const SPECIALTIES = [
-  { emoji: '🦵', label: 'Joelho' },
-  { emoji: '💪', label: 'Ombro & Cotovelo' },
-  { emoji: '🦴', label: 'Coluna' },
-  { emoji: '🚶', label: 'Quadril' },
-  { emoji: '🦶', label: 'Pé & Tornozelo' },
-  { emoji: '✋', label: 'Dor Crônica' },
+  { emoji: '🦵', label: 'Joelho', image: '/image/knee.png' },
+  { emoji: '💪', label: 'Ombro & Cotovelo', image: '/image/shoulder.png' },
+  { emoji: '🦴', label: 'Coluna', image: '/image/spine.png' },
+  { emoji: '🚶', label: 'Quadril', image: '/image/hip.png' },
+  { emoji: '🦶', label: 'Pé & Tornozelo', image: '/image/foot.png' },
+  { emoji: '✋', label: 'Dor Crônica', image: '/image/pain.png' },
 ]
 
 const TESTIMONIALS = [
@@ -339,14 +339,42 @@ export default function HomePage() {
               <Link
                 key={s.label}
                 href="/site/especialidades"
-                className="specialty-pill group flex flex-col items-center text-center p-8 rounded-2xl cursor-pointer gsap-stagger-child"
+                className="group relative overflow-hidden flex flex-col items-center justify-end text-center p-6 rounded-2xl cursor-pointer gsap-stagger-child min-h-[190px] card-3d-hover"
+                style={{ border: '1px solid rgba(2, 21, 65, 0.08)' }}
               >
-                <div className="text-4xl mb-4 pill-emoji transition-all duration-500 group-hover:scale-125">
-                  {s.emoji}
+                {/* Background Image with elegant overlay */}
+                <div className="absolute inset-0 z-0 overflow-hidden">
+                  <Image
+                    src={s.image}
+                    alt={s.label}
+                    fill
+                    className="object-cover transition-transform duration-700 ease-out group-hover:scale-110 group-hover:rotate-1"
+                    sizes="(max-width: 768px) 50vw, 200px"
+                  />
+                  {/* Premium double gradient overlay: darker on hover */}
+                  <div
+                    className="absolute inset-0 transition-opacity duration-500 opacity-80 group-hover:opacity-90"
+                    style={{
+                      background: 'linear-gradient(to top, rgba(2, 21, 65, 0.95) 0%, rgba(2, 21, 65, 0.65) 50%, rgba(2, 21, 65, 0.3) 100%)'
+                    }}
+                  />
+                  {/* Subtle top light overlay */}
+                  <div
+                    className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-500"
+                    style={{
+                      background: 'radial-gradient(circle at top, rgba(0, 188, 228, 0.25) 0%, transparent 60%)'
+                    }}
+                  />
                 </div>
-                <h4 className="text-[#021541] font-bold text-sm pill-label transition-colors">
-                  {s.label}
-                </h4>
+
+                {/* Content */}
+                <div className="relative z-10 flex flex-col items-center w-full">
+                  {/* Small neon cyan bar indicating precision */}
+                  <div className="w-6 h-[2px] bg-[#00BCE4] mb-3 transform origin-left transition-all duration-500 group-hover:w-10" />
+                  <h4 className="text-white font-bold text-sm tracking-wide transition-colors group-hover:text-[#00BCE4]" style={{ textShadow: '0 2px 4px rgba(0,0,0,0.6)' }}>
+                    {s.label}
+                  </h4>
+                </div>
               </Link>
             ))}
           </div>

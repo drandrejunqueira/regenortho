@@ -1,5 +1,6 @@
 import type { Metadata } from 'next'
 import Link from 'next/link'
+import Image from 'next/image'
 import SiteNav from '@/components/site/SiteNav'
 import SiteFooter from '@/components/site/SiteFooter'
 import { GSAPAnimations } from '@/components/site/GSAPAnimations'
@@ -115,13 +116,11 @@ export default function EspecialidadesPage() {
 
             {/* Joelho — large feature */}
             <div
-              className="md:col-span-8 relative overflow-hidden group treatment-card card-3d-hover rounded-2xl gsap-stagger-child"
-              style={{ padding: '2.5rem' }}
+              className="md:col-span-8 relative overflow-hidden group treatment-card card-3d-hover rounded-2xl gsap-stagger-child flex flex-col md:flex-row justify-between"
+              style={{ minHeight: '420px' }}
             >
-              <div className="absolute top-0 right-0 p-8 opacity-5 group-hover:opacity-10 transition-opacity">
-                <span className="material-symbols-outlined" style={{ fontSize: '120px' }}>skateboarding</span>
-              </div>
-              <div className="relative z-10 flex flex-col h-full justify-between">
+              {/* Left Side Content */}
+              <div className="relative z-10 flex flex-col justify-between p-8 md:p-10 md:w-3/5">
                 <div>
                   <div
                     className="w-12 h-12 flex items-center justify-center rounded-xl mb-6"
@@ -152,11 +151,11 @@ export default function EspecialidadesPage() {
                       </span>
                     ))}
                   </div>
-                  <p className="text-[#718096] text-sm leading-relaxed max-w-md font-light">
+                  <p className="text-[#718096] text-sm leading-relaxed font-light">
                     Tratamentos focados na regeneração cartilaginosa e estabilização ligamentar. Utilizamos PRP, BMAC, SVF e viscosuplementação com ácido hialurônico para evitar ou postergar próteses. Infiltrações guiadas por ultrassom para máxima precisão.
                   </p>
                 </div>
-                <div className="mt-10">
+                <div className="mt-8">
                   <Link
                     href="/site/tratamentos"
                     className="text-[#021541] font-bold text-[11px] uppercase tracking-widest flex items-center gap-2 hover:gap-4 site-transition hover:text-[#00BCE4]"
@@ -166,42 +165,78 @@ export default function EspecialidadesPage() {
                   </Link>
                 </div>
               </div>
+
+              {/* Right Side Image */}
+              <div className="relative w-full md:w-2/5 h-64 md:h-auto overflow-hidden shrink-0">
+                <Image
+                  src="/image/knee.png"
+                  alt="Especialidade Joelho"
+                  fill
+                  className="object-cover transition-transform duration-700 ease-out group-hover:scale-105"
+                  sizes="(max-width: 768px) 100vw, 350px"
+                />
+                {/* Gradient blend to match layout */}
+                <div
+                  className="absolute inset-0 md:bg-gradient-to-r md:from-white md:via-white/70 md:to-transparent bg-gradient-to-t from-white via-white/75 to-transparent"
+                  style={{ pointerEvents: 'none' }}
+                />
+              </div>
             </div>
 
             {/* Ombro — dark card */}
             <div
-              className="md:col-span-4 relative overflow-hidden rounded-2xl gsap-stagger-child"
+              className="md:col-span-4 relative overflow-hidden group rounded-2xl gsap-stagger-child card-3d-hover"
               style={{ background: '#021541', padding: '2.5rem' }}
             >
-              <div
-                className="absolute inset-0 pointer-events-none"
-                style={{ background: 'radial-gradient(ellipse at top right, rgba(0,188,228,0.10) 0%, transparent 60%)' }}
-              />
-              <div className="relative z-10 h-full flex flex-col">
+              {/* Background clinical shoulder photo */}
+              <div className="absolute inset-0 z-0 overflow-hidden opacity-30 transition-opacity duration-500 group-hover:opacity-40">
+                <Image
+                  src="/image/shoulder.png"
+                  alt="Especialidade Ombro e Cotovelo"
+                  fill
+                  className="object-cover transition-transform duration-700 ease-out group-hover:scale-105"
+                  sizes="(max-width: 768px) 100vw, 380px"
+                />
                 <div
-                  className="w-12 h-12 flex items-center justify-center rounded-xl mb-6"
-                  style={{ background: 'rgba(0,188,228,0.12)', border: '1px solid rgba(0,188,228,0.20)' }}
-                >
-                  <span className="material-symbols-outlined text-[#00BCE4]">fitness_center</span>
+                  className="absolute inset-0"
+                  style={{
+                    background: 'linear-gradient(to top, #021541 30%, rgba(2, 21, 65, 0.6) 100%)'
+                  }}
+                />
+              </div>
+
+              <div
+                className="absolute inset-0 pointer-events-none z-0"
+                style={{ background: 'radial-gradient(ellipse at top right, rgba(0,188,228,0.15) 0%, transparent 60%)' }}
+              />
+
+              <div className="relative z-10 h-full flex flex-col justify-between" style={{ minHeight: '340px' }}>
+                <div>
+                  <div
+                    className="w-12 h-12 flex items-center justify-center rounded-xl mb-6"
+                    style={{ background: 'rgba(0,188,228,0.12)', border: '1px solid rgba(0,188,228,0.20)' }}
+                  >
+                    <span className="material-symbols-outlined text-[#00BCE4]">fitness_center</span>
+                  </div>
+                  <span
+                    className="text-[#00BCE4] text-[10px] uppercase tracking-widest mb-3 block font-bold"
+                    style={{ fontFamily: 'Plus Jakarta Sans, sans-serif' }}
+                  >
+                    Especialidade do Dr. André
+                  </span>
+                  <h3
+                    className="text-2xl text-white mb-4 font-bold"
+                    style={{ fontFamily: 'Noto Serif, serif' }}
+                  >
+                    Ombro & Cotovelo
+                  </h3>
+                  <p className="text-white/60 text-sm leading-relaxed mb-6 font-light">
+                    Cirurgia artroscópica do ombro e cotovelo, tratamento regenerativo de tendinites e instabilidade articular.
+                  </p>
                 </div>
-                <span
-                  className="text-[#00BCE4] text-[10px] uppercase tracking-widest mb-3 block font-bold"
-                  style={{ fontFamily: 'Plus Jakarta Sans, sans-serif' }}
-                >
-                  Especialidade do Dr. André
-                </span>
-                <h3
-                  className="text-2xl text-white mb-4 font-bold"
-                  style={{ fontFamily: 'Noto Serif, serif' }}
-                >
-                  Ombro & Cotovelo
-                </h3>
-                <p className="text-white/50 text-sm leading-relaxed mb-6 font-light">
-                  Cirurgia artroscópica do ombro e cotovelo, tratamento regenerativo de tendinites e instabilidade articular.
-                </p>
-                <div className="space-y-2.5 flex-1">
+                <div className="space-y-2.5 mt-auto">
                   {['Manguito Rotador', 'Luxação Recidivante', 'Lesão de SLAP', 'Epicondilite Lateral', 'Artroscopia', 'PRP & Infiltrações USG'].map((item) => (
-                    <div key={item} className="flex items-center gap-3 text-white/70 text-xs">
+                    <div key={item} className="flex items-center gap-3 text-white/80 text-xs">
                       <span className="w-1.5 h-1.5 bg-[#00BCE4] rounded-full shrink-0" />
                       {item}
                     </div>
@@ -212,93 +247,170 @@ export default function EspecialidadesPage() {
 
             {/* Coluna */}
             <div
-              className="md:col-span-4 treatment-card card-3d-hover rounded-2xl gsap-stagger-child"
+              className="md:col-span-4 relative overflow-hidden group treatment-card card-3d-hover rounded-2xl gsap-stagger-child"
               style={{ padding: '2.5rem' }}
             >
-              <div
-                className="w-12 h-12 flex items-center justify-center rounded-xl mb-6"
-                style={{ background: 'rgba(0,188,228,0.08)', border: '1px solid rgba(0,188,228,0.15)' }}
-              >
-                <span className="material-symbols-outlined text-[#00BCE4]">accessibility_new</span>
+              {/* Background Spine Photo */}
+              <div className="absolute inset-0 z-0 overflow-hidden opacity-10 transition-opacity duration-500 group-hover:opacity-20">
+                <Image
+                  src="/image/spine.png"
+                  alt="Especialidade Coluna"
+                  fill
+                  className="object-cover transition-transform duration-700 ease-out group-hover:scale-105"
+                  sizes="(max-width: 768px) 100vw, 380px"
+                />
+                <div
+                  className="absolute inset-0"
+                  style={{
+                    background: 'linear-gradient(to top, #ffffff 40%, rgba(255, 255, 255, 0.4) 100%)'
+                  }}
+                />
               </div>
-              <span
-                className="text-[#00BCE4] text-[10px] uppercase tracking-widest mb-3 block font-bold"
-                style={{ fontFamily: 'Plus Jakarta Sans, sans-serif' }}
-              >
-                Hérnia & Dor Lombar
-              </span>
-              <h3
-                className="text-2xl text-[#021541] mb-4 font-bold"
-                style={{ fontFamily: 'Noto Serif, serif' }}
-              >
-                Coluna
-              </h3>
-              <p className="text-[#718096] text-sm leading-relaxed mb-6 font-light">
-                Tratamento da hérnia de disco (L4-L5, L5-S1), dor lombar crônica e cervicalgia com bloqueios guiados por USG, rizotomia, discectomia a laser e neuromodulação.
-              </p>
-              <Link
-                href="/site/tratamentos"
-                className="text-[#021541] font-bold text-[11px] uppercase tracking-widest flex items-center gap-2 hover:gap-3 site-transition hover:text-[#00BCE4]"
-              >
-                Ver Protocolos
-                <span className="material-symbols-outlined" style={{ fontSize: '14px' }}>arrow_forward</span>
-              </Link>
+
+              <div className="relative z-10 flex flex-col justify-between h-full" style={{ minHeight: '340px' }}>
+                <div>
+                  <div
+                    className="w-12 h-12 flex items-center justify-center rounded-xl mb-6"
+                    style={{ background: 'rgba(0,188,228,0.08)', border: '1px solid rgba(0,188,228,0.15)' }}
+                  >
+                    <span className="material-symbols-outlined text-[#00BCE4]">accessibility_new</span>
+                  </div>
+                  <span
+                    className="text-[#00BCE4] text-[10px] uppercase tracking-widest mb-3 block font-bold"
+                    style={{ fontFamily: 'Plus Jakarta Sans, sans-serif' }}
+                  >
+                    Hérnia & Dor Lombar
+                  </span>
+                  <h3
+                    className="text-2xl text-[#021541] mb-4 font-bold"
+                    style={{ fontFamily: 'Noto Serif, serif' }}
+                  >
+                    Coluna
+                  </h3>
+                  <p className="text-[#718096] text-sm leading-relaxed mb-6 font-light">
+                    Tratamento da hérnia de disco (L4-L5, L5-S1), dor lombar crônica e cervicalgia com bloqueios guiados por USG, rizotomia, discectomia a laser e neuromodulação.
+                  </p>
+                </div>
+                <Link
+                  href="/site/tratamentos"
+                  className="text-[#021541] font-bold text-[11px] uppercase tracking-widest flex items-center gap-2 hover:gap-3 site-transition hover:text-[#00BCE4] mt-auto"
+                >
+                  Ver Protocolos
+                  <span className="material-symbols-outlined" style={{ fontSize: '14px' }}>arrow_forward</span>
+                </Link>
+              </div>
             </div>
 
             {/* Quadril */}
             <div
-              className="md:col-span-4 treatment-card card-3d-hover rounded-2xl gsap-stagger-child"
+              className="md:col-span-4 relative overflow-hidden group treatment-card card-3d-hover rounded-2xl gsap-stagger-child"
               style={{ padding: '2.5rem', background: '#f5f6f8' }}
             >
-              <div
-                className="w-12 h-12 flex items-center justify-center rounded-xl mb-6"
-                style={{ background: 'rgba(0,188,228,0.08)', border: '1px solid rgba(0,188,228,0.15)' }}
-              >
-                <span className="material-symbols-outlined text-[#00BCE4]">recent_actors</span>
+              {/* Background Hip Photo */}
+              <div className="absolute inset-0 z-0 overflow-hidden opacity-10 transition-opacity duration-500 group-hover:opacity-20">
+                <Image
+                  src="/image/hip.png"
+                  alt="Especialidade Quadril"
+                  fill
+                  className="object-cover transition-transform duration-700 ease-out group-hover:scale-105"
+                  sizes="(max-width: 768px) 100vw, 380px"
+                />
+                <div
+                  className="absolute inset-0"
+                  style={{
+                    background: 'linear-gradient(to top, #f5f6f8 40%, rgba(245, 246, 248, 0.4) 100%)'
+                  }}
+                />
               </div>
-              <span
-                className="text-[#00BCE4] text-[10px] uppercase tracking-widest mb-3 block font-bold"
-                style={{ fontFamily: 'Plus Jakarta Sans, sans-serif' }}
-              >
-                Artrose & Impacto
-              </span>
-              <h3
-                className="text-2xl text-[#021541] mb-4 font-bold"
-                style={{ fontFamily: 'Noto Serif, serif' }}
-              >
-                Quadril
-              </h3>
-              <p className="text-[#718096] text-sm leading-relaxed font-light">
-                Tratamento da artrose do quadril, impacto femoroacetabular e bursites trocantéricas com PRP, ácido hialurônico e infiltrações guiadas por ultrassom.
-              </p>
+
+              <div className="relative z-10 flex flex-col h-full justify-between" style={{ minHeight: '340px' }}>
+                <div>
+                  <div
+                    className="w-12 h-12 flex items-center justify-center rounded-xl mb-6"
+                    style={{ background: 'rgba(0,188,228,0.08)', border: '1px solid rgba(0,188,228,0.15)' }}
+                  >
+                    <span className="material-symbols-outlined text-[#00BCE4]">recent_actors</span>
+                  </div>
+                  <span
+                    className="text-[#00BCE4] text-[10px] uppercase tracking-widest mb-3 block font-bold"
+                    style={{ fontFamily: 'Plus Jakarta Sans, sans-serif' }}
+                  >
+                    Artrose & Impacto
+                  </span>
+                  <h3
+                    className="text-2xl text-[#021541] mb-4 font-bold"
+                    style={{ fontFamily: 'Noto Serif, serif' }}
+                  >
+                    Quadril
+                  </h3>
+                  <p className="text-[#718096] text-sm leading-relaxed font-light mb-6">
+                    Tratamento da artrose do quadril, impacto femoroacetabular e bursites trocantéricas com PRP, ácido hialurônico e infiltrações guiadas por ultrassom.
+                  </p>
+                </div>
+                <Link
+                  href="/site/tratamentos"
+                  className="text-[#021541] font-bold text-[11px] uppercase tracking-widest flex items-center gap-2 hover:gap-3 site-transition hover:text-[#00BCE4] mt-auto"
+                >
+                  Ver Protocolos
+                  <span className="material-symbols-outlined" style={{ fontSize: '14px' }}>arrow_forward</span>
+                </Link>
+              </div>
             </div>
 
             {/* Mão & Punho */}
             <div
-              className="md:col-span-4 treatment-card card-3d-hover rounded-2xl gsap-stagger-child"
+              className="md:col-span-4 relative overflow-hidden group treatment-card card-3d-hover rounded-2xl gsap-stagger-child"
               style={{ padding: '2.5rem' }}
             >
-              <div
-                className="w-12 h-12 flex items-center justify-center rounded-xl mb-6"
-                style={{ background: 'rgba(0,188,228,0.08)', border: '1px solid rgba(0,188,228,0.15)' }}
-              >
-                <span className="material-symbols-outlined text-[#00BCE4]">pan_tool</span>
+              {/* Background Hand Photo */}
+              <div className="absolute inset-0 z-0 overflow-hidden opacity-10 transition-opacity duration-500 group-hover:opacity-20">
+                <Image
+                  src="/image/hand.png"
+                  alt="Especialidade Mão e Punho"
+                  fill
+                  className="object-cover transition-transform duration-700 ease-out group-hover:scale-105"
+                  sizes="(max-width: 768px) 100vw, 380px"
+                />
+                <div
+                  className="absolute inset-0"
+                  style={{
+                    background: 'linear-gradient(to top, #ffffff 40%, rgba(255, 255, 255, 0.4) 100%)'
+                  }}
+                />
               </div>
-              <span
-                className="text-[#00BCE4] text-[10px] uppercase tracking-widest mb-3 block font-bold"
-                style={{ fontFamily: 'Plus Jakarta Sans, sans-serif' }}
-              >
-                Pequenas Articulações
-              </span>
-              <h3
-                className="text-2xl text-[#021541] mb-4 font-bold"
-                style={{ fontFamily: 'Noto Serif, serif' }}
-              >
-                Mão & Punho
-              </h3>
-              <p className="text-[#718096] text-sm leading-relaxed font-light">
-                Tendinites, artroses das pequenas articulações, síndrome do túnel do carpo e lesões tendíneas com infiltrações de precisão guiadas por ultrassonografia.
-              </p>
+
+              <div className="relative z-10 flex flex-col h-full justify-between" style={{ minHeight: '340px' }}>
+                <div>
+                  <div
+                    className="w-12 h-12 flex items-center justify-center rounded-xl mb-6"
+                    style={{ background: 'rgba(0,188,228,0.08)', border: '1px solid rgba(0,188,228,0.15)' }}
+                  >
+                    <span className="material-symbols-outlined text-[#00BCE4]">pan_tool</span>
+                  </div>
+                  <span
+                    className="text-[#00BCE4] text-[10px] uppercase tracking-widest mb-3 block font-bold"
+                    style={{ fontFamily: 'Plus Jakarta Sans, sans-serif' }}
+                  >
+                    Pequenas Articulações
+                  </span>
+                  <h3
+                    className="text-2xl text-[#021541] mb-4 font-bold"
+                    style={{ fontFamily: 'Noto Serif, serif' }}
+                  >
+                    Mão & Punho
+                  </h3>
+                  <p className="text-[#718096] text-sm leading-relaxed font-light mb-6">
+                    Tendinites, artroses das pequenas articulações, síndrome do túnel do carpo e lesões tendíneas com infiltrações de precisão guiadas por ultrassonografia.
+                  </p>
+                </div>
+                <Link
+                  href="/site/tratamentos"
+                  className="text-[#021541] font-bold text-[11px] uppercase tracking-widest flex items-center gap-2 hover:gap-3 site-transition hover:text-[#00BCE4] mt-auto"
+                >
+                  Ver Protocolos
+                  <span className="material-symbols-outlined" style={{ fontSize: '14px' }}>arrow_forward</span>
+                </Link>
+              </div>
             </div>
 
           </div>
@@ -314,12 +426,16 @@ export default function EspecialidadesPage() {
             className="treatment-card rounded-2xl p-10 lg:p-16 flex flex-col lg:flex-row items-center gap-12 gsap-reveal-3d"
           >
             <div
-              className="lg:w-1/3 w-full h-56 lg:h-72 rounded-2xl flex items-center justify-center shrink-0 gsap-float"
-              style={{ background: 'rgba(0,188,228,0.06)', border: '1px solid rgba(0,188,228,0.12)' }}
+              className="lg:w-1/3 w-full h-56 lg:h-72 rounded-2xl overflow-hidden relative shrink-0 gsap-float"
+              style={{ border: '1px solid rgba(2, 21, 65, 0.08)', boxShadow: '0 12px 32px rgba(2, 21, 65, 0.05)' }}
             >
-              <span className="material-symbols-outlined text-[#00BCE4]" style={{ fontSize: '80px', opacity: 0.6 }}>
-                directions_walk
-              </span>
+              <Image
+                src="/image/foot.png"
+                alt="Especialidade Pé & Tornozelo"
+                fill
+                className="object-cover transition-transform duration-700 ease-out hover:scale-105"
+                sizes="(max-width: 768px) 100vw, 400px"
+              />
             </div>
             <div className="lg:w-2/3">
               <span
