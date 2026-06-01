@@ -47,4 +47,5 @@ next-env.d.ts
 # Claude/Agent files
 .agent/
 .claude/
+/dino-skill/
 

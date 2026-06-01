@@ -10,6 +10,7 @@ import {
   pgEnum,
   jsonb,
   uuid,
+  index,
 } from 'drizzle-orm/pg-core'
 import { relations } from 'drizzle-orm'
 
@@ -569,3 +570,48 @@ export const whatsappMessagesRelations = relations(whatsappMessages, ({ one }) =
   patient:     one(patients, { fields: [whatsappMessages.patientId], references: [patients.id] }),
   appointment: one(appointments, { fields: [whatsappMessages.appointmentId], references: [appointments.id] }),
 }))
+
+// ── NOVAS TABELAS: GLOSSÁRIO + SEO + ANALYTICS + CONFIGURAÇÕES ──
+
+export const configuracoes = pgTable('configuracoes', {
+  chave: text('chave').primaryKey(),
+  valor: text('valor'),
+  descricao: text('descricao'),
+  updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
+})
+
+export const analyticsEvents = pgTable('analytics_events', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  tipo: text('tipo').notNull(),
+  path: text('path').notNull(),
+  referrer: text('referrer'),
+  rotulo: text('rotulo'),
+  sessionId: text('session_id'),
+  device: text('device'),
+  pais: text('pais'),
+  meta: jsonb('meta'),
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+}, (t) => ({
+  tipoIdx: index('analytics_tipo_idx').on(t.tipo),
+  pathIdx: index('analytics_path_idx').on(t.path),
+  createdIdx: index('analytics_created_idx').on(t.createdAt),
+}))
+
+export const glossarioTermos = pgTable('glossario_termos', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  termo: text('termo').notNull(),
+  slug: text('slug').notNull().unique(),
+  letra: text('letra').notNull(),
+  nicho: text('nicho').notNull(),
+  conteudo: text('conteudo'),
+  status: text('status').notNull().default('pendente'),
+  seoTitle: text('seo_title'),
+  seoDescription: text('seo_description'),
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+  updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
+}, (t) => ({
+  letraIdx: index('idx_glossario_letra').on(t.letra),
+  statusIdx: index('idx_glossario_status').on(t.status),
+  slugIdx: index('idx_glossario_slug').on(t.slug),
+}))
+

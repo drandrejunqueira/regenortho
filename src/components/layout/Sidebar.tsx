@@ -29,6 +29,7 @@ const NAV_ITEMS: NavItem[] = [
   { href: '/materiais',     label: 'Materiais',      icon: 'inventory_2',    permission: 'materials:view' },
   { href: '/relatorios',    label: 'Relatórios',     icon: 'bar_chart',      permission: 'reports:view' },
   { href: '/trafego',       label: 'Tráfego Pago',   icon: 'ads_click',      permission: 'traffic:view' },
+  { href: '/glossario',     label: 'Glossário',      icon: 'menu_book',      permission: 'settings:view' },
   { href: '/configuracoes', label: 'Configurações',  icon: 'settings',       permission: 'settings:view' },
 ]
 

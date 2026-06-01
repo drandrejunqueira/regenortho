@@ -5,6 +5,7 @@ import { usePathname } from 'next/navigation'
 
 const TABS = [
   { href: '/configuracoes/sistema',       label: 'Sistema',        icon: 'tune' },
+  { href: '/configuracoes/site',          label: 'Site & SEO',     icon: 'globe' },
   { href: '/configuracoes/usuarios',      label: 'Usuários',       icon: 'manage_accounts' },
   { href: '/configuracoes/pagamentos',    label: 'Pagamentos',     icon: 'credit_card' },
   { href: '/configuracoes/contas',        label: 'Contas',         icon: 'account_balance' },

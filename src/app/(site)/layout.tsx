@@ -1,5 +1,7 @@
 import type { Metadata } from 'next'
 import { LenisProvider } from '@/components/site/LenisProvider'
+import { PageTracker } from '@/components/site/PageTracker'
+import { Suspense } from 'react'
 
 export const metadata: Metadata = {
   title: {
@@ -29,7 +31,12 @@ export default function SiteLayout({ children }: { children: React.ReactNode }) 
         href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@24,300,0,0"
         rel="stylesheet"
       />
-      <LenisProvider>{children}</LenisProvider>
+      <LenisProvider>
+        <Suspense fallback={null}>
+          <PageTracker />
+        </Suspense>
+        {children}
+      </LenisProvider>
     </>
   )
 }
