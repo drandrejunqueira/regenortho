@@ -256,8 +256,12 @@ export default function LoginPage() {
                       outline: 'none',
                     }}
                     onFocus={e => { e.currentTarget.style.border = '1.5px solid #00BCE4'; e.currentTarget.style.background = '#fff' }}
-                    onBlur={e => { e.currentTarget.style.border = errors.email ? '1.5px solid #ef4444' : '1.5px solid transparent'; e.currentTarget.style.background = '#f5f6f8' }}
-                    {...register('email')}
+                    {...register('email', {
+                      onBlur: e => {
+                        e.currentTarget.style.border = errors.email ? '1.5px solid #ef4444' : '1.5px solid transparent';
+                        e.currentTarget.style.background = '#f5f6f8';
+                      }
+                    })}
                   />
                 </div>
                 {errors.email && (
@@ -296,8 +300,12 @@ export default function LoginPage() {
                       outline: 'none',
                     }}
                     onFocus={e => { e.currentTarget.style.border = '1.5px solid #00BCE4'; e.currentTarget.style.background = '#fff' }}
-                    onBlur={e => { e.currentTarget.style.border = errors.password ? '1.5px solid #ef4444' : '1.5px solid transparent'; e.currentTarget.style.background = '#f5f6f8' }}
-                    {...register('password')}
+                    {...register('password', {
+                      onBlur: e => {
+                        e.currentTarget.style.border = errors.password ? '1.5px solid #ef4444' : '1.5px solid transparent';
+                        e.currentTarget.style.background = '#f5f6f8';
+                      }
+                    })}
                   />
                   <button
                     type="button"
