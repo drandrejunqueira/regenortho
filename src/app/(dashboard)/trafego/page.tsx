@@ -45,7 +45,7 @@ export default async function TrafegoPage() {
     createdAt: l.createdAt.toISOString()
   }))
 
-  // 4. Fetch first party stats on /site/lp/articulacoes
+  // 4. Fetch first party stats on any LP (starting with /site/lp/)
   const lpStats = await db
     .select({
       tipo: analyticsEvents.tipo,
@@ -55,7 +55,7 @@ export default async function TrafegoPage() {
     .from(analyticsEvents)
     .where(
       and(
-        eq(analyticsEvents.path, '/site/lp/articulacoes'),
+        sql`${analyticsEvents.path} LIKE '/site/lp/%'`,
         gte(analyticsEvents.createdAt, desde)
       )
     )
@@ -68,7 +68,7 @@ export default async function TrafegoPage() {
   const uniqueVisitors = statsMap['pageview']?.visitantes ?? 0
   const conversaoRate = uniqueVisitors > 0 ? (serializedLeads.length / uniqueVisitors) * 100 : 0
 
-  // 5. Generate daily series (last 30 days) to prevent chart holes
+  // 5. Generate daily series (last 30 days) on all LPs to prevent chart holes
   const dailyVisits = await db
     .select({
       dia: sql<string>`to_char(date_trunc('day', ${analyticsEvents.createdAt}), 'YYYY-MM-DD')`,
@@ -77,7 +77,7 @@ export default async function TrafegoPage() {
     .from(analyticsEvents)
     .where(
       and(
-        eq(analyticsEvents.path, '/site/lp/articulacoes'),
+        sql`${analyticsEvents.path} LIKE '/site/lp/%'`,
         eq(analyticsEvents.tipo, 'pageview'),
         gte(analyticsEvents.createdAt, desde)
       )

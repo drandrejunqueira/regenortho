@@ -28,6 +28,11 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     { url: `${base}/site/blog`,            lastModified: agora, changeFrequency: 'daily',   priority: 0.85 },
     { url: `${base}/site/agendar`,         lastModified: agora, changeFrequency: 'monthly', priority: 0.7  },
     { url: `${base}/site/lp/articulacoes`, lastModified: agora, changeFrequency: 'daily',   priority: 0.95 },
+    { url: `${base}/site/lp/prp`,               lastModified: agora, changeFrequency: 'daily',   priority: 0.90 },
+    { url: `${base}/site/lp/bmac`,              lastModified: agora, changeFrequency: 'daily',   priority: 0.90 },
+    { url: `${base}/site/lp/acido-hialuronico`, lastModified: agora, changeFrequency: 'daily',   priority: 0.90 },
+    { url: `${base}/site/lp/proloterapia`,      lastModified: agora, changeFrequency: 'daily',   priority: 0.90 },
+    { url: `${base}/site/lp/bloqueios`,         lastModified: agora, changeFrequency: 'daily',   priority: 0.90 },
   ]
 
   // ── Glossário (verbetes publicados) ──

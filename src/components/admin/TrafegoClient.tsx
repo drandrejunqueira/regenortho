@@ -54,6 +54,51 @@ interface Props {
   } | null
 }
 
+const LANDING_PAGES = [
+  {
+    slug: 'articulacoes',
+    title: 'Articulações Geral',
+    desc: 'Campanha de dores articulares e infiltrações gerais.',
+    path: '/site/lp/articulacoes',
+    tag: 'Artrose & Infiltrações'
+  },
+  {
+    slug: 'prp',
+    title: 'PRP (Plasma Rico)',
+    desc: 'Campanha de cicatrização natural e fatores de crescimento.',
+    path: '/site/lp/prp',
+    tag: 'Regeneração Plasmática'
+  },
+  {
+    slug: 'bmac',
+    title: 'BMAC (Medula Óssea)',
+    desc: 'Campanha de artrose avançada e células mesenquimais.',
+    path: '/site/lp/bmac',
+    tag: 'Terapia Celular'
+  },
+  {
+    slug: 'acido-hialuronico',
+    title: 'Ácido Hialurônico',
+    desc: 'Campanha de lubrificação mecânica e amortecimento.',
+    path: '/site/lp/acido-hialuronico',
+    tag: 'Viscossuplementação'
+  },
+  {
+    slug: 'proloterapia',
+    title: 'Proloterapia',
+    desc: 'Campanha de fortalecimento de ligamentos e tornozelo.',
+    path: '/site/lp/proloterapia',
+    tag: 'Terapia Proliferativa'
+  },
+  {
+    slug: 'bloqueios',
+    title: 'Bloqueios de Dor',
+    desc: 'Campanha de dor ciática e bloqueios guiados na coluna.',
+    path: '/site/lp/bloqueios',
+    tag: 'Dor Intervencionista'
+  }
+]
+
 export function TrafegoClient({
   googleStatus,
   leads,
@@ -63,6 +108,14 @@ export function TrafegoClient({
   ga4Data
 }: Props) {
   const [filterSource, setFilterSource] = useState<'all' | 'google_ads' | 'meta_ads'>('all')
+  const [copiedSlug, setCopiedSlug] = useState<string | null>(null)
+
+  const handleCopy = (path: string, slug: string) => {
+    const fullUrl = `${window.location.origin}${path}`
+    navigator.clipboard.writeText(fullUrl)
+    setCopiedSlug(slug)
+    setTimeout(() => setCopiedSlug(null), 2000)
+  }
 
   const filteredLeads = leads.filter(l => {
     if (filterSource === 'all') return true
@@ -178,6 +231,72 @@ export function TrafegoClient({
           <p className="text-[10px] text-[#718096] mt-1">
             Impressões totais: <strong className="text-[#021541] font-semibold">{gscData ? gscData.totalImpressions.toLocaleString('pt-BR') : '—'}</strong>
           </p>
+        </div>
+      </div>
+
+      {/* 📌 PÁGINAS DE CONVERSÃO / CAMPANHAS DE TRÁFEGO */}
+      <div className="rounded-2xl border border-[rgba(2,21,65,0.06)] bg-white p-5 shadow-sm space-y-4">
+        <div>
+          <h3 className="text-sm font-bold text-[#021541] flex items-center gap-2">
+            <Link2 className="size-4 text-[#00BCE4]" />
+            Campanhas & Links de Conversão (Landing Pages)
+          </h3>
+          <p className="text-xs text-[#718096] mt-0.5">Use estes links nos anúncios do Google Ads ou Meta Ads para captar e converter leads diretamente no banco de dados.</p>
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+          {LANDING_PAGES.map((lp) => (
+            <div
+              key={lp.slug}
+              className="p-4 rounded-xl border border-[rgba(2,21,65,0.06)] bg-white flex flex-col justify-between hover:border-[rgba(0,188,228,0.25)] transition-all duration-300 shadow-sm hover:shadow-md"
+            >
+              <div className="space-y-2">
+                <div className="flex justify-between items-start">
+                  <span className="px-2 py-0.5 rounded-full text-[9px] font-bold uppercase tracking-wider bg-[rgba(0,188,228,0.08)] text-[#00BCE4]">
+                    {lp.tag}
+                  </span>
+                </div>
+                <h4 className="font-extrabold text-sm text-[#021541]">{lp.title}</h4>
+                <p className="text-[11px] text-[#718096] leading-relaxed">{lp.desc}</p>
+              </div>
+
+              <div className="mt-4 pt-3 border-t border-[rgba(2,21,65,0.03)] flex gap-2">
+                {/* Copiar Link */}
+                <button
+                  onClick={() => handleCopy(lp.path, lp.slug)}
+                  className={cn(
+                    "flex-1 py-2 text-[10px] font-bold uppercase tracking-wider rounded-lg transition-all flex items-center justify-center gap-1.5 border",
+                    copiedSlug === lp.slug
+                      ? "bg-green-50 border-green-200 text-green-700 font-semibold"
+                      : "bg-[#f5f6f8] border-[rgba(2,21,65,0.06)] text-[#021541] hover:bg-[#e2e8f0]"
+                  )}
+                >
+                  {copiedSlug === lp.slug ? (
+                    <>
+                      <CheckCircle2 className="size-3.5" />
+                      Copiado!
+                    </>
+                  ) : (
+                    <>
+                      <Link2 className="size-3.5 text-[#718096]" />
+                      Copiar Link
+                    </>
+                  )}
+                </button>
+
+                {/* Abrir Link */}
+                <a
+                  href={lp.path}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="py-2 px-3 bg-white border border-[rgba(2,21,65,0.06)] hover:bg-[#f5f6f8] text-[#021541] rounded-lg transition-all flex items-center justify-center"
+                  title="Abrir página"
+                >
+                  <ExternalLink className="size-3.5" />
+                </a>
+              </div>
+            </div>
+          ))}
         </div>
       </div>
 
