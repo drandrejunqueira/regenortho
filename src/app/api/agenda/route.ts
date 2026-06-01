@@ -3,7 +3,7 @@ import { db } from '@/lib/db'
 import { appointments } from '@/lib/db/schema'
 import { hasPermission } from '@/lib/permissions'
 import { NextRequest, NextResponse } from 'next/server'
-import { and, gte, lte, eq } from 'drizzle-orm'
+import { and, gte, lte, eq, isNull } from 'drizzle-orm'
 import { z } from 'zod'
 import type { UserRole } from '@/types'
 
@@ -29,10 +29,12 @@ export async function GET(req: NextRequest) {
   const { searchParams } = new URL(req.url)
   const start = searchParams.get('start')
   const end = searchParams.get('end')
+  const doctorId = searchParams.get('doctorId')
 
   const conditions = []
   if (start) conditions.push(gte(appointments.startAt, new Date(start)))
   if (end) conditions.push(lte(appointments.startAt, new Date(end)))
+  if (doctorId) conditions.push(eq(appointments.doctorId, doctorId))
 
   const data = await db.query.appointments.findMany({
     where: conditions.length ? and(...conditions) : undefined,
@@ -60,12 +62,16 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'Dados inválidos', details: parsed.error.flatten() }, { status: 400 })
   }
 
-  const [apt] = await db.insert(appointments).values({
-    ...parsed.data,
-    startAt: new Date(parsed.data.startAt),
-    endAt: new Date(parsed.data.endAt),
-    createdById: session.user.id,
-  }).returning()
-
-  return NextResponse.json({ data: apt }, { status: 201 })
+  try {
+    const [apt] = await db.insert(appointments).values({
+      ...parsed.data,
+      startAt: new Date(parsed.data.startAt),
+      endAt: new Date(parsed.data.endAt),
+      createdById: session.user.id,
+    }).returning()
+    return NextResponse.json({ data: apt }, { status: 201 })
+  } catch (err: any) {
+    console.error('DB Insert Error:', err)
+    return NextResponse.json({ error: 'Erro no banco de dados', details: err.message }, { status: 500 })
+  }
 }

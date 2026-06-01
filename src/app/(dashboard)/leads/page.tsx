@@ -36,7 +36,7 @@ export default function LeadsPage() {
         action={
           <button
             onClick={() => setNewDialogOpen(true)}
-            className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-gradient-to-br from-[#006e72] to-[#61d8dd] text-[#003739] text-sm font-bold hover:opacity-90 transition-opacity"
+            className="flex items-center gap-2 px-4 py-2 rounded-full bg-[#021541] text-white text-sm font-bold hover:bg-[#032170] transition-colors"
           >
             <span className="material-symbols-outlined" style={{ fontSize: '18px' }}>add</span>
             Novo Lead
@@ -47,18 +47,18 @@ export default function LeadsPage() {
       {/* Filter bar */}
       <div className="mb-4 flex items-center gap-3">
         <div className="relative flex-1 max-w-xs">
-          <span className="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-[#bec9c9]/60" style={{ fontSize: '18px' }}>search</span>
+          <span className="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-[#718096]" style={{ fontSize: '18px' }}>search</span>
           <input
             placeholder="Buscar por nome ou telefone..."
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            className="w-full bg-[#1c2026] border-none rounded-xl pl-10 pr-4 py-2.5 text-sm text-[#dfe2eb] placeholder:text-[#bec9c9]/40 focus:outline-none focus:ring-2 focus:ring-[#61d8dd]/30"
+            className="w-full bg-[#f5f6f8] border border-[rgba(2,21,65,0.10)] rounded-full pl-10 pr-4 py-2.5 text-sm text-[#021541] placeholder:text-[#718096] focus:outline-none focus:ring-2 focus:ring-[#00BCE4]/30"
           />
         </div>
       </div>
 
       {loading ? (
-        <div className="flex-1 flex items-center justify-center text-[#bec9c9] text-sm">
+        <div className="flex-1 flex items-center justify-center text-[#718096] text-sm">
           <span className="material-symbols-outlined animate-spin mr-2" style={{ fontSize: '18px' }}>refresh</span>
           Carregando leads...
         </div>

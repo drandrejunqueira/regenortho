@@ -9,8 +9,8 @@ import { toast } from 'sonner'
 import { formatDate } from '@/lib/utils'
 import type { Material } from '@/types'
 
-const inputCls = 'w-full bg-[#31353c] border-none rounded-xl px-3 py-2.5 text-sm text-[#dfe2eb] placeholder:text-[#bec9c9]/40 focus:outline-none focus:ring-2 focus:ring-[#61d8dd]/30'
-const labelCls = 'text-[10px] font-bold text-[#bec9c9] uppercase tracking-wider'
+const inputCls = 'w-full bg-[#f5f6f8] border border-[rgba(2,21,65,0.12)] rounded-xl px-3 py-2.5 text-sm text-[#021541] placeholder:text-[#718096]/60 focus:outline-none focus:ring-2 focus:ring-[#00BCE4]/30'
+const labelCls = 'text-[10px] font-bold text-[#718096] uppercase tracking-wider'
 
 export default function MateriaisPage() {
   const [materials, setMaterials] = useState<Material[]>([])
@@ -61,8 +61,8 @@ export default function MateriaisPage() {
       />
 
       {critical > 0 && (
-        <div className="flex items-center gap-3 px-4 py-3 bg-[#93000a]/20 border-l-4 border-[#ffb4ab] rounded-r-xl text-sm text-[#ffb4ab] font-medium mb-4">
-          <span className="material-symbols-outlined" style={{ fontSize: '18px', fontVariationSettings: "'FILL' 1" }}>warning</span>
+        <div className="flex items-center gap-3 px-4 py-3 bg-[rgba(239,68,68,0.06)] border border-[rgba(239,68,68,0.2)] rounded-xl text-sm text-[#DC2626] font-medium mb-4">
+          <span className="material-symbols-outlined shrink-0" style={{ fontSize: '18px', fontVariationSettings: "'FILL' 1" }}>warning</span>
           {critical} {critical === 1 ? 'item' : 'itens'} com estoque crítico — ação necessária!
         </div>
       )}
@@ -75,53 +75,65 @@ export default function MateriaisPage() {
       </div>
 
       {loading ? (
-        <p className="text-sm text-[#bec9c9] py-8 text-center">Carregando...</p>
+        <p className="text-sm text-[#718096] py-8 text-center">Carregando...</p>
       ) : (
-        <div className="rounded-xl overflow-hidden bg-[#1c2026]">
-          <table className="w-full text-sm">
+        <div className="overflow-x-auto rounded-xl border border-[rgba(2,21,65,0.06)]">
+          <table className="w-full text-sm bg-white">
             <thead>
-              <tr className="bg-[#262a31]">
+              <tr className="bg-[rgba(2,21,65,0.03)]">
                 {['Material', 'Categoria', 'Estoque', 'Mínimo', 'Status', 'Validade', ''].map((h) => (
-                  <th key={h} className={`px-5 py-3 text-[10px] font-bold text-[#bec9c9] uppercase tracking-wider ${h === '' ? 'w-24' : h === 'Estoque' || h === 'Mínimo' ? 'text-center' : 'text-left'}`}>
+                  <th
+                    key={h}
+                    className={`px-5 py-3 text-xs font-semibold text-[#021541] uppercase tracking-wider ${
+                      h === '' ? 'w-24' : h === 'Estoque' || h === 'Mínimo' ? 'text-center' : 'text-left'
+                    } ${h === 'Categoria' || h === 'Validade' ? 'hidden sm:table-cell' : ''}`}
+                  >
                     {h}
                   </th>
                 ))}
               </tr>
             </thead>
-            <tbody className="divide-y divide-[#3e4949]/20">
+            <tbody>
               {materials.map((mat) => {
                 const isCritical = mat.status === 'critical' || mat.status === 'out_of_stock'
                 return (
-                  <tr key={mat.id} className={`hover:bg-[#262a31]/50 transition-colors ${isCritical ? 'bg-[#93000a]/10' : ''}`}>
+                  <tr
+                    key={mat.id}
+                    className={`border-b border-[rgba(2,21,65,0.05)] transition-colors ${
+                      isCritical
+                        ? 'bg-[rgba(239,68,68,0.02)] hover:bg-[rgba(239,68,68,0.04)]'
+                        : 'hover:bg-[rgba(2,21,65,0.015)]'
+                    }`}
+                  >
                     <td className="px-5 py-3">
-                      <p className="font-medium text-[#dfe2eb]">{mat.name}</p>
-                      {mat.supplier && <p className="text-xs text-[#bec9c9]">{mat.supplier}</p>}
+                      <p className="font-medium text-[#021541]">{mat.name}</p>
+                      {mat.supplier && <p className="text-xs text-[#718096]">{mat.supplier}</p>}
                     </td>
-                    <td className="px-5 py-3 text-[#bec9c9] capitalize text-xs">{mat.category}</td>
-                    <td className="px-5 py-3 text-center font-technical font-bold text-[#dfe2eb]">
-                      {mat.currentStock} <span className="text-[#bec9c9] font-normal text-xs">{mat.unit}</span>
+                    <td className="px-5 py-3 text-[#718096] capitalize text-xs hidden sm:table-cell">{mat.category}</td>
+                    <td className="px-5 py-3 text-center font-technical font-bold text-[#021541]">
+                      {mat.currentStock} <span className="text-[#718096] font-normal text-xs">{mat.unit}</span>
                     </td>
-                    <td className="px-5 py-3 text-center font-technical text-[#bec9c9] text-sm">
+                    <td className="px-5 py-3 text-center font-technical text-[#718096] text-sm">
                       {mat.minimumStock} <span className="text-xs">{mat.unit}</span>
                     </td>
                     <td className="px-5 py-3">
                       <StatusBadge type="stock_status" value={mat.status} pulse={isCritical} />
                     </td>
-                    <td className="px-5 py-3 font-technical text-xs text-[#bec9c9]">
+                    <td className="px-5 py-3 font-technical text-xs text-[#718096] hidden sm:table-cell">
                       {mat.expiresAt ? formatDate(mat.expiresAt) : '—'}
                     </td>
                     <td className="px-5 py-3">
-                      <div className="flex items-center justify-end gap-1">
+                      <div className="flex items-center justify-end gap-1 flex-wrap">
                         <button
                           onClick={() => openMovement(mat, 'in')}
-                          className="p-1.5 rounded-lg bg-[#31353c] text-[#4ade80]/70 hover:text-[#4ade80] hover:bg-[#4ade80]/10 transition-all"
+                          className="p-1.5 rounded-lg bg-[rgba(5,150,105,0.06)] text-[#059669] hover:bg-[rgba(5,150,105,0.12)] transition-all"
                           aria-label="Entrada"
                         >
                           <span className="material-symbols-outlined" style={{ fontSize: '16px' }}>arrow_downward</span>
                         </button>
                         <button
                           onClick={() => openMovement(mat, 'out')}
-                          className="p-1.5 rounded-lg bg-[#31353c] text-[#ffb4ab]/70 hover:text-[#ffb4ab] hover:bg-[#ffb4ab]/10 transition-all"
+                          className="p-1.5 rounded-lg bg-[rgba(220,38,38,0.06)] text-[#DC2626] hover:bg-[rgba(220,38,38,0.12)] transition-all"
                           aria-label="Saída"
                         >
                           <span className="material-symbols-outlined" style={{ fontSize: '16px' }}>arrow_upward</span>
@@ -129,7 +141,7 @@ export default function MateriaisPage() {
                         {mat.supplierContact && (
                           <button
                             onClick={() => generateWhatsApp(mat)}
-                            className="p-1.5 rounded-lg bg-[#31353c] text-[#4ade80]/70 hover:text-[#4ade80] hover:bg-[#4ade80]/10 transition-all"
+                            className="p-1.5 rounded-lg bg-[rgba(0,188,228,0.06)] text-[#00BCE4] hover:bg-[rgba(0,188,228,0.12)] transition-all"
                             aria-label="Solicitar compra via WhatsApp"
                           >
                             <span className="material-symbols-outlined" style={{ fontSize: '16px' }}>chat</span>
@@ -191,16 +203,16 @@ function MovimentacaoDialog({ open, material, type, onOpenChange, onCreated }: {
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-sm bg-[#1c2026] border-[#3e4949]/20">
+      <DialogContent className="max-w-sm bg-white border border-[rgba(2,21,65,0.08)]">
         <DialogHeader>
-          <DialogTitle className="text-[#dfe2eb] font-bold">
+          <DialogTitle className="text-[#021541] font-bold">
             {type === 'in' ? 'Registrar Entrada' : 'Registrar Saída'}
           </DialogTitle>
         </DialogHeader>
         <div className="space-y-3">
-          <p className="text-sm font-medium text-[#dfe2eb]">{material.name}</p>
-          <p className="text-sm text-[#bec9c9]">
-            Estoque atual: <span className="font-technical font-bold text-[#dfe2eb]">{material.currentStock} {material.unit}</span>
+          <p className="text-sm font-medium text-[#021541]">{material.name}</p>
+          <p className="text-sm text-[#718096]">
+            Estoque atual: <span className="font-technical font-bold text-[#021541]">{material.currentStock} {material.unit}</span>
           </p>
           <div className="space-y-1.5">
             <label className={labelCls}>Quantidade *</label>
@@ -217,10 +229,10 @@ function MovimentacaoDialog({ open, material, type, onOpenChange, onCreated }: {
           </div>
         </div>
         <DialogFooter className="gap-2">
-          <button onClick={() => onOpenChange(false)} disabled={loading} className="px-4 py-2.5 rounded-xl text-sm font-medium text-[#bec9c9] bg-[#31353c] hover:bg-[#262a31] transition-colors">
+          <button onClick={() => onOpenChange(false)} disabled={loading} className="px-4 py-2.5 rounded-xl text-sm font-medium text-[#718096] bg-[#f5f6f8] hover:bg-[rgba(2,21,65,0.06)] transition-colors">
             Cancelar
           </button>
-          <button onClick={submit} disabled={loading} className="px-4 py-2.5 rounded-xl text-sm font-bold bg-gradient-to-br from-[#006e72] to-[#61d8dd] text-[#003739] hover:opacity-90 transition-opacity disabled:opacity-50">
+          <button onClick={submit} disabled={loading} className="px-4 py-2.5 rounded-xl text-sm font-bold bg-[#021541] text-white hover:opacity-90 transition-opacity disabled:opacity-50">
             {loading ? 'Salvando...' : 'Confirmar'}
           </button>
         </DialogFooter>

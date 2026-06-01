@@ -58,20 +58,20 @@ export default function TrafegoPage() {
         <AdPlatformCard title="Meta Ads" platform={MOCK_META} icon="camera_alt" />
       </div>
 
-      <div className="bg-[#1c2026] rounded-xl p-6">
-        <h3 className="text-sm font-bold text-[#dfe2eb] mb-4">Leads por Canal — Últimas 4 Semanas</h3>
+      <div className="bg-white rounded-xl border border-[rgba(2,21,65,0.06)] shadow-[0_2px_12px_rgba(2,21,65,0.04)] p-5">
+        <h3 className="text-sm font-bold text-[#021541] mb-4">Leads por Canal — Últimas 4 Semanas</h3>
         <ResponsiveContainer width="100%" height={200}>
           <BarChart data={CHART_DATA}>
-            <XAxis dataKey="semana" tick={{ fontSize: 11, fill: '#bec9c9' }} axisLine={false} tickLine={false} />
-            <YAxis tick={{ fontSize: 11, fill: '#bec9c9' }} axisLine={false} tickLine={false} />
+            <XAxis dataKey="semana" tick={{ fontSize: 11, fill: '#718096' }} axisLine={false} tickLine={false} />
+            <YAxis tick={{ fontSize: 11, fill: '#718096' }} axisLine={false} tickLine={false} />
             <Tooltip
-              contentStyle={{ background: '#31353c', border: 'none', borderRadius: '12px', color: '#dfe2eb', fontSize: '12px' }}
-              cursor={{ fill: 'rgba(97,216,221,0.05)' }}
+              contentStyle={{ background: '#ffffff', border: '1px solid rgba(2,21,65,0.08)', borderRadius: '12px', color: '#021541', fontSize: '12px', boxShadow: '0 4px 20px rgba(2,21,65,0.1)' }}
+              cursor={{ fill: 'rgba(2,21,65,0.03)' }}
             />
-            <Legend wrapperStyle={{ fontSize: '11px', color: '#bec9c9' }} />
-            <Bar dataKey="google" name="Google Ads" fill="#61d8dd" radius={[4, 4, 0, 0]} />
-            <Bar dataKey="meta" name="Meta Ads" fill="#e6c364" radius={[4, 4, 0, 0]} />
-            <Bar dataKey="organico" name="Orgânico" fill="#d3bbff" radius={[4, 4, 0, 0]} />
+            <Legend wrapperStyle={{ fontSize: '11px', color: '#718096' }} />
+            <Bar dataKey="google" name="Google Ads" fill="#00BCE4" radius={[4, 4, 0, 0]} />
+            <Bar dataKey="meta" name="Meta Ads" fill="#021541" radius={[4, 4, 0, 0]} />
+            <Bar dataKey="organico" name="Orgânico" fill="#94a3b8" radius={[4, 4, 0, 0]} />
           </BarChart>
         </ResponsiveContainer>
       </div>
@@ -82,44 +82,48 @@ export default function TrafegoPage() {
 function AdPlatformCard({ title, platform, icon }: { title: string; platform: typeof MOCK_GOOGLE; icon: string }) {
   const pct = Math.min(Math.round((platform.spent / platform.budget) * 100), 100)
   return (
-    <div className="bg-[#1c2026] rounded-xl p-6">
+    <div className="bg-white rounded-xl border border-[rgba(2,21,65,0.06)] shadow-[0_2px_12px_rgba(2,21,65,0.04)] p-5">
       <div className="flex items-center justify-between mb-4">
         <div className="flex items-center gap-2">
-          <span className="material-symbols-outlined text-[#61d8dd]/60" style={{ fontSize: '20px' }}>{icon}</span>
-          <h3 className="text-sm font-bold text-[#dfe2eb]">{title}</h3>
+          <div className="w-8 h-8 rounded-lg bg-[rgba(0,188,228,0.08)] flex items-center justify-center">
+            <span className="material-symbols-outlined text-[#00BCE4]" style={{ fontSize: '18px' }}>{icon}</span>
+          </div>
+          <h3 className="text-sm font-bold text-[#021541]">{title}</h3>
         </div>
         <span className={`px-2.5 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider ${
-          platform.status === 'Ativo' ? 'bg-[#61d8dd]/10 text-[#61d8dd]' : 'bg-[#31353c] text-[#bec9c9]'
+          platform.status === 'Ativo'
+            ? 'bg-[rgba(0,188,228,0.1)] text-[#00BCE4]'
+            : 'bg-[rgba(2,21,65,0.06)] text-[#718096]'
         }`}>
           {platform.status}
         </span>
       </div>
       <div className="flex justify-between items-end mb-2">
-        <span className="text-xs text-[#bec9c9]">Budget: <span className="font-technical font-bold text-[#dfe2eb]">{formatCurrency(platform.budget)}</span></span>
-        <span className="font-technical text-xs text-[#61d8dd] font-bold">{formatCurrency(platform.spent)} ({pct}%)</span>
+        <span className="text-xs text-[#718096]">Budget: <span className="font-bold text-[#021541]">{formatCurrency(platform.budget)}</span></span>
+        <span className="text-xs text-[#00BCE4] font-bold">{formatCurrency(platform.spent)} ({pct}%)</span>
       </div>
-      <div className="h-1.5 bg-[#31353c] rounded-full overflow-hidden mb-5">
-        <div className="h-full bg-gradient-to-r from-[#006e72] to-[#61d8dd] rounded-full" style={{ width: `${pct}%` }} />
+      <div className="h-1.5 bg-[rgba(2,21,65,0.06)] rounded-full overflow-hidden mb-5">
+        <div className="h-full bg-gradient-to-r from-[#0097a7] to-[#00BCE4] rounded-full transition-all" style={{ width: `${pct}%` }} />
       </div>
       <table className="w-full text-xs">
         <thead>
-          <tr>
-            <th className="text-left pb-2 text-[10px] font-bold text-[#bec9c9] uppercase tracking-wider">Campanha</th>
-            <th className="text-right pb-2 text-[10px] font-bold text-[#bec9c9] uppercase tracking-wider">Leads</th>
-            <th className="text-right pb-2 text-[10px] font-bold text-[#bec9c9] uppercase tracking-wider">CPL</th>
+          <tr className="border-b border-[rgba(2,21,65,0.06)]">
+            <th className="text-left pb-2 text-[10px] font-bold text-[#718096] uppercase tracking-wider">Campanha</th>
+            <th className="text-right pb-2 text-[10px] font-bold text-[#718096] uppercase tracking-wider">Leads</th>
+            <th className="text-right pb-2 text-[10px] font-bold text-[#718096] uppercase tracking-wider">CPL</th>
           </tr>
         </thead>
-        <tbody className="divide-y divide-[#3e4949]/20">
+        <tbody className="divide-y divide-[rgba(2,21,65,0.05)]">
           {platform.campaigns.map((c) => (
-            <tr key={c.name}>
-              <td className="py-2">
-                <p className="font-medium text-[#dfe2eb]">{c.name}</p>
-                <span className={`text-[9px] font-bold uppercase ${c.status === 'Ativo' ? 'text-[#61d8dd]' : 'text-[#bec9c9]'}`}>
+            <tr key={c.name} className="hover:bg-[rgba(2,21,65,0.015)] transition-colors">
+              <td className="py-2.5">
+                <p className="font-semibold text-[#021541]">{c.name}</p>
+                <span className={`text-[9px] font-bold uppercase tracking-wider ${c.status === 'Ativo' ? 'text-[#00BCE4]' : 'text-[#718096]'}`}>
                   {c.status}
                 </span>
               </td>
-              <td className="text-right py-2 font-technical font-bold text-[#dfe2eb]">{c.leads}</td>
-              <td className="text-right py-2 font-technical text-[#e6c364]">{formatCurrency(c.cpl)}</td>
+              <td className="text-right py-2.5 font-bold text-[#021541]">{c.leads}</td>
+              <td className="text-right py-2.5 font-semibold text-[#D97706]">{formatCurrency(c.cpl)}</td>
             </tr>
           ))}
         </tbody>

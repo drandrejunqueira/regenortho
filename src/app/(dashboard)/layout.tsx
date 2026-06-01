@@ -12,7 +12,7 @@ export default async function DashboardLayout({
   if (!session) redirect('/login')
 
   return (
-    <div className="flex min-h-screen bg-[#10141a]">
+    <div className="flex min-h-screen bg-[#f5f6f8]">
       {/* Fixed 220px sidebar, desktop only */}
       <div className="hidden md:block fixed top-0 left-0 h-screen w-[220px] z-30">
         <Sidebar />

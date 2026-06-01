@@ -10,11 +10,11 @@ interface FunnelData {
 
 export function FunnelChart({ data }: { data: FunnelData }) {
   const steps = [
-    { label: 'Leads', value: data.new, color: '#61d8dd' },
-    { label: 'Contato', value: data.contacted, color: '#61d8dd' },
-    { label: 'Agendados', value: data.scheduled, color: '#61d8dd' },
-    { label: 'Compareceram', value: data.attended, color: '#61d8dd' },
-    { label: 'Ativos', value: data.active, color: '#61d8dd' },
+    { label: 'Leads', value: data.new, color: '#00BCE4' },
+    { label: 'Contato', value: data.contacted, color: '#00BCE4' },
+    { label: 'Agendados', value: data.scheduled, color: '#00BCE4' },
+    { label: 'Compareceram', value: data.attended, color: '#00BCE4' },
+    { label: 'Ativos', value: data.active, color: '#00BCE4' },
   ]
   const max = Math.max(...steps.map(s => s.value), 1)
 
@@ -28,14 +28,14 @@ export function FunnelChart({ data }: { data: FunnelData }) {
         return (
           <div key={step.label} className="flex-1 text-center group flex flex-col items-center">
             {convRate !== null ? (
-              <p className="font-technical text-[10px] text-[#61d8dd] font-bold mb-2">{convRate}%</p>
+              <p className="font-technical text-[10px] text-[#00BCE4] font-bold mb-2">{convRate}%</p>
             ) : (
               <p className="text-[10px] mb-2 opacity-0">-</p>
             )}
-            <p className="font-technical text-2xl font-bold text-[#dfe2eb] mb-1">{step.value}</p>
-            <p className="text-[10px] uppercase tracking-widest text-[#bec9c9] font-bold mb-3">{step.label}</p>
+            <p className="font-technical text-2xl font-bold text-[#021541] mb-1">{step.value}</p>
+            <p className="text-[10px] uppercase tracking-widest text-[#718096] font-bold mb-3">{step.label}</p>
             <div
-              className="h-2 w-full bg-[#006e72] rounded-full"
+              className="h-2 w-full bg-[#00BCE4] rounded-full"
               style={{ opacity: step.label === 'Ativos' ? 1 : 0.3 + (pct / max) * 0.5 }}
             ></div>
           </div>

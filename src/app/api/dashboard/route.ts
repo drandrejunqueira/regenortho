@@ -95,6 +95,52 @@ export async function GET() {
     }),
   ])
 
+  // 7-day revenue chart
+  const sevenDaysAgo = new Date(now)
+  sevenDaysAgo.setDate(now.getDate() - 6)
+
+  const revenueByDay = await db.select({
+    date: transactions.date,
+    total: sum(transactions.amount),
+  }).from(transactions)
+  .where(and(
+    eq(transactions.type, 'income'),
+    gte(transactions.date, sevenDaysAgo.toISOString().split('T')[0]),
+    lte(transactions.date, now.toISOString().split('T')[0]),
+  ))
+  .groupBy(transactions.date)
+  .orderBy(transactions.date)
+
+  const leadsByDay = await db.select({
+    date: sql<string>`DATE(${leads.createdAt})`,
+    count: count(),
+  }).from(leads)
+  .where(gte(leads.createdAt, sevenDaysAgo))
+  .groupBy(sql`DATE(${leads.createdAt})`)
+  .orderBy(sql`DATE(${leads.createdAt})`)
+
+  // Build 7-day chart arrays
+  const chartDays = Array.from({ length: 7 }, (_, i) => {
+    const d = new Date(sevenDaysAgo)
+    d.setDate(d.getDate() + i)
+    return d.toISOString().split('T')[0]
+  })
+
+  const revenueMap = Object.fromEntries(revenueByDay.map(r => [r.date, parseFloat(r.total ?? '0')]))
+  const leadsMap = Object.fromEntries(leadsByDay.map(r => [r.date, r.count]))
+
+  const revenueChart = chartDays.map(date => ({
+    date,
+    label: new Date(date + 'T12:00:00').toLocaleDateString('pt-BR', { weekday: 'short', day: 'numeric' }),
+    value: revenueMap[date] ?? 0,
+  }))
+
+  const leadsChart = chartDays.map(date => ({
+    date,
+    label: new Date(date + 'T12:00:00').toLocaleDateString('pt-BR', { weekday: 'short' }),
+    value: leadsMap[date] ?? 0,
+  }))
+
   const leadsNow = leadsThisMonth[0]?.count ?? 0
   const leadsPrev = leadsLastMonth[0]?.count ?? 0
   const leadsGrowth = leadsPrev > 0 ? Math.round(((leadsNow - leadsPrev) / leadsPrev) * 100) : 0
@@ -136,5 +182,7 @@ export async function GET() {
       attended: funnelMap['attended'] ?? 0,
       active: funnelMap['active_patient'] ?? 0,
     },
+    revenueChart,
+    leadsChart,
   })
 }

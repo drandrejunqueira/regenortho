@@ -13,17 +13,17 @@ export function EmptyState({ icon, title, description, action, className }: Empt
   return (
     <div className={cn('flex flex-col items-center justify-center py-12 text-center', className)}>
       {icon && (
-        <div className="w-12 h-12 rounded-full bg-[#1c2026] flex items-center justify-center mb-4">
+        <div className="w-12 h-12 rounded-full bg-[#f5f6f8] border border-[rgba(2,21,65,0.06)] flex items-center justify-center mb-4">
           {isString ? (
-            <span className="material-symbols-outlined text-[#bec9c9]" style={{ fontSize: '24px' }}>{icon as string}</span>
+            <span className="material-symbols-outlined text-[#718096]" style={{ fontSize: '24px' }}>{icon as string}</span>
           ) : (() => {
             const Icon = icon as React.ComponentType<{ className?: string }>
-            return <Icon className="w-6 h-6 text-[#bec9c9]" />
+            return <Icon className="w-6 h-6 text-[#718096]" />
           })()}
         </div>
       )}
-      <h3 className="text-sm font-medium text-[#dfe2eb] mb-1">{title}</h3>
-      {description && <p className="text-sm text-[#bec9c9] max-w-xs">{description}</p>}
+      <h3 className="text-sm font-medium text-[#021541] mb-1">{title}</h3>
+      {description && <p className="text-sm text-[#718096] max-w-xs">{description}</p>}
       {action && <div className="mt-4">{action}</div>}
     </div>
   )

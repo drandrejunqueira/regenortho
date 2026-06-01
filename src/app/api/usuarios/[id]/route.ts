@@ -11,6 +11,8 @@ const updateSchema = z.object({
   role: z.enum(['admin', 'receptionist', 'financial', 'doctor']).optional(),
   isActive: z.boolean().optional(),
   phone: z.string().nullable().optional(),
+  customPermissions: z.array(z.string()).nullable().optional(),
+  googleCalendarId: z.string().nullable().optional(),
 })
 
 type Params = { params: Promise<{ id: string }> }
@@ -30,7 +32,7 @@ export async function PATCH(req: NextRequest, { params }: Params) {
   const [updated] = await db.update(users)
     .set({ ...parsed.data, updatedAt: new Date() })
     .where(eq(users.id, id))
-    .returning({ id: users.id, name: users.name, email: users.email, role: users.role, isActive: users.isActive })
+    .returning({ id: users.id, name: users.name, email: users.email, role: users.role, isActive: users.isActive, customPermissions: users.customPermissions })
 
   if (!updated) return NextResponse.json({ error: 'Usuário não encontrado' }, { status: 404 })
   return NextResponse.json({ data: updated })

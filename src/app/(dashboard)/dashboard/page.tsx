@@ -7,26 +7,10 @@ import { RecentLeads } from '@/components/dashboard/RecentLeads'
 import { AgendaHoje } from '@/components/dashboard/AgendaHoje'
 import { FinanceiroCard } from '@/components/dashboard/FinanceiroCard'
 import { EstoqueCard } from '@/components/dashboard/EstoqueCard'
+import { RevenueChart } from '@/components/dashboard/RevenueChart'
+import { LeadsBarChart } from '@/components/dashboard/LeadsBarChart'
 import { formatCurrency } from '@/lib/utils'
 import type { UserRole } from '@/types'
-
-async function getDashboardData() {
-  try {
-    const baseUrl = process.env.NEXTAUTH_URL ?? 'http://localhost:3000'
-    const session = await auth()
-    if (!session) return null
-
-    const res = await fetch(`${baseUrl}/api/dashboard`, {
-      cache: 'no-store',
-      headers: { Cookie: `next-auth.session-token=${session}` },
-    })
-
-    if (!res.ok) return null
-    return res.json()
-  } catch {
-    return null
-  }
-}
 
 export default async function DashboardPage() {
   const session = await auth()
@@ -35,7 +19,6 @@ export default async function DashboardPage() {
   const role = session.user.role as UserRole
   if (!hasPermission(role, 'dashboard:view')) redirect('/login')
 
-  // Busca dados diretamente via DB para Server Component
   const { db } = await import('@/lib/db')
   const { leads, appointments, transactions, materials, monthlyGoals } = await import('@/lib/db/schema')
   const { and, gte, lte, eq, count, sum, sql } = await import('drizzle-orm')
@@ -45,6 +28,8 @@ export default async function DashboardPage() {
   const endOfMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59)
   const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate())
   const todayEnd = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 23, 59, 59)
+  const sevenDaysAgo = new Date(now)
+  sevenDaysAgo.setDate(now.getDate() - 6)
 
   const [
     leadsThisMonthRes,
@@ -55,14 +40,18 @@ export default async function DashboardPage() {
     stockAlertsRes,
     funnelRes,
     goalsRes,
+    revenueByDay,
+    leadsByDay,
   ] = await Promise.all([
     db.select({ count: count() }).from(leads)
       .where(and(gte(leads.createdAt, startOfMonth), lte(leads.createdAt, endOfMonth))),
+
     db.query.leads.findMany({
       limit: 6,
       orderBy: (l, { desc }) => [desc(l.createdAt)],
       with: { assignedTo: { columns: { id: true, name: true } } },
     }),
+
     db.query.appointments.findMany({
       where: and(gte(appointments.startAt, todayStart), lte(appointments.startAt, todayEnd)),
       orderBy: (a, { asc }) => [asc(a.startAt)],
@@ -71,30 +60,77 @@ export default async function DashboardPage() {
         lead: { columns: { id: true, name: true, phone: true } },
       },
     }),
+
     db.select({ total: sum(transactions.amount) }).from(transactions)
       .where(and(
         eq(transactions.type, 'income'),
         gte(transactions.date, startOfMonth.toISOString().split('T')[0]),
         lte(transactions.date, endOfMonth.toISOString().split('T')[0]),
       )),
+
     db.select({ total: sum(transactions.amount) }).from(transactions)
       .where(and(
         eq(transactions.type, 'expense'),
         gte(transactions.date, startOfMonth.toISOString().split('T')[0]),
         lte(transactions.date, endOfMonth.toISOString().split('T')[0]),
       )),
+
     db.query.materials.findMany({
       where: sql`${materials.status} IN ('critical', 'out_of_stock', 'low')`,
       limit: 5,
     }),
+
     db.select({ status: leads.status, count: count() }).from(leads).groupBy(leads.status),
+
     db.query.monthlyGoals.findFirst({
       where: and(
         eq(monthlyGoals.month, now.getMonth() + 1),
         eq(monthlyGoals.year, now.getFullYear()),
       ),
     }),
+
+    // 7-day revenue
+    db.select({
+      date: transactions.date,
+      total: sum(transactions.amount),
+    }).from(transactions)
+      .where(and(
+        eq(transactions.type, 'income'),
+        gte(transactions.date, sevenDaysAgo.toISOString().split('T')[0]),
+        lte(transactions.date, now.toISOString().split('T')[0]),
+      ))
+      .groupBy(transactions.date)
+      .orderBy(transactions.date),
+
+    // 7-day leads
+    db.select({
+      date: sql<string>`DATE(${leads.createdAt})`,
+      cnt: count(),
+    }).from(leads)
+      .where(gte(leads.createdAt, sevenDaysAgo))
+      .groupBy(sql`DATE(${leads.createdAt})`)
+      .orderBy(sql`DATE(${leads.createdAt})`),
   ])
+
+  // Build chart data
+  const chartDays = Array.from({ length: 7 }, (_, i) => {
+    const d = new Date(sevenDaysAgo)
+    d.setDate(d.getDate() + i)
+    return d.toISOString().split('T')[0]
+  })
+  const revenueMap = Object.fromEntries(revenueByDay.map((r) => [r.date, parseFloat(r.total ?? '0')]))
+  const leadsMap = Object.fromEntries(leadsByDay.map((r) => [r.date, r.cnt]))
+
+  const revenueChart = chartDays.map((date) => ({
+    date,
+    label: new Date(date + 'T12:00:00').toLocaleDateString('pt-BR', { weekday: 'short', day: 'numeric' }),
+    value: revenueMap[date] ?? 0,
+  }))
+  const leadsChart = chartDays.map((date) => ({
+    date,
+    label: new Date(date + 'T12:00:00').toLocaleDateString('pt-BR', { weekday: 'short' }),
+    value: leadsMap[date] ?? 0,
+  }))
 
   const income = parseFloat(incomeRes[0]?.total ?? '0')
   const expenses = parseFloat(expenseRes[0]?.total ?? '0')
@@ -104,12 +140,16 @@ export default async function DashboardPage() {
   const criticalCount = stockAlertsRes.filter((m) => m.status === 'critical' || m.status === 'out_of_stock').length
   const netResult = income - expenses
 
+  const CARD = 'bg-white rounded-xl border border-[rgba(2,21,65,0.06)] shadow-[0_2px_12px_rgba(2,21,65,0.04)]'
+  const CARD_INNER = `${CARD} p-5`
+  const HEAD_ICON = 'material-symbols-outlined'
+
   return (
     <div className="space-y-6">
-      {/* Alerta de estoque crítico */}
+      {/* Stock alert banner */}
       {criticalCount > 0 && (
-        <div className="flex items-center gap-3 px-4 py-3 bg-[#93000a]/20 border-l-4 border-[#ffb4ab] rounded-r-xl text-sm font-medium text-[#ffb4ab]">
-          <span className="material-symbols-outlined shrink-0" style={{ fontSize: '18px' }}>warning</span>
+        <div className="flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium text-red-600" style={{ background: 'rgba(239,68,68,0.06)', border: '1px solid rgba(239,68,68,0.15)', borderLeft: '4px solid #ef4444' }}>
+          <span className={HEAD_ICON} style={{ fontSize: '18px' }}>warning</span>
           <span>
             {criticalCount} {criticalCount === 1 ? 'item crítico' : 'itens críticos'} no estoque —{' '}
             <a href="/materiais" className="underline underline-offset-2 hover:text-[#ffdad6] transition-colors">
@@ -121,42 +161,50 @@ export default async function DashboardPage() {
 
       {/* KPIs */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-        <KpiCard
-          title="Leads este mês"
-          value={leadsNow}
-          delta={0}
-          accent="teal"
-          icon="group_add"
-        />
-        <KpiCard
-          title="Faturamento"
-          value={formatCurrency(income)}
-          accent="gold"
-          icon="payments"
-        />
-        <KpiCard
-          title="Consultas hoje"
-          value={todayApts.length}
-          accent="teal"
-          icon="calendar_month"
-        />
+        <KpiCard title="Leads este mês" value={leadsNow} accent="cyan" icon="group_add" />
+        <KpiCard title="Faturamento" value={formatCurrency(income)} accent="gold" icon="payments" />
+        <KpiCard title="Consultas hoje" value={todayApts.length} accent="cyan" icon="calendar_month" />
         <KpiCard
           title="Resultado líquido"
           value={formatCurrency(netResult)}
-          accent={netResult >= 0 ? 'teal' : 'error'}
+          accent={netResult >= 0 ? 'cyan' : 'error'}
           icon="trending_up"
         />
       </div>
 
-      {/* Grid principal */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        {/* Funil de conversão */}
-        <div className="md:col-span-2 bg-[#1c2026] rounded-xl p-5">
+      {/* Animated charts */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div className={CARD_INNER}>
           <div className="flex items-center justify-between mb-5">
-            <h2 className="text-sm font-bold text-[#dfe2eb] uppercase tracking-wider">
+            <div>
+              <h2 className="text-sm font-bold text-[#021541]">Receita — 7 dias</h2>
+              <p className="text-[11px] text-[#718096] mt-0.5">Faturamento diário</p>
+            </div>
+            <span className={`${HEAD_ICON} text-[#00BCD4]/40`} style={{ fontSize: '20px' }}>show_chart</span>
+          </div>
+          <RevenueChart data={revenueChart} />
+        </div>
+
+        <div className={CARD_INNER}>
+          <div className="flex items-center justify-between mb-5">
+            <div>
+              <h2 className="text-sm font-bold text-[#021541]">Leads — 7 dias</h2>
+              <p className="text-[11px] text-[#718096] mt-0.5">Novos leads por dia</p>
+            </div>
+            <span className={`${HEAD_ICON} text-[#e6c364]/40`} style={{ fontSize: '20px' }}>bar_chart</span>
+          </div>
+          <LeadsBarChart data={leadsChart} />
+        </div>
+      </div>
+
+      {/* Funnel + Agenda */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <div className={`md:col-span-2 ${CARD_INNER}`}>
+          <div className="flex items-center justify-between mb-5">
+            <h2 className="text-sm font-bold text-[#021541] uppercase tracking-wider">
               Funil de Conversão de Leads
             </h2>
-            <span className="material-symbols-outlined text-[#61d8dd]/40" style={{ fontSize: '18px' }}>leaderboard</span>
+            <span className={`${HEAD_ICON} text-[#00BCD4]/40`} style={{ fontSize: '18px' }}>leaderboard</span>
           </div>
           <FunnelChart data={{
             new: funnelMap['new'] ?? 0,
@@ -167,48 +215,41 @@ export default async function DashboardPage() {
           }} />
         </div>
 
-        {/* Agenda hoje */}
-        <div className="bg-[#1c2026] rounded-xl p-5">
+        <div className={CARD_INNER}>
           <div className="flex items-center justify-between mb-5">
-            <h2 className="text-sm font-bold text-[#dfe2eb] uppercase tracking-wider">Agenda de Hoje</h2>
-            <span className="material-symbols-outlined text-[#61d8dd]/40" style={{ fontSize: '18px' }}>calendar_today</span>
+            <h2 className="text-sm font-bold text-[#021541] uppercase tracking-wider">Agenda de Hoje</h2>
+            <span className={`${HEAD_ICON} text-[#00BCD4]/40`} style={{ fontSize: '18px' }}>calendar_today</span>
           </div>
           <AgendaHoje appointments={todayApts as unknown as Parameters<typeof AgendaHoje>[0]['appointments']} />
         </div>
       </div>
 
+      {/* Leads recentes + Financeiro + Estoque */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        {/* Leads recentes */}
-        <div className="md:col-span-2 bg-[#1c2026] rounded-xl p-5">
+        <div className={`md:col-span-2 ${CARD_INNER}`}>
           <div className="flex items-center justify-between mb-5">
-            <h2 className="text-sm font-bold text-[#dfe2eb] uppercase tracking-wider">Leads Recentes</h2>
-            <span className="material-symbols-outlined text-[#61d8dd]/40" style={{ fontSize: '18px' }}>group</span>
+            <h2 className="text-sm font-bold text-[#021541] uppercase tracking-wider">Leads Recentes</h2>
+            <span className={`${HEAD_ICON} text-[#00BCD4]/40`} style={{ fontSize: '18px' }}>group</span>
           </div>
           <RecentLeads leads={recentLeads as unknown as Parameters<typeof RecentLeads>[0]['leads']} />
         </div>
 
-        {/* Financeiro + Estoque */}
         <div className="space-y-4">
           {hasPermission(role, 'financial:view') && (
-            <div className="bg-[#1c2026] rounded-xl p-5">
+            <div className={CARD_INNER}>
               <div className="flex items-center justify-between mb-4">
-                <h2 className="text-sm font-bold text-[#dfe2eb] uppercase tracking-wider">Financeiro do Mês</h2>
-                <span className="material-symbols-outlined text-[#e6c364]/40" style={{ fontSize: '18px' }}>payments</span>
+                <h2 className="text-sm font-bold text-[#021541] uppercase tracking-wider">Financeiro do Mês</h2>
+                <span className={`${HEAD_ICON} text-[#e6c364]/40`} style={{ fontSize: '18px' }}>payments</span>
               </div>
-              <FinanceiroCard
-                income={income}
-                expenses={expenses}
-                netResult={netResult}
-                revenueGoal={revenueGoal}
-              />
+              <FinanceiroCard income={income} expenses={expenses} netResult={netResult} revenueGoal={revenueGoal} />
             </div>
           )}
 
           {hasPermission(role, 'materials:view') && (
-            <div className="bg-[#1c2026] rounded-xl p-5">
+            <div className={CARD_INNER}>
               <div className="flex items-center justify-between mb-4">
-                <h2 className="text-sm font-bold text-[#dfe2eb] uppercase tracking-wider">Alertas de Estoque</h2>
-                <span className="material-symbols-outlined text-[#ffb4ab]/40" style={{ fontSize: '18px' }}>inventory_2</span>
+                <h2 className="text-sm font-bold text-[#021541] uppercase tracking-wider">Alertas de Estoque</h2>
+                <span className={`${HEAD_ICON} text-[#ffb4ab]/40`} style={{ fontSize: '18px' }}>inventory_2</span>
               </div>
               <EstoqueCard materials={stockAlertsRes as unknown as Parameters<typeof EstoqueCard>[0]['materials']} />
             </div>

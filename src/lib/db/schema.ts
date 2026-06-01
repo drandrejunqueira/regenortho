@@ -94,6 +94,61 @@ export const stockStatusEnum = pgEnum('stock_status', [
 
 export const genderEnum = pgEnum('gender', ['male', 'female', 'other'])
 
+export const treatmentStatusEnum = pgEnum('treatment_status', [
+  'draft',
+  'approved',
+  'in_progress',
+  'completed',
+  'cancelled',
+])
+
+export const treatmentItemTypeEnum = pgEnum('treatment_item_type', [
+  'procedure',
+  'material',
+  'fee',
+])
+
+export const examUrgencyEnum = pgEnum('exam_urgency', [
+  'routine',
+  'urgent',
+  'emergency',
+])
+
+export const examStatusEnum = pgEnum('exam_status', [
+  'issued',
+  'scheduled',
+  'collected',
+  'result_available',
+  'archived',
+])
+
+export const paymentMethodTypeEnum = pgEnum('payment_method_type', [
+  'cash',
+  'credit_card',
+  'debit_card',
+  'pix',
+  'bank_transfer',
+  'insurance',
+  'check',
+])
+
+export const bankAccountTypeEnum = pgEnum('bank_account_type', [
+  'checking',
+  'savings',
+  'pix_key',
+])
+
+export const whatsappMessageTypeEnum = pgEnum('whatsapp_message_type', [
+  'lead_notification',
+  'appointment_reminder',
+  'appointment_confirmation',
+  'treatment_summary',
+  'exam_ready',
+  'payment_reminder',
+  'weekly_report',
+  'monthly_report',
+])
+
 // ── TABELAS ────────────────────────────────────────────────
 
 export const users = pgTable('users', {
@@ -104,10 +159,99 @@ export const users = pgTable('users', {
   role:         userRoleEnum('role').notNull().default('receptionist'),
   avatar:       text('avatar'),
   phone:        varchar('phone', { length: 20 }),
-  isActive:     boolean('is_active').notNull().default(true),
-  lastLoginAt:  timestamp('last_login_at'),
-  createdAt:    timestamp('created_at').defaultNow().notNull(),
-  updatedAt:    timestamp('updated_at').defaultNow().notNull(),
+  isActive:          boolean('is_active').notNull().default(true),
+  customPermissions: jsonb('custom_permissions').$type<string[] | null>().default(null),
+  googleCalendarId:  text('google_calendar_id'),
+  lastLoginAt:       timestamp('last_login_at'),
+  createdAt:         timestamp('created_at').defaultNow().notNull(),
+  updatedAt:         timestamp('updated_at').defaultNow().notNull(),
+})
+
+export const clinicSettings = pgTable('clinic_settings', {
+  id:                 integer('id').primaryKey().default(1),
+  // Identidade
+  name:               varchar('name', { length: 255 }).notNull().default('Regem Orto'),
+  cnpj:               varchar('cnpj', { length: 20 }),
+  crm:                varchar('crm', { length: 50 }),
+  // Contato
+  phone:              varchar('phone', { length: 30 }),
+  whatsapp:           varchar('whatsapp', { length: 30 }),
+  email:              varchar('email', { length: 255 }),
+  website:            varchar('website', { length: 255 }),
+  // Endereço
+  address:            text('address'),
+  city:               varchar('city', { length: 100 }),
+  state:              varchar('state', { length: 2 }),
+  zipCode:            varchar('zip_code', { length: 10 }),
+  // Branding
+  logoUrl:            text('logo_url'),
+  headerImageUrl:     text('header_image_url'),
+  primaryColor:       varchar('primary_color', { length: 7 }).default('#61d8dd'),
+  // Documentos
+  documentHeader:     text('document_header'),
+  documentFooter:     text('document_footer'),
+  // SEO
+  seoTitle:           varchar('seo_title', { length: 70 }),
+  seoDescription:     varchar('seo_description', { length: 160 }),
+  seoKeywords:        text('seo_keywords'),
+  ogImageUrl:         text('og_image_url'),
+  gaId:               varchar('ga_id', { length: 30 }),
+  gtmId:              varchar('gtm_id', { length: 30 }),
+  // Integrações
+  whatsappToken:      text('whatsapp_token'),
+  whatsappApiUrl:     text('whatsapp_api_url'),
+  smtpHost:           varchar('smtp_host', { length: 255 }),
+  smtpPort:           integer('smtp_port'),
+  smtpUser:           varchar('smtp_user', { length: 255 }),
+  smtpPass:           text('smtp_pass'),
+  googleCalendarId:   text('google_calendar_id'),
+  // Backup
+  backupSchedule:     varchar('backup_schedule', { length: 20 }).default('daily'),
+  lastBackupAt:       timestamp('last_backup_at'),
+  // Evolution API (WhatsApp)
+  evolutionApiUrl:    text('evolution_api_url'),
+  evolutionApiKey:    text('evolution_api_key'),
+  evolutionInstance:  varchar('evolution_instance', { length: 100 }),
+  notifyNewLeadNumber:        varchar('notify_new_lead_number', { length: 20 }),
+  notifyWeeklyReportNumber:   varchar('notify_weekly_report_number', { length: 20 }),
+  notifyMonthlyReportNumber:  varchar('notify_monthly_report_number', { length: 20 }),
+  notifyReportDay:            integer('notify_report_day').default(30),
+  sendAppointmentReminder:    boolean('send_appointment_reminder').notNull().default(true),
+  reminderHoursBefore:        integer('reminder_hours_before').default(24),
+  sendTreatmentSummary:       boolean('send_treatment_summary').notNull().default(true),
+  // Alertas por e-mail
+  notifyEmailNewLead:         boolean('notify_email_new_lead').notNull().default(false),
+  notifyEmailNewPatient:      boolean('notify_email_new_patient').notNull().default(false),
+  notifyEmailWeeklyReport:    boolean('notify_email_weekly_report').notNull().default(false),
+  alertEmailRecipients:       text('alert_email_recipients'),
+  // Metadados
+  updatedAt:          timestamp('updated_at').defaultNow().notNull(),
+})
+
+export const activityLogs = pgTable('activity_logs', {
+  id:         uuid('id').defaultRandom().primaryKey(),
+  userId:     uuid('user_id').references(() => users.id, { onDelete: 'set null' }),
+  userName:   varchar('user_name', { length: 255 }),
+  action:     varchar('action', { length: 100 }).notNull(),
+  module:     varchar('module', { length: 50 }),
+  targetId:   uuid('target_id'),
+  targetName: varchar('target_name', { length: 255 }),
+  ip:         varchar('ip', { length: 45 }),
+  details:    jsonb('details'),
+  createdAt:  timestamp('created_at').defaultNow().notNull(),
+})
+
+export const webhooks = pgTable('webhooks', {
+  id:          uuid('id').defaultRandom().primaryKey(),
+  name:        varchar('name', { length: 100 }).notNull(),
+  url:         text('url').notNull(),
+  events:      jsonb('events').$type<string[]>().notNull().default([]),
+  secret:      text('secret'),
+  isActive:    boolean('is_active').notNull().default(true),
+  lastTriggeredAt: timestamp('last_triggered_at'),
+  lastStatus:  integer('last_status'),
+  createdAt:   timestamp('created_at').defaultNow().notNull(),
+  updatedAt:   timestamp('updated_at').defaultNow().notNull(),
 })
 
 export const patients = pgTable('patients', {
@@ -246,6 +390,104 @@ export const monthlyGoals = pgTable('monthly_goals', {
   createdAt:           timestamp('created_at').defaultNow().notNull(),
 })
 
+export const paymentMethods = pgTable('payment_methods', {
+  id:              uuid('id').defaultRandom().primaryKey(),
+  name:            varchar('name', { length: 100 }).notNull(),
+  type:            paymentMethodTypeEnum('type').notNull(),
+  feePercent:      numeric('fee_percent', { precision: 5, scale: 2 }).notNull().default('0'),
+  maxInstallments: integer('max_installments').notNull().default(1),
+  isActive:        boolean('is_active').notNull().default(true),
+  createdAt:       timestamp('created_at').defaultNow().notNull(),
+})
+
+export const bankAccounts = pgTable('bank_accounts', {
+  id:             uuid('id').defaultRandom().primaryKey(),
+  name:           varchar('name', { length: 100 }).notNull(),
+  bank:           varchar('bank', { length: 100 }),
+  agency:         varchar('agency', { length: 20 }),
+  account:        varchar('account', { length: 30 }),
+  type:           bankAccountTypeEnum('type').notNull().default('checking'),
+  pixKey:         text('pix_key'),
+  isDefault:      boolean('is_default').notNull().default(false),
+  isActive:       boolean('is_active').notNull().default(true),
+  currentBalance: numeric('current_balance', { precision: 12, scale: 2 }).notNull().default('0'),
+  createdAt:      timestamp('created_at').defaultNow().notNull(),
+  updatedAt:      timestamp('updated_at').defaultNow().notNull(),
+})
+
+export const treatments = pgTable('treatments', {
+  id:              uuid('id').defaultRandom().primaryKey(),
+  patientId:       uuid('patient_id').notNull().references(() => patients.id),
+  appointmentId:   uuid('appointment_id').references(() => appointments.id),
+  doctorId:        uuid('doctor_id').references(() => users.id),
+  paymentMethodId: uuid('payment_method_id').references(() => paymentMethods.id),
+  name:            varchar('name', { length: 255 }).notNull(),
+  status:          treatmentStatusEnum('status').notNull().default('draft'),
+  subtotal:        numeric('subtotal', { precision: 10, scale: 2 }).notNull().default('0'),
+  discount:        numeric('discount', { precision: 10, scale: 2 }).notNull().default('0'),
+  totalSale:       numeric('total_sale', { precision: 10, scale: 2 }).notNull().default('0'),
+  totalCost:       numeric('total_cost', { precision: 10, scale: 2 }).notNull().default('0'),
+  installments:    integer('installments').notNull().default(1),
+  notes:           text('notes'),
+  completedAt:     timestamp('completed_at'),
+  createdById:     uuid('created_by_id').references(() => users.id),
+  createdAt:       timestamp('created_at').defaultNow().notNull(),
+  updatedAt:       timestamp('updated_at').defaultNow().notNull(),
+})
+
+export const treatmentItems = pgTable('treatment_items', {
+  id:          uuid('id').defaultRandom().primaryKey(),
+  treatmentId: uuid('treatment_id').notNull().references(() => treatments.id, { onDelete: 'cascade' }),
+  type:        treatmentItemTypeEnum('type').notNull(),
+  materialId:  uuid('material_id').references(() => materials.id),
+  description: varchar('description', { length: 255 }).notNull(),
+  quantity:    numeric('quantity', { precision: 8, scale: 3 }).notNull().default('1'),
+  unitCost:    numeric('unit_cost', { precision: 10, scale: 2 }).notNull().default('0'),
+  unitPrice:   numeric('unit_price', { precision: 10, scale: 2 }).notNull().default('0'),
+  total:       numeric('total', { precision: 10, scale: 2 }).notNull().default('0'),
+  sortOrder:   integer('sort_order').notNull().default(0),
+})
+
+export const examOrders = pgTable('exam_orders', {
+  id:            uuid('id').defaultRandom().primaryKey(),
+  patientId:     uuid('patient_id').notNull().references(() => patients.id),
+  appointmentId: uuid('appointment_id').references(() => appointments.id),
+  doctorId:      uuid('doctor_id').references(() => users.id),
+  exams:         jsonb('exams').$type<Array<{ name: string; tuss_code?: string; laterality?: string; prep_instructions?: string }>>().notNull().default([]),
+  hypothesis:    text('hypothesis'),
+  cid10:         varchar('cid10', { length: 10 }),
+  urgency:       examUrgencyEnum('urgency').notNull().default('routine'),
+  status:        examStatusEnum('status').notNull().default('issued'),
+  resultUrl:     text('result_url'),
+  resultDate:    date('result_date'),
+  validUntil:    date('valid_until'),
+  notes:         text('notes'),
+  createdAt:     timestamp('created_at').defaultNow().notNull(),
+})
+
+export const patientAccessTokens = pgTable('patient_access_tokens', {
+  id:         uuid('id').defaultRandom().primaryKey(),
+  patientId:  uuid('patient_id').notNull().references(() => patients.id, { onDelete: 'cascade' }),
+  token:      text('token').notNull().unique(),
+  expiresAt:  timestamp('expires_at').notNull(),
+  lastUsedAt: timestamp('last_used_at'),
+  isActive:   boolean('is_active').notNull().default(true),
+  createdAt:  timestamp('created_at').defaultNow().notNull(),
+})
+
+export const whatsappMessages = pgTable('whatsapp_messages', {
+  id:                 uuid('id').defaultRandom().primaryKey(),
+  type:               whatsappMessageTypeEnum('type').notNull(),
+  targetNumber:       varchar('target_number', { length: 20 }).notNull(),
+  patientId:          uuid('patient_id').references(() => patients.id),
+  appointmentId:      uuid('appointment_id').references(() => appointments.id),
+  message:            text('message').notNull(),
+  status:             varchar('status', { length: 20 }).notNull().default('pending'),
+  evolutionResponse:  jsonb('evolution_response'),
+  sentAt:             timestamp('sent_at'),
+  createdAt:          timestamp('created_at').defaultNow().notNull(),
+})
+
 // ── RELATIONS ─────────────────────────────────────────────
 
 export const usersRelations = relations(users, ({ many }) => ({
@@ -298,4 +540,32 @@ export const materialsRelations = relations(materials, ({ many }) => ({
 export const stockMovementsRelations = relations(stockMovements, ({ one }) => ({
   material: one(materials, { fields: [stockMovements.materialId], references: [materials.id] }),
   user:     one(users, { fields: [stockMovements.userId], references: [users.id] }),
+}))
+
+export const treatmentsRelations = relations(treatments, ({ one, many }) => ({
+  patient:       one(patients, { fields: [treatments.patientId], references: [patients.id] }),
+  appointment:   one(appointments, { fields: [treatments.appointmentId], references: [appointments.id] }),
+  doctor:        one(users, { fields: [treatments.doctorId], references: [users.id] }),
+  paymentMethod: one(paymentMethods, { fields: [treatments.paymentMethodId], references: [paymentMethods.id] }),
+  items:         many(treatmentItems),
+}))
+
+export const treatmentItemsRelations = relations(treatmentItems, ({ one }) => ({
+  treatment: one(treatments, { fields: [treatmentItems.treatmentId], references: [treatments.id] }),
+  material:  one(materials, { fields: [treatmentItems.materialId], references: [materials.id] }),
+}))
+
+export const examOrdersRelations = relations(examOrders, ({ one }) => ({
+  patient:     one(patients, { fields: [examOrders.patientId], references: [patients.id] }),
+  appointment: one(appointments, { fields: [examOrders.appointmentId], references: [appointments.id] }),
+  doctor:      one(users, { fields: [examOrders.doctorId], references: [users.id] }),
+}))
+
+export const patientAccessTokensRelations = relations(patientAccessTokens, ({ one }) => ({
+  patient: one(patients, { fields: [patientAccessTokens.patientId], references: [patients.id] }),
+}))
+
+export const whatsappMessagesRelations = relations(whatsappMessages, ({ one }) => ({
+  patient:     one(patients, { fields: [whatsappMessages.patientId], references: [patients.id] }),
+  appointment: one(appointments, { fields: [whatsappMessages.appointmentId], references: [appointments.id] }),
 }))

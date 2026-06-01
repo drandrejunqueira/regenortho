@@ -13,6 +13,7 @@ async function main() {
 
   // ── USUÁRIOS ──────────────────────────────────────────────
   const adminHash = await bcrypt.hash('Regem@2025', 12)
+  const medicoHash = await bcrypt.hash('Medico@2025', 12)
   const recepcaoHash = await bcrypt.hash('Recepcao@2025', 12)
   const financeiroHash = await bcrypt.hash('Financeiro@2025', 12)
 
@@ -23,6 +24,14 @@ async function main() {
     role: 'admin',
     phone: '(12) 99999-0001',
   }).returning()
+
+  await db.insert(schema.users).values({
+    name: 'Dr. André Elias Junqueira',
+    email: 'medico@regemorto.com.br',
+    passwordHash: medicoHash,
+    role: 'doctor',
+    phone: '(12) 99999-0004',
+  })
 
   const [recepcao] = await db.insert(schema.users).values({
     name: 'Carla Santos',
@@ -459,6 +468,7 @@ async function main() {
   console.log('')
   console.log('Credenciais:')
   console.log('  Admin       → admin@regemorto.com.br / Regem@2025')
+  console.log('  Médico      → medico@regemorto.com.br / Medico@2025')
   console.log('  Recepção    → recepcao@regemorto.com.br / Recepcao@2025')
   console.log('  Financeiro  → financeiro@regemorto.com.br / Financeiro@2025')
   process.exit(0)

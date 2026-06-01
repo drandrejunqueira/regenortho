@@ -2,14 +2,209 @@
 
 import { useState, useEffect, useCallback } from 'react'
 import { PageHeader } from '@/components/shared/PageHeader'
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog'
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import Link from 'next/link'
-import { formatDate } from '@/lib/utils'
+import { toast } from 'sonner'
 import type { Patient } from '@/types'
+
+const inputCls = 'w-full bg-[#f5f6f8] border border-[rgba(2,21,65,0.12)] rounded-xl px-3 py-2.5 text-sm text-[#021541] placeholder:text-[#718096] focus:outline-none focus:ring-2 focus:ring-[#00BCE4]/30'
+const labelCls = 'text-[10px] font-bold text-[#718096] uppercase tracking-wider'
+
+const EMPTY_FORM = {
+  name: '', phone: '', email: '', cpf: '', birthDate: '',
+  gender: '' as '' | 'male' | 'female' | 'other',
+  address: '', city: '', insurance: '', insuranceNum: '', notes: '',
+}
+
+function NovoPacienteDialog({ open, onOpenChange, onCreated }: {
+  open: boolean; onOpenChange: (v: boolean) => void; onCreated: (id: string) => void
+}) {
+  const [form, setForm] = useState(EMPTY_FORM)
+  const [loading, setLoading] = useState(false)
+
+  function set<K extends keyof typeof EMPTY_FORM>(k: K, v: (typeof EMPTY_FORM)[K]) {
+    setForm(p => ({ ...p, [k]: v }))
+  }
+
+  function reset() { setForm(EMPTY_FORM) }
+
+  async function submit() {
+    if (!form.name.trim()) { toast.error('Nome é obrigatório'); return }
+    if (!form.phone.trim()) { toast.error('Telefone é obrigatório'); return }
+    setLoading(true)
+    try {
+      const payload = {
+        name: form.name.trim(),
+        phone: form.phone.trim(),
+        email: form.email || null,
+        cpf: form.cpf || null,
+        birthDate: form.birthDate || null,
+        gender: (form.gender || null) as 'male' | 'female' | 'other' | null,
+        address: form.address || null,
+        city: form.city || null,
+        insurance: form.insurance || null,
+        insuranceNum: form.insuranceNum || null,
+        notes: form.notes || null,
+      }
+      const res = await fetch('/api/pacientes', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+      })
+      const data = await res.json()
+      if (!res.ok) throw new Error(data.error ?? 'Erro ao cadastrar')
+      toast.success('Paciente cadastrado com sucesso!')
+      onOpenChange(false)
+      reset()
+      onCreated(data.data.id)
+    } catch (e: unknown) {
+      toast.error(e instanceof Error ? e.message : 'Erro ao cadastrar paciente')
+    } finally { setLoading(false) }
+  }
+
+  return (
+    <Dialog open={open} onOpenChange={(v) => { onOpenChange(v); if (!v) reset() }}>
+      <DialogContent className="max-w-2xl bg-white border border-[rgba(2,21,65,0.06)] max-h-[90vh] overflow-y-auto">
+        <DialogHeader>
+          <DialogTitle className="text-[#021541] font-bold flex items-center gap-2">
+            <span className="material-symbols-outlined text-[#00BCE4]" style={{ fontSize: '20px' }}>person_add</span>
+            Novo Paciente
+          </DialogTitle>
+        </DialogHeader>
+
+        <div className="space-y-5 py-1">
+          {/* Dados pessoais */}
+          <div>
+            <p className="text-[10px] font-bold text-[#00BCE4] uppercase tracking-wider mb-3 flex items-center gap-1.5">
+              <span className="material-symbols-outlined" style={{ fontSize: '14px' }}>person</span>
+              Dados Pessoais
+            </p>
+            <div className="space-y-3">
+              <div className="grid grid-cols-2 gap-3">
+                <div className="col-span-2 space-y-1.5">
+                  <label className={labelCls}>Nome completo *</label>
+                  <input value={form.name} onChange={e => set('name', e.target.value)} placeholder="Dr. Nome do Paciente" className={inputCls} autoFocus />
+                </div>
+              </div>
+              <div className="grid grid-cols-3 gap-3">
+                <div className="space-y-1.5">
+                  <label className={labelCls}>CPF</label>
+                  <input value={form.cpf} onChange={e => set('cpf', e.target.value)} placeholder="000.000.000-00" className={inputCls} />
+                </div>
+                <div className="space-y-1.5">
+                  <label className={labelCls}>Data de nascimento</label>
+                  <input type="date" value={form.birthDate} onChange={e => set('birthDate', e.target.value)} className={inputCls} />
+                </div>
+                <div className="space-y-1.5">
+                  <label className={labelCls}>Gênero</label>
+                  <Select value={form.gender} onValueChange={v => set('gender', v as typeof form.gender)}>
+                    <SelectTrigger className="bg-[#f5f6f8] border border-[rgba(2,21,65,0.12)] rounded-xl text-sm text-[#021541] h-10">
+                      <SelectValue placeholder="Selecione" />
+                    </SelectTrigger>
+                    <SelectContent className="bg-white border border-[rgba(2,21,65,0.08)]">
+                      <SelectItem value="male" className="text-[#021541] text-sm">Masculino</SelectItem>
+                      <SelectItem value="female" className="text-[#021541] text-sm">Feminino</SelectItem>
+                      <SelectItem value="other" className="text-[#021541] text-sm">Outro</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Contato */}
+          <div>
+            <p className="text-[10px] font-bold text-[#00BCE4] uppercase tracking-wider mb-3 flex items-center gap-1.5">
+              <span className="material-symbols-outlined" style={{ fontSize: '14px' }}>contact_phone</span>
+              Contato
+            </p>
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-1.5">
+                <label className={labelCls}>Telefone / WhatsApp *</label>
+                <input value={form.phone} onChange={e => set('phone', e.target.value)} placeholder="(12) 99999-9999" className={inputCls} />
+              </div>
+              <div className="space-y-1.5">
+                <label className={labelCls}>E-mail</label>
+                <input type="email" value={form.email} onChange={e => set('email', e.target.value)} placeholder="email@exemplo.com" className={inputCls} />
+              </div>
+            </div>
+          </div>
+
+          {/* Endereço */}
+          <div>
+            <p className="text-[10px] font-bold text-[#00BCE4] uppercase tracking-wider mb-3 flex items-center gap-1.5">
+              <span className="material-symbols-outlined" style={{ fontSize: '14px' }}>location_on</span>
+              Endereço
+            </p>
+            <div className="grid grid-cols-3 gap-3">
+              <div className="col-span-2 space-y-1.5">
+                <label className={labelCls}>Endereço</label>
+                <input value={form.address} onChange={e => set('address', e.target.value)} placeholder="Rua, número, bairro" className={inputCls} />
+              </div>
+              <div className="space-y-1.5">
+                <label className={labelCls}>Cidade</label>
+                <input value={form.city} onChange={e => set('city', e.target.value)} placeholder="São José dos Campos" className={inputCls} />
+              </div>
+            </div>
+          </div>
+
+          {/* Convênio */}
+          <div>
+            <p className="text-[10px] font-bold text-[#00BCE4] uppercase tracking-wider mb-3 flex items-center gap-1.5">
+              <span className="material-symbols-outlined" style={{ fontSize: '14px' }}>health_and_safety</span>
+              Convênio / Plano de Saúde
+            </p>
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-1.5">
+                <label className={labelCls}>Convênio</label>
+                <input value={form.insurance} onChange={e => set('insurance', e.target.value)} placeholder="Unimed, Bradesco, Particular..." className={inputCls} />
+              </div>
+              <div className="space-y-1.5">
+                <label className={labelCls}>Nº da carteirinha</label>
+                <input value={form.insuranceNum} onChange={e => set('insuranceNum', e.target.value)} placeholder="000000000" className={inputCls} />
+              </div>
+            </div>
+          </div>
+
+          {/* Observações */}
+          <div>
+            <p className="text-[10px] font-bold text-[#00BCE4] uppercase tracking-wider mb-3 flex items-center gap-1.5">
+              <span className="material-symbols-outlined" style={{ fontSize: '14px' }}>note</span>
+              Observações Iniciais
+            </p>
+            <div className="space-y-1.5">
+              <label className={labelCls}>Queixa principal / motivo da consulta / histórico relevante</label>
+              <textarea
+                rows={3}
+                value={form.notes}
+                onChange={e => set('notes', e.target.value)}
+                placeholder="Anotações iniciais sobre o paciente, queixa principal, histórico médico relevante..."
+                className={inputCls + ' resize-none'}
+              />
+            </div>
+          </div>
+        </div>
+
+        <DialogFooter className="gap-2 pt-2">
+          <button onClick={() => onOpenChange(false)} disabled={loading} className="px-4 py-2.5 rounded-xl text-sm font-medium text-[#718096] bg-[#f5f6f8] border border-[rgba(2,21,65,0.08)] hover:bg-[rgba(2,21,65,0.04)] transition-colors">
+            Cancelar
+          </button>
+          <button onClick={submit} disabled={loading} className="flex items-center gap-2 px-5 py-2 rounded-full text-sm font-bold bg-[#021541] text-white hover:bg-[#032170] transition-colors disabled:opacity-50">
+            <span className="material-symbols-outlined" style={{ fontSize: '18px' }}>person_add</span>
+            {loading ? 'Cadastrando...' : 'Cadastrar Paciente'}
+          </button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  )
+}
 
 export default function PacientesPage() {
   const [patients, setPatients] = useState<Patient[]>([])
   const [search, setSearch] = useState('')
   const [loading, setLoading] = useState(true)
+  const [newDialog, setNewDialog] = useState(false)
 
   const fetchPatients = useCallback(async () => {
     setLoading(true)
@@ -34,81 +229,106 @@ export default function PacientesPage() {
     return `${age} anos`
   }
 
+  function handleCreated(id: string) {
+    // Navega direto para a ficha do paciente após cadastro
+    window.location.href = `/pacientes/${id}`
+  }
+
   return (
     <div>
       <PageHeader
         title="Pacientes"
         description="Gerencie a base de pacientes da clínica"
+        action={
+          <button
+            onClick={() => setNewDialog(true)}
+            className="flex items-center gap-2 px-4 py-2 rounded-full bg-[#021541] text-white text-sm font-bold hover:bg-[#032170] transition-colors"
+          >
+            <span className="material-symbols-outlined" style={{ fontSize: '18px' }}>person_add</span>
+            Novo Paciente
+          </button>
+        }
       />
 
       <div className="mb-4 max-w-xs relative">
-        <span className="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-[#bec9c9]/60" style={{ fontSize: '18px' }}>search</span>
+        <span className="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-[#718096]" style={{ fontSize: '18px' }}>search</span>
         <input
           placeholder="Buscar por nome, CPF ou telefone..."
           value={search}
           onChange={(e) => setSearch(e.target.value)}
-          className="w-full bg-[#1c2026] border-none rounded-xl pl-10 pr-4 py-2.5 text-sm text-[#dfe2eb] placeholder:text-[#bec9c9]/40 focus:outline-none focus:ring-2 focus:ring-[#61d8dd]/30"
+          className="w-full bg-[#f5f6f8] border border-[rgba(2,21,65,0.10)] rounded-full pl-10 pr-4 py-2.5 text-sm text-[#021541] placeholder:text-[#718096] focus:outline-none focus:ring-2 focus:ring-[#00BCE4]/30"
         />
       </div>
 
       {loading ? (
         <div className="space-y-2">
           {Array.from({ length: 5 }).map((_, i) => (
-            <div key={i} className="h-16 w-full rounded-xl bg-[#1c2026] animate-pulse" />
+            <div key={i} className="h-16 w-full rounded-xl bg-[rgba(2,21,65,0.04)] animate-pulse" />
           ))}
         </div>
       ) : patients.length === 0 ? (
-        <div className="flex flex-col items-center justify-center py-12 text-center bg-[#1c2026] rounded-xl">
-          <div className="w-12 h-12 rounded-full bg-[#262a31] flex items-center justify-center mb-4">
-            <span className="material-symbols-outlined text-[#bec9c9]" style={{ fontSize: '24px' }}>group</span>
+        <div className="flex flex-col items-center justify-center py-16 text-center bg-white border border-[rgba(2,21,65,0.06)] rounded-xl gap-4">
+          <div className="w-14 h-14 rounded-full bg-[rgba(2,21,65,0.04)] flex items-center justify-center">
+            <span className="material-symbols-outlined text-[#718096]" style={{ fontSize: '28px' }}>group</span>
           </div>
-          <p className="text-sm font-medium text-[#dfe2eb]">Nenhum paciente encontrado</p>
-          <p className="text-sm text-[#bec9c9] mt-1">{search ? 'Tente buscar com outros termos' : 'Cadastre o primeiro paciente'}</p>
+          <div>
+            <p className="text-sm font-medium text-[#021541]">Nenhum paciente encontrado</p>
+            <p className="text-sm text-[#718096] mt-1">{search ? 'Tente buscar com outros termos' : 'Clique em "Novo Paciente" para começar'}</p>
+          </div>
+          {!search && (
+            <button
+              onClick={() => setNewDialog(true)}
+              className="flex items-center gap-2 px-4 py-2 rounded-full bg-[#021541] text-white text-sm font-bold hover:bg-[#032170] transition-colors"
+            >
+              <span className="material-symbols-outlined" style={{ fontSize: '18px' }}>person_add</span>
+              Cadastrar primeiro paciente
+            </button>
+          )}
         </div>
       ) : (
-        <div className="rounded-xl overflow-hidden bg-[#1c2026]">
-          <table className="w-full text-sm">
+        <div className="overflow-x-auto rounded-xl border border-[rgba(2,21,65,0.06)] shadow-[0_2px_12px_rgba(2,21,65,0.04)]">
+          <table className="w-full bg-white text-sm">
             <thead>
-              <tr className="bg-[#262a31]">
+              <tr className="bg-[rgba(2,21,65,0.03)]">
                 {['Paciente', 'Idade', 'Telefone', 'Cidade', 'Status', ''].map((h) => (
-                  <th key={h} className={`px-5 py-3 text-[10px] font-bold text-[#bec9c9] uppercase tracking-wider ${h === '' ? 'w-10' : 'text-left'}`}>
+                  <th key={h} className={`px-4 py-3 text-xs font-semibold text-[#021541] uppercase tracking-wider whitespace-nowrap ${h === '' ? 'w-10' : 'text-left'}`}>
                     {h}
                   </th>
                 ))}
               </tr>
             </thead>
-            <tbody className="divide-y divide-[#3e4949]/20">
+            <tbody>
               {patients.map((patient) => (
-                <tr key={patient.id} className="hover:bg-[#262a31]/50 transition-colors">
-                  <td className="px-5 py-3">
+                <tr key={patient.id} className="border-b border-[rgba(2,21,65,0.05)] hover:bg-[rgba(2,21,65,0.015)] transition-colors">
+                  <td className="px-4 py-3">
                     <div className="flex items-center gap-3">
-                      <div className="w-9 h-9 rounded-full bg-[#006e72] flex items-center justify-center text-[#dfe2eb] font-bold text-xs shrink-0 select-none">
+                      <div className="w-9 h-9 rounded-full bg-gradient-to-br from-[#0097a7] to-[#00BCE4] flex items-center justify-center text-white font-bold text-xs shrink-0 select-none">
                         {patient.name.split(' ').map((n: string) => n[0]).slice(0, 2).join('')}
                       </div>
                       <div>
-                        <p className="font-medium text-[#dfe2eb]">{patient.name}</p>
+                        <p className="font-medium text-[#021541] whitespace-nowrap">{patient.name}</p>
                         {patient.insurance && (
-                          <p className="text-xs text-[#bec9c9]">{patient.insurance}</p>
+                          <p className="text-xs text-[#718096]">{patient.insurance}</p>
                         )}
                       </div>
                     </div>
                   </td>
-                  <td className="px-5 py-3 font-technical text-xs text-[#bec9c9]">{calcAge(patient.birthDate)}</td>
-                  <td className="px-5 py-3 font-technical text-xs text-[#bec9c9]">{patient.phone}</td>
-                  <td className="px-5 py-3 text-xs text-[#bec9c9]">{patient.city ?? '—'}</td>
-                  <td className="px-5 py-3">
-                    <span className={`px-2.5 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider ${
+                  <td className="px-4 py-3 font-technical text-xs text-[#718096] whitespace-nowrap">{calcAge(patient.birthDate)}</td>
+                  <td className="px-4 py-3 font-technical text-xs text-[#718096] whitespace-nowrap">{patient.phone}</td>
+                  <td className="px-4 py-3 text-xs text-[#718096] whitespace-nowrap">{patient.city ?? '—'}</td>
+                  <td className="px-4 py-3">
+                    <span className={`px-2.5 py-0.5 rounded-full text-xs font-semibold whitespace-nowrap ${
                       patient.isActive
-                        ? 'bg-[#61d8dd]/10 text-[#61d8dd]'
-                        : 'bg-[#31353c] text-[#bec9c9]'
+                        ? 'bg-[rgba(0,188,228,0.1)] text-[#00BCE4]'
+                        : 'bg-[rgba(2,21,65,0.05)] text-[#718096]'
                     }`}>
                       {patient.isActive ? 'Ativo' : 'Inativo'}
                     </span>
                   </td>
-                  <td className="px-5 py-3">
+                  <td className="px-4 py-3">
                     <Link
                       href={`/pacientes/${patient.id}`}
-                      className="p-1.5 rounded-lg bg-[#31353c] text-[#bec9c9] hover:text-[#61d8dd] hover:bg-[#61d8dd]/10 transition-all inline-flex"
+                      className="p-1.5 rounded-lg bg-[rgba(2,21,65,0.04)] text-[#718096] hover:text-[#00BCE4] hover:bg-[rgba(0,188,228,0.08)] transition-all inline-flex"
                       aria-label="Ver paciente"
                     >
                       <span className="material-symbols-outlined" style={{ fontSize: '16px' }}>chevron_right</span>
@@ -120,6 +340,8 @@ export default function PacientesPage() {
           </table>
         </div>
       )}
+
+      <NovoPacienteDialog open={newDialog} onOpenChange={setNewDialog} onCreated={handleCreated} />
     </div>
   )
 }

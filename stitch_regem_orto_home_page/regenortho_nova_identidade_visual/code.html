@@ -1,0 +1,486 @@
+<!DOCTYPE html>
+
+<html class="scroll-smooth" lang="pt-BR"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>REGENORTHO | Ortopedia Regenerativa e Tratamento da Dor</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Serif:ital,wght@0,300;0,400;0,600;0,700;1,400&amp;family=Plus+Jakarta+Sans:wght@300;400;500;600;700&amp;family=Space+Grotesk:wght@300;400;500;600;700&amp;family=Space+Mono&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    colors: {
+                        "primary": "#00BCE4", // Cyan from Logo
+                        "on-primary": "#ffffff",
+                        "navy-deep": "#040B1A", // Deep Navy from wall
+                        "navy-card": "#0A1428", 
+                        "silver": "#E5E7EB",
+                        "dark-charcoal": "#020617",
+                        "accent-cyan": "#00BCE4",
+                    },
+                    fontFamily: {
+                        "headline": ["Noto Serif", "serif"],
+                        "body": ["Plus Jakarta Sans", "sans-serif"],
+                        "label": ["Space Mono", "monospace"],
+                        "display": ["Noto Serif", "serif"]
+                    },
+                    borderRadius: {
+                        "DEFAULT": "0.25rem",
+                        "lg": "0.5rem",
+                        "xl": "0.75rem",
+                        "full": "9999px"
+                    },
+                },
+            },
+        }
+    </script>
+<style>
+        .material-symbols-outlined {
+            font-variation-settings: "FILL" 0, "wght" 300, "GRAD" 0, "opsz" 24
+        }
+        .dot-pattern-bg {
+            background-image: radial-gradient(circle, #00BCE4 1.5px, transparent 1.5px);
+            background-size: 32px 32px;
+            opacity: 0.07;
+        }
+        .hero-gradient {
+            background: radial-gradient(circle at 70% 30%, rgba(0, 188, 228, 0.15) 0%, transparent 60%),
+                        linear-gradient(180deg, #040B1A 0%, #020617 100%);
+        }
+        .logo-wordmark {
+            letter-spacing: 0.15em;
+            font-weight: 800;
+        }
+        .glow-cyan {
+            box-shadow: 0 0 25px rgba(0, 188, 228, 0.3);
+        }
+        .text-cyan {
+            color: #00BCE4;
+        }
+        .border-cyan {
+            border-color: rgba(0, 188, 228, 0.3);
+        }
+    </style>
+</head>
+<body class="bg-dark-charcoal font-body text-silver antialiased">
+<!-- 1. NAVIGATION -->
+<header class="fixed w-full top-0 z-50 transition-all duration-500 bg-transparent backdrop-blur-xl group" id="main-header">
+<div class="flex justify-between items-center w-full px-8 py-4 max-w-screen-2xl mx-auto">
+<!-- Logo -->
+<div class="flex items-center gap-4">
+<div class="relative w-10 h-10 flex items-center justify-center">
+<img alt="RegenOrtho Logo Mark" class="w-full h-full object-contain filter brightness-110" src="https://lh3.googleusercontent.com/aida/ADBb0ug3mOwfUY9IZ-ORhJt4rgGHPpDbivou1FSeAj2gm0k1oSdQoUM89uKEg98N1sE-6Xrt3v3ODjY-qKcbfKQl6zAAK09wn9qXGuoxswRGwe39twy5GRByqOzrBstyaoCTqd_XfAEqFviI2Ff10b7-hqqbwvN-8Z4sZm9f-SLGz9QLDD6lMmjemFxvpCunKcCvfNcd3nawRyZWO-pS9PlwQRjZkgqi8okvMuiOGyR6lYcpnL2tgvIyYq7tHSEKJCD8ZwIOe_EGauQHpA"/>
+</div>
+<div class="flex flex-col">
+<span class="text-xl font-bold tracking-[0.2em] text-white uppercase font-sans">REGENORTHO</span>
+<span class="text-[9px] font-label uppercase tracking-[0.1em] text-primary">Ortopedia Regenerativa e Tratamento da Dor</span>
+</div>
+</div>
+<!-- Desktop Nav -->
+<nav class="hidden md:flex items-center gap-8">
+<a class="text-white/70 hover:text-primary font-medium text-xs uppercase tracking-widest transition-colors duration-300" href="#tratamentos">Tratamentos</a>
+<a class="text-white/70 hover:text-primary font-medium text-xs uppercase tracking-widest transition-colors duration-300" href="#especialidades">Especialidades</a>
+<a class="text-white/70 hover:text-primary font-medium text-xs uppercase tracking-widest transition-colors duration-300" href="#doutor">Dr. André</a>
+<a class="text-white/70 hover:text-primary font-medium text-xs uppercase tracking-widest transition-colors duration-300" href="#blog">Blog</a>
+</nav>
+<!-- Actions -->
+<div class="flex items-center gap-4">
+<button class="bg-primary text-navy-deep px-6 py-2.5 rounded-sm font-bold text-xs uppercase tracking-widest hover:brightness-110 active:scale-95 transition-all glow-cyan">
+                Agendar Consulta
+            </button>
+</div>
+</div>
+</header>
+<!-- 2. HERO SECTION -->
+<section class="relative min-h-screen hero-gradient flex items-center overflow-hidden pt-20">
+<div class="absolute inset-0 dot-pattern-bg"></div>
+<div class="relative w-full max-w-screen-2xl mx-auto px-8 grid grid-cols-1 lg:grid-cols-2 gap-16 items-center">
+<!-- Left Content -->
+<div class="flex flex-col space-y-8">
+<div class="flex items-center gap-3">
+<div class="w-2 h-2 bg-primary rounded-full animate-pulse"></div>
+<span class="font-label text-xs tracking-[0.3em] text-primary">CLÍNICA ATELIER · SJC &amp; SP</span>
+</div>
+<h1 class="font-display text-7xl md:text-8xl leading-tight text-white max-w-2xl font-bold">
+                Movimento sem <span class="text-primary italic font-medium">limites.</span>
+</h1>
+<p class="text-silver/60 text-lg max-w-md font-light leading-relaxed">
+                Tecnologia de ponta em medicina regenerativa para restaurar sua biologia e eliminar a dor sem cirurgias invasivas.
+            </p>
+<div class="flex flex-wrap gap-4 pt-4">
+<button class="bg-primary text-navy-deep px-8 py-4 rounded-sm font-bold flex items-center gap-3 hover:brightness-110 transition-all glow-cyan uppercase tracking-widest text-sm">
+<span class="material-symbols-outlined text-xl">calendar_month</span>
+                    Agendar Avaliação
+                </button>
+<button class="border border-white/20 text-white px-8 py-4 rounded-sm font-bold hover:bg-white/5 transition-all group uppercase tracking-widest text-sm">
+                    Ver Tratamentos <span class="inline-block group-hover:translate-x-1 transition-transform ml-2">→</span>
+</button>
+</div>
+<div class="flex items-center gap-6 pt-8 border-t border-white/10 w-fit">
+<div class="flex -space-x-3">
+<img class="w-12 h-12 rounded-full border-2 border-navy-deep object-cover" src="https://lh3.googleusercontent.com/aida-public/AB6AXuBDDMVRIJn-Sl7EZbT8vKtQ34QMe0wf1xON8qMz0zQEtcb9CfdFbuJIDAdiOAFzQH41B4xmVFrtwMr9lFxkIacUkhECCwN5vcVNIcppnJotrV27MPMd-1ageQ5z8--dFEu_72qp93UypNsUWaHqeOkCVe29bqe8vdx41GE0dMWfRprvr_zltDF9ROQKr_VwGbTIYt4O9kF4bd4R1_anYaAmNlucGIuYLT3NLHxwCBDx3snUr86m3ORkdKpDiYqBVMVTQHtfKjS0UIk"/>
+<img class="w-12 h-12 rounded-full border-2 border-navy-deep object-cover" src="https://lh3.googleusercontent.com/aida-public/AB6AXuCy6uG11W_QxmMfCZaeytbQS-oTryrCMciMoPIONmzPGuUCpRByxGgL5RXWOxyMg3XRw8fRLiqWaCquQjnHn2doXH83LAwciwOAgB37lbHj7R3SIp-3cs9lsrxZOFEfGEtXWbWjUJum7JUm5ApeqMwz8x6OiPX8WUm7g-_gSiyX21uuiYm1Ais7ADgUCmsWfAnG6Rm7JsA7A9TA8GSTTI_7ppD9zk-BJHWEc93WTBcZSQseBi9uQlwsuSvG325SsoQph948RObTtD8"/>
+<img class="w-12 h-12 rounded-full border-2 border-navy-deep object-cover" src="https://lh3.googleusercontent.com/aida-public/AB6AXuDbelhxhX53n3GHDdwXm_F7Gqty0kLyDSoE5-x5nkVsKX1leVmeKUn26RLRJL4rQVqLIwjCXUOxzoPxzNOzlFCn7D4NyekhDbaieB3ru4LC3yOlmMcXImzpGZAyz-kUnlr_yyJuE5ZYrANPIX5h1cgUyVLAuzy3eZCM49VR3PkFgQTfyHZoUoNyj3fxo2Dnck8hmkv6o0LeQ7HkOAywz4j-jjHRZzXBLfNyqM6qON2kZMX1Jv53z7ZyVf4QNt6PINp7dGaiPMciXsw"/>
+</div>
+<div class="flex flex-col">
+<span class="text-white font-bold text-lg font-sans">+500 Pacientes Atendidos</span>
+<span class="text-primary font-label text-[10px] tracking-widest uppercase">Referência em Regeneração</span>
+</div>
+</div>
+</div>
+<!-- Right Content Card -->
+<div class="relative group">
+<div class="absolute -inset-1 bg-primary opacity-20 blur-2xl group-hover:opacity-30 transition-opacity"></div>
+<div class="relative bg-navy-card border border-white/10 rounded-xl p-8 shadow-2xl">
+<div class="flex items-center gap-4 mb-8 pb-8 border-b border-white/5">
+<img alt="Dr. André Elias Junqueira" class="w-20 h-20 rounded-lg object-cover border border-primary/30 p-1" src="https://lh3.googleusercontent.com/aida-public/AB6AXuD3hCRkEJHe5L1OuINaK54E3PM08XcB4Yb9tpmGiZj97ESt0YwNsdKkhE4FSbKPoxI3W39fH-aG9xWxy0qQ89Mi4hySI7WeV_vYQcenTxQ4I5_7lYDLYGiw-zMt_Ee9LQkcn6y-XswosdyJ2t2MIiaucvXWkbMFba__uPvi99OZaFyJ8FNu2zhd_l6UMQMgFFd5vRf6m_Alu7jRC58MhPLLuNVQdV9TQcogqe91HGcuPGC86b9-xMaHQxJXo1k1mO_KnvlnU0W50Eo"/>
+<div class="flex flex-col">
+<h3 class="text-white font-display text-xl font-bold">Dr. André Elias Junqueira</h3>
+<span class="text-primary font-label text-[10px] tracking-widest uppercase mt-1">CRM SP · MEDICINA REGENERATIVA</span>
+</div>
+</div>
+<div class="space-y-6">
+<div class="flex items-center gap-4 group/item">
+<div class="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center text-primary border border-primary/20">
+<span class="material-symbols-outlined text-xl">biotech</span>
+</div>
+<div>
+<h4 class="text-white font-bold text-sm uppercase tracking-wide">PRP &amp; BMAC</h4>
+<p class="text-silver/50 text-[11px] mt-0.5">Terapias celulares avançadas.</p>
+</div>
+</div>
+<div class="flex items-center gap-4 group/item">
+<div class="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center text-primary border border-primary/20">
+<span class="material-symbols-outlined text-xl">precision_manufacturing</span>
+</div>
+<div>
+<h4 class="text-white font-bold text-sm uppercase tracking-wide">Guiado por Imagem</h4>
+<p class="text-silver/50 text-[11px] mt-0.5">Infiltrações de alta precisão.</p>
+</div>
+</div>
+</div>
+<button class="w-full mt-10 bg-white/5 border border-white/10 text-white py-4 rounded-sm font-bold flex items-center justify-center gap-3 hover:bg-primary hover:text-navy-deep transition-all uppercase tracking-widest text-xs">
+<span class="material-symbols-outlined">message</span>
+                    Whatsapp de Agendamento
+                </button>
+</div>
+</div>
+</div>
+</section>
+<!-- 3. STATS BAR -->
+<section class="bg-navy-deep py-12 relative border-y border-white/5">
+<div class="max-w-screen-2xl mx-auto px-8">
+<div class="grid grid-cols-2 md:grid-cols-4 gap-8">
+<div class="flex flex-col items-center text-center space-y-1">
+<span class="text-4xl font-display text-primary font-bold">500+</span>
+<span class="font-label text-[10px] text-silver/40 uppercase tracking-widest">Sucessos Clínicos</span>
+</div>
+<div class="flex flex-col items-center text-center space-y-1">
+<span class="text-4xl font-display text-primary font-bold">5.0</span>
+<span class="font-label text-[10px] text-silver/40 uppercase tracking-widest">Avaliação Google</span>
+</div>
+<div class="flex flex-col items-center text-center space-y-1">
+<span class="text-4xl font-display text-primary font-bold">2</span>
+<span class="font-label text-[10px] text-silver/40 uppercase tracking-widest">Unidades (SP &amp; SJC)</span>
+</div>
+<div class="flex flex-col items-center text-center space-y-1">
+<span class="text-4xl font-display text-primary font-bold uppercase">10y</span>
+<span class="font-label text-[10px] text-silver/40 uppercase tracking-widest">Experiência Médica</span>
+</div>
+</div>
+</div>
+</section>
+<!-- 4. TREATMENTS SECTION -->
+<section class="py-32 bg-dark-charcoal relative overflow-hidden" id="tratamentos">
+<div class="absolute inset-0 dot-pattern-bg"></div>
+<div class="max-w-screen-2xl mx-auto px-8 relative">
+<div class="mb-20">
+<span class="font-label text-xs text-primary tracking-[0.4em] uppercase block mb-4">Inovações</span>
+<h2 class="font-display text-6xl text-white leading-tight font-bold">
+                Medicina de precisão <br/>
+<span class="italic font-medium text-primary">para sua biologia</span>
+</h2>
+</div>
+<div class="grid grid-cols-1 md:grid-cols-3 gap-8">
+<!-- Treatment Card 1 -->
+<div class="group relative bg-navy-card p-10 border border-white/5 hover:border-primary/30 transition-all duration-500 rounded-lg">
+<span class="font-label text-primary text-[10px] uppercase tracking-widest mb-6 block">Regeneração Plasmática</span>
+<h3 class="text-white font-display text-2xl mb-4 font-bold">PRP - Plasma Rico</h3>
+<p class="text-silver/50 text-sm font-light mb-8">Uso de fatores de crescimento autólogos para reparação tecidual acelerada.</p>
+<a class="text-primary font-bold text-[11px] uppercase tracking-widest flex items-center gap-2 group-hover:gap-4 transition-all" href="#">
+                    Detalhes do Protocolo <span class="material-symbols-outlined text-sm">arrow_forward</span>
+</a>
+</div>
+<!-- Treatment Card 2 -->
+<div class="group relative bg-navy-card p-10 border border-white/5 hover:border-primary/30 transition-all duration-500 rounded-lg">
+<span class="font-label text-primary text-[10px] uppercase tracking-widest mb-6 block">Células Mesenquimais</span>
+<h3 class="text-white font-display text-2xl mb-4 font-bold">BMAC - Aspirado</h3>
+<p class="text-silver/50 text-sm font-light mb-8">Terapia de elite com células da medula óssea para quadros articulares severos.</p>
+<a class="text-primary font-bold text-[11px] uppercase tracking-widest flex items-center gap-2 group-hover:gap-4 transition-all" href="#">
+                    Detalhes do Protocolo <span class="material-symbols-outlined text-sm">arrow_forward</span>
+</a>
+</div>
+<!-- Treatment Card 3 -->
+<div class="group relative bg-navy-card p-10 border border-white/5 hover:border-primary/30 transition-all duration-500 rounded-lg">
+<span class="font-label text-primary text-[10px] uppercase tracking-widest mb-6 block">Viscossuplementação</span>
+<h3 class="text-white font-display text-2xl mb-4 font-bold">Ácido Hialurônico</h3>
+<p class="text-silver/50 text-sm font-light mb-8">Lubrificação e proteção da cartilagem com polímeros de alto peso molecular.</p>
+<a class="text-primary font-bold text-[11px] uppercase tracking-widest flex items-center gap-2 group-hover:gap-4 transition-all" href="#">
+                    Detalhes do Protocolo <span class="material-symbols-outlined text-sm">arrow_forward</span>
+</a>
+</div>
+</div>
+</div>
+</section>
+<!-- 5. SPECIALTIES SECTION -->
+<section class="py-32 bg-navy-deep" id="especialidades">
+<div class="max-w-screen-2xl mx-auto px-8">
+<div class="text-center mb-20">
+<h2 class="font-display text-5xl text-white font-bold mb-4">Foco Anatômico</h2>
+<div class="w-20 h-1 bg-primary mx-auto"></div>
+</div>
+<div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
+<div class="bg-navy-card border border-white/5 p-8 text-center hover:bg-primary group transition-all duration-500">
+<div class="text-4xl mb-4 grayscale group-hover:grayscale-0 transition-all">🦵</div>
+<h4 class="text-white font-bold group-hover:text-navy-deep transition-all">Joelho</h4>
+</div>
+<div class="bg-navy-card border border-white/5 p-8 text-center hover:bg-primary group transition-all duration-500">
+<div class="text-4xl mb-4 grayscale group-hover:grayscale-0 transition-all">💪</div>
+<h4 class="text-white font-bold group-hover:text-navy-deep transition-all">Ombro</h4>
+</div>
+<div class="bg-navy-card border border-white/5 p-8 text-center hover:bg-primary group transition-all duration-500">
+<div class="text-4xl mb-4 grayscale group-hover:grayscale-0 transition-all">🦴</div>
+<h4 class="text-white font-bold group-hover:text-navy-deep transition-all">Coluna</h4>
+</div>
+<div class="bg-navy-card border border-white/5 p-8 text-center hover:bg-primary group transition-all duration-500">
+<div class="text-4xl mb-4 grayscale group-hover:grayscale-0 transition-all">🚶</div>
+<h4 class="text-white font-bold group-hover:text-navy-deep transition-all">Quadril</h4>
+</div>
+<div class="bg-navy-card border border-white/5 p-8 text-center hover:bg-primary group transition-all duration-500">
+<div class="text-4xl mb-4 grayscale group-hover:grayscale-0 transition-all">🦶</div>
+<h4 class="text-white font-bold group-hover:text-navy-deep transition-all">Pé/Tor</h4>
+</div>
+<div class="bg-navy-card border border-white/5 p-8 text-center hover:bg-primary group transition-all duration-500">
+<div class="text-4xl mb-4 grayscale group-hover:grayscale-0 transition-all">✋</div>
+<h4 class="text-white font-bold group-hover:text-navy-deep transition-all">Mão</h4>
+</div>
+</div>
+</div>
+</section>
+<!-- 6. DOCTOR SECTION -->
+<section class="py-32 bg-dark-charcoal relative" id="doutor">
+<div class="absolute inset-0 dot-pattern-bg"></div>
+<div class="max-w-screen-2xl mx-auto px-8 relative grid grid-cols-1 lg:grid-cols-2 gap-20 items-center">
+<!-- Image Side -->
+<div class="relative">
+<div class="aspect-[4/5] bg-navy-card rounded-lg overflow-hidden border border-white/10 p-2">
+<img alt="Dr. André Elias Junqueira" class="w-full h-full object-cover rounded shadow-2xl" src="https://lh3.googleusercontent.com/aida-public/AB6AXuDUh83Ah25ymOzJZ9FaV7rlhaWTrE6mz3K2863eshWdjsla9po_0zdGjUVuHpImfCI7zc_KK0IqZNeHhhuGL7vZ6HjcXlGQiekzQ8d9MAJ_oZOyoE0I3f-CIF6xT3fnkRlAQNq2lxeVPzmiA_HohN1-IuC2JCWiKNfEKRriuloYSMexcjvVO7j9bDXSbhAgQnOMGgeOOzqb2Rb-bVe0IP2yYiptZOKlOQUCRVCHfCred4_g7xgGvQzix6_bITFEgMjFpm6rNdY91gM"/>
+</div>
+<div class="absolute -bottom-6 -left-6 bg-primary text-navy-deep p-8 rounded shadow-2xl glow-cyan">
+<span class="text-5xl font-display font-bold">10+</span>
+<p class="font-label text-[10px] uppercase font-bold tracking-widest mt-1">Anos em Ortopedia</p>
+</div>
+</div>
+<!-- Content Side -->
+<div class="flex flex-col space-y-8">
+<div>
+<span class="font-label text-xs text-primary tracking-[0.4em] uppercase block mb-4">Corpo Clínico</span>
+<h2 class="font-display text-6xl leading-tight text-white font-bold">Dr. André <br/> Elias Junqueira</h2>
+</div>
+<p class="text-silver/60 text-lg font-light leading-relaxed">
+                Referência em procedimentos minimamente invasivos e medicina regenerativa, unindo rigor acadêmico à tecnologia diagnóstica de ponta.
+            </p>
+<ul class="space-y-4">
+<li class="flex items-center gap-3">
+<span class="text-primary material-symbols-outlined text-xl">check_circle</span>
+<span class="text-silver font-light">Membro da Sociedade Brasileira de Ortopedia (SBOT)</span>
+</li>
+<li class="flex items-center gap-3">
+<span class="text-primary material-symbols-outlined text-xl">check_circle</span>
+<span class="text-silver font-light">Especialista em Tratamento Intervencionista da Dor</span>
+</li>
+</ul>
+<div class="pt-8 flex flex-wrap gap-3">
+<div class="px-4 py-2 border border-white/10 rounded-full text-[10px] font-bold tracking-widest uppercase text-silver/50">Band TV</div>
+<div class="px-4 py-2 border border-white/10 rounded-full text-[10px] font-bold tracking-widest uppercase text-silver/50">Caras</div>
+<div class="px-4 py-2 border border-white/10 rounded-full text-[10px] font-bold tracking-widest uppercase text-silver/50">YouTube Health</div>
+</div>
+<button class="bg-primary text-navy-deep px-10 py-4 rounded-sm font-bold uppercase tracking-widest text-sm hover:brightness-110 transition-all glow-cyan w-fit">
+                Currículo Completo
+            </button>
+</div>
+</div>
+</section>
+<!-- 7. TESTIMONIALS -->
+<section class="py-32 bg-navy-deep">
+<div class="max-w-screen-2xl mx-auto px-8">
+<div class="text-center mb-20">
+<h2 class="font-display text-5xl text-white font-bold">Relatos de Superação</h2>
+</div>
+<div class="grid grid-cols-1 md:grid-cols-3 gap-8">
+<div class="bg-navy-card p-10 border border-white/5 rounded-lg shadow-xl">
+<div class="flex gap-1 text-primary mb-6">
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1;">star</span>
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1;">star</span>
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1;">star</span>
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1;">star</span>
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1;">star</span>
+</div>
+<p class="font-display italic text-xl text-silver/80 leading-relaxed mb-8">
+                    "O tratamento regenerativo foi a única coisa que resolveu meu problema crônico de joelho sem me levar à mesa de cirurgia."
+                </p>
+<div class="flex items-center gap-4">
+<img alt="Paciente" class="w-12 h-12 rounded-full object-cover" src="https://lh3.googleusercontent.com/aida-public/AB6AXuB3dOC1XMr1ar2WxY4Pu-MWoSUdnMuqc3Lfv7obaUgzJ2e-ZSISVRPfX_5tzmoo4v34BKu-PlyKRs0haXtVf4JXOLE9VeyeefrTSo30PApGH6OSplmff3lr7UtovAoP8HGnqc2gHQhwCoa7Dv7VGdNh6Kbin9eVn-bMTzWeiNILJpIEuY-e7JmpGxaWoySthUquGw8fTsKr7moEjg1AZKopAIzUhJhnQ9KG7VimG_3MbUPMjT3JXS1YNauYBnrSsNMq7XV9sci7zsM"/>
+<div class="flex flex-col">
+<span class="font-bold text-white text-sm">Carlos M.</span>
+<span class="font-label text-[9px] text-primary uppercase tracking-widest">Atleta Amador</span>
+</div>
+</div>
+</div>
+<div class="bg-navy-card p-10 border border-white/5 rounded-lg shadow-xl scale-105 border-primary/20">
+<div class="flex gap-1 text-primary mb-6">
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1;">star</span>
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1;">star</span>
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1;">star</span>
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1;">star</span>
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1;">star</span>
+</div>
+<p class="font-display italic text-xl text-silver/80 leading-relaxed mb-8">
+                    "Instalações modernas e um atendimento que realmente se importa com o paciente. Resultados impressionantes com o PRP."
+                </p>
+<div class="flex items-center gap-4">
+<img alt="Paciente" class="w-12 h-12 rounded-full object-cover" src="https://lh3.googleusercontent.com/aida-public/AB6AXuAGOcFaDGcDMxYvCq3pQe-TCJ1ZnpKev5SjDa1WyOscevL8CUxKMkRBzv7dEQd5m7QZA2e1C_eK51jGPIuEXVKnZqJJ27iy5G0hfJtQx14QZi4Y9Q9Ru3gpL2RLG3F7te_BJ-sSXlCoF10tfLovneitty_tocDQ-SgLPH_g8c7q8bVBEK-Z7zL4hqkDLuTeGjA9JYN1IUDhd0lUbu_T25DavbGE3S2OfIaaCdZLg41ZL_h8AHurXZLNgQ0uLPnsBd9TpydhrIySmZc"/>
+<div class="flex flex-col">
+<span class="font-bold text-white text-sm">Helena S.</span>
+<span class="font-label text-[9px] text-primary uppercase tracking-widest">Empresária</span>
+</div>
+</div>
+</div>
+<div class="bg-navy-card p-10 border border-white/5 rounded-lg shadow-xl">
+<div class="flex gap-1 text-primary mb-6">
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1;">star</span>
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1;">star</span>
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1;">star</span>
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1;">star</span>
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1;">star</span>
+</div>
+<p class="font-display italic text-xl text-silver/80 leading-relaxed mb-8">
+                    "Voltei a ter qualidade de vida. Dr. André explicou cada passo da viscossuplementação com total transparência."
+                </p>
+<div class="flex items-center gap-4">
+<img alt="Paciente" class="w-12 h-12 rounded-full object-cover" src="https://lh3.googleusercontent.com/aida-public/AB6AXuDYzxyUSl5uYcP4VGFkifVIFvoGKLahVNB8eri51daaq10Av2frSq0tIxzvZwu1bz8-vBBodg-8K-re2omAh8s1EDjfmW4QX87RCsLbtEhuw8-fI6w6wraUtg--RE_p_eRQUKiLtb8THcWNvX7nP9VSDqYkok0xZCBX2lttdB8Lh0q0Sn4LxAYNloSZtqcQ2Iel8027lXFWqm7IKr5ExKjAPa9QKpc6_d0DjgdYF54qYq5d8z555Sf_kNBtZEYBFWRbACis_KeTGgA"/>
+<div class="flex flex-col">
+<span class="font-bold text-white text-sm">Ricardo F.</span>
+<span class="font-label text-[9px] text-primary uppercase tracking-widest">Aposentado</span>
+</div>
+</div>
+</div>
+</div>
+</div>
+</section>
+<!-- 8. CTA SECTION -->
+<section class="py-24 bg-dark-charcoal relative">
+<div class="absolute inset-0 dot-pattern-bg"></div>
+<div class="max-w-4xl mx-auto px-8 relative">
+<div class="bg-navy-card border border-primary/20 rounded-2xl p-16 text-center relative overflow-hidden">
+<div class="absolute top-0 right-0 w-64 h-64 bg-primary/10 blur-[100px]"></div>
+<h2 class="font-display text-5xl text-white mb-6 font-bold">
+                Retome seu <span class="text-primary italic">ritmo.</span>
+</h2>
+<p class="text-silver/50 text-lg font-light mb-12">
+                Agende sua consulta e conheça as possibilidades da ortopedia de nova geração em São José dos Campos ou São Paulo.
+            </p>
+<div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+<button class="bg-primary text-navy-deep px-8 py-5 rounded-sm font-bold flex items-center justify-center gap-3 hover:brightness-110 transition-all glow-cyan uppercase tracking-widest text-sm">
+<span class="material-symbols-outlined">location_on</span>
+                    Unidade SJC
+                </button>
+<button class="bg-white/5 border border-white/10 text-white px-8 py-5 rounded-sm font-bold flex items-center justify-center gap-3 hover:bg-white/10 transition-all uppercase tracking-widest text-sm">
+<span class="material-symbols-outlined">location_on</span>
+                    Unidade Itaim (SP)
+                </button>
+</div>
+</div>
+</div>
+</section>
+<!-- 9. FOOTER -->
+<footer class="bg-navy-deep pt-24 pb-12 border-t border-white/5">
+<div class="max-w-screen-2xl mx-auto px-12">
+<div class="grid grid-cols-1 md:grid-cols-4 gap-16 mb-20">
+<!-- Col 1 -->
+<div class="space-y-8">
+<div class="flex items-center gap-4">
+<img alt="Logo" class="w-10 h-10 object-contain" src="https://lh3.googleusercontent.com/aida/ADBb0ug3mOwfUY9IZ-ORhJt4rgGHPpDbivou1FSeAj2gm0k1oSdQoUM89uKEg98N1sE-6Xrt3v3ODjY-qKcbfKQl6zAAK09wn9qXGuoxswRGwe39twy5GRByqOzrBstyaoCTqd_XfAEqFviI2Ff10b7-hqqbwvN-8Z4sZm9f-SLGz9QLDD6lMmjemFxvpCunKcCvfNcd3nawRyZWO-pS9PlwQRjZkgqi8okvMuiOGyR6lYcpnL2tgvIyYq7tHSEKJCD8ZwIOe_EGauQHpA"/>
+<div class="flex flex-col">
+<span class="text-xl font-bold tracking-[0.2em] text-white uppercase font-sans">REGENORTHO</span>
+</div>
+</div>
+<p class="text-silver/40 text-xs font-light leading-relaxed">
+                    Referência em Medicina Regenerativa Intervencionista e Ortobiologia. Tratamentos de alta complexidade sem hospitalização.
+                </p>
+<div class="flex gap-4">
+<a class="text-silver/40 hover:text-primary transition-colors" href="#"><span class="material-symbols-outlined">public</span></a>
+<a class="text-silver/40 hover:text-primary transition-colors" href="#"><span class="material-symbols-outlined">photo_camera</span></a>
+</div>
+</div>
+<!-- Col 2 -->
+<div class="space-y-6">
+<h4 class="font-label text-[10px] text-primary uppercase tracking-widest font-bold">Tratamentos</h4>
+<ul class="space-y-4 text-silver/50 text-xs font-medium uppercase tracking-wider">
+<li><a class="hover:text-primary transition-colors" href="#">PRP Plasmático</a></li>
+<li><a class="hover:text-primary transition-colors" href="#">Células BMAC</a></li>
+<li><a class="hover:text-primary transition-colors" href="#">Proloterapia</a></li>
+<li><a class="hover:text-primary transition-colors" href="#">Aspirado de Medula</a></li>
+</ul>
+</div>
+<!-- Col 3 -->
+<div class="space-y-6">
+<h4 class="font-label text-[10px] text-primary uppercase tracking-widest font-bold">Contato</h4>
+<ul class="space-y-4 text-silver/50 text-xs font-medium">
+<li class="flex items-center gap-3">
+<span class="material-symbols-outlined text-primary text-sm">phone_iphone</span>
+<span>(12) 98176-7896</span>
+</li>
+<li class="flex items-center gap-3">
+<span class="material-symbols-outlined text-primary text-sm">mail</span>
+<span>contato@regenortho.com.br</span>
+</li>
+</ul>
+</div>
+<!-- Col 4 -->
+<div class="space-y-6">
+<h4 class="font-label text-[10px] text-primary uppercase tracking-widest font-bold">Unidade SJC</h4>
+<p class="text-silver/50 text-xs leading-relaxed uppercase tracking-wide">
+                    Rua Armando de Oliveira Cobra, 50 <br/>
+                    Sala 712 · Ed. New Worker Tower <br/>
+                    Jardim Aquarius
+                </p>
+</div>
+</div>
+<div class="pt-8 border-t border-white/5 flex flex-col md:row justify-between items-center gap-4 text-[9px] font-label text-silver/30 uppercase tracking-[0.2em]">
+<p>© 2025 REGENORTHO · DR. ANDRÉ ELIAS JUNQUEIRA · CRM SP · TODOS OS DIREITOS RESERVADOS.</p>
+</div>
+</div>
+</footer>
+<!-- Fixed WhatsApp Button -->
+<div class="fixed bottom-8 right-8 z-[60]">
+<button class="w-16 h-16 bg-[#25D366] text-white rounded-full flex items-center justify-center shadow-2xl hover:scale-110 active:scale-95 transition-all glow-cyan">
+<svg class="w-8 h-8 fill-current" viewbox="0 0 24 24"><path d="M12.031 6.172c-3.181 0-5.767 2.586-5.768 5.766-.001 1.298.38 2.27 1.019 3.287l-.582 2.128 2.185-.573c.948.517 2.04.794 3.144.794h.002c3.181 0 5.767-2.586 5.767-5.766 0-3.18-2.585-5.766-5.767-5.766zm3.377 8.203c-.145.405-.837.74-1.159.789-.323.05-.63.072-1.84-.407-1.458-.578-2.397-2.055-2.47-2.152-.072-.097-.585-.778-.585-1.496 0-.717.376-1.07.509-1.216.133-.145.29-.182.387-.182h.278c.084 0 .193-.036.302.218l.434 1.054c.036.085.06.182.012.278-.048.096-.072.156-.145.241-.072.085-.157.193-.223.265-.072.073-.145.151-.06.296.084.145.374.616.804 1.002.554.496 1.02.65 1.165.723.145.073.23.06.314-.036.084-.096.362-.423.459-.567.096-.145.193-.121.326-.072.133.048.845.398.99.47.145.073.242.109.278.169.036.06.036.35-.109.754zM12 2C6.48 2 2 6.48 2 12c0 1.76.46 3.42 1.26 4.86L2 22l5.34-1.4c1.4.74 3 1.17 4.66 1.17 5.52 0 10-4.48 10-10S17.52 2 12 2zm0 18c-1.48 0-2.88-.41-4.08-1.12l-.3-.18-3.03.8.81-2.96-.2-.32C4.46 15.08 4 13.59 4 12c0-4.41 3.59-8 8-8s8 3.59 8 8-3.59 8-8 8z"></path></svg>
+</button>
+</div>
+<script>
+    window.addEventListener('scroll', () => {
+        const header = document.getElementById('main-header');
+        if (window.scrollY > 50) {
+            header.classList.add('bg-navy-deep/90', 'border-b', 'border-white/5');
+            header.classList.remove('bg-transparent');
+        } else {
+            header.classList.remove('bg-navy-deep/90', 'border-b', 'border-white/5');
+            header.classList.add('bg-transparent');
+        }
+    });
+</script>
+</body></html>

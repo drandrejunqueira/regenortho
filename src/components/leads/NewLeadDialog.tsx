@@ -37,6 +37,9 @@ const SOURCES = [
   { value: 'other', label: 'Outro' },
 ]
 
+const inputCls = 'w-full bg-[#f5f6f8] border border-[rgba(2,21,65,0.12)] rounded-xl px-3 py-2.5 text-sm text-[#021541] placeholder:text-[#718096] focus:outline-none focus:ring-2 focus:ring-[rgba(0,188,228,0.2)] focus:border-[#00BCE4] transition-colors'
+const labelCls = 'text-[10px] font-bold text-[#718096] uppercase tracking-wider'
+
 export function NewLeadDialog({ open, onOpenChange, onCreated }: Props) {
   const [loading, setLoading] = useState(false)
   const { register, handleSubmit, reset, setValue, watch, formState: { errors } } = useForm<FormData>({
@@ -66,63 +69,55 @@ export function NewLeadDialog({ open, onOpenChange, onCreated }: Props) {
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-md bg-[#1c2026] border-[#3e4949]/20">
+      <DialogContent className="max-w-md bg-white border border-[rgba(2,21,65,0.10)] shadow-[0_8px_40px_rgba(2,21,65,0.12)]">
         <DialogHeader>
-          <DialogTitle className="text-[#dfe2eb] font-bold">Novo Lead</DialogTitle>
+          <DialogTitle className="text-[#021541] font-bold">Novo Lead</DialogTitle>
         </DialogHeader>
 
         <form onSubmit={handleSubmit(onSubmit)} className="space-y-4" noValidate>
           <div className="grid grid-cols-2 gap-3">
             <div className="col-span-2 space-y-1.5">
-              <label htmlFor="name" className="text-[10px] font-bold text-[#bec9c9] uppercase tracking-wider">
-                Nome *
-              </label>
+              <label htmlFor="name" className={labelCls}>Nome *</label>
               <input
                 id="name"
                 placeholder="Nome completo"
-                className="w-full bg-[#31353c] border-none rounded-xl px-3 py-2.5 text-sm text-[#dfe2eb] placeholder:text-[#bec9c9]/40 focus:outline-none focus:ring-2 focus:ring-[#61d8dd]/30"
+                className={inputCls}
                 {...register('name')}
               />
-              {errors.name && <p className="text-xs text-[#ffb4ab]">{errors.name.message}</p>}
+              {errors.name && <p className="text-xs text-[#DC2626]">{errors.name.message}</p>}
             </div>
 
             <div className="space-y-1.5">
-              <label htmlFor="phone" className="text-[10px] font-bold text-[#bec9c9] uppercase tracking-wider">
-                Telefone *
-              </label>
+              <label htmlFor="phone" className={labelCls}>Telefone *</label>
               <input
                 id="phone"
                 placeholder="(11) 99999-9999"
-                className="w-full bg-[#31353c] border-none rounded-xl px-3 py-2.5 text-sm text-[#dfe2eb] placeholder:text-[#bec9c9]/40 focus:outline-none focus:ring-2 focus:ring-[#61d8dd]/30"
+                className={inputCls}
                 {...register('phone')}
               />
-              {errors.phone && <p className="text-xs text-[#ffb4ab]">{errors.phone.message}</p>}
+              {errors.phone && <p className="text-xs text-[#DC2626]">{errors.phone.message}</p>}
             </div>
 
             <div className="space-y-1.5">
-              <label htmlFor="email" className="text-[10px] font-bold text-[#bec9c9] uppercase tracking-wider">
-                E-mail
-              </label>
+              <label htmlFor="email" className={labelCls}>E-mail</label>
               <input
                 id="email"
                 type="email"
                 placeholder="email@exemplo.com"
-                className="w-full bg-[#31353c] border-none rounded-xl px-3 py-2.5 text-sm text-[#dfe2eb] placeholder:text-[#bec9c9]/40 focus:outline-none focus:ring-2 focus:ring-[#61d8dd]/30"
+                className={inputCls}
                 {...register('email')}
               />
             </div>
 
             <div className="space-y-1.5">
-              <label className="text-[10px] font-bold text-[#bec9c9] uppercase tracking-wider">
-                Origem *
-              </label>
+              <label className={labelCls}>Origem *</label>
               <Select value={watch('source') ?? 'other'} onValueChange={(v) => setValue('source', v ?? 'other')}>
-                <SelectTrigger className="bg-[#31353c] border-none rounded-xl text-sm text-[#dfe2eb] h-10">
+                <SelectTrigger className="bg-[#f5f6f8] border border-[rgba(2,21,65,0.12)] rounded-xl text-sm text-[#021541] h-10 focus:ring-[rgba(0,188,228,0.2)]">
                   <SelectValue />
                 </SelectTrigger>
-                <SelectContent className="bg-[#31353c] border-[#3e4949]/30">
+                <SelectContent className="bg-white border-[rgba(2,21,65,0.10)]">
                   {SOURCES.map((s) => (
-                    <SelectItem key={s.value} value={s.value} className="text-[#dfe2eb] text-sm">
+                    <SelectItem key={s.value} value={s.value} className="text-[#021541] text-sm">
                       {s.label}
                     </SelectItem>
                   ))}
@@ -131,26 +126,22 @@ export function NewLeadDialog({ open, onOpenChange, onCreated }: Props) {
             </div>
 
             <div className="space-y-1.5">
-              <label htmlFor="specialty" className="text-[10px] font-bold text-[#bec9c9] uppercase tracking-wider">
-                Especialidade
-              </label>
+              <label htmlFor="specialty" className={labelCls}>Especialidade</label>
               <input
                 id="specialty"
                 placeholder="ex: joelho, coluna..."
-                className="w-full bg-[#31353c] border-none rounded-xl px-3 py-2.5 text-sm text-[#dfe2eb] placeholder:text-[#bec9c9]/40 focus:outline-none focus:ring-2 focus:ring-[#61d8dd]/30"
+                className={inputCls}
                 {...register('specialty')}
               />
             </div>
 
             <div className="col-span-2 space-y-1.5">
-              <label htmlFor="complaint" className="text-[10px] font-bold text-[#bec9c9] uppercase tracking-wider">
-                Queixa principal
-              </label>
+              <label htmlFor="complaint" className={labelCls}>Queixa principal</label>
               <textarea
                 id="complaint"
                 placeholder="Descreva a queixa do lead..."
                 rows={3}
-                className="w-full bg-[#31353c] border-none rounded-xl px-3 py-2.5 text-sm text-[#dfe2eb] placeholder:text-[#bec9c9]/40 focus:outline-none focus:ring-2 focus:ring-[#61d8dd]/30 resize-none"
+                className={`${inputCls} resize-none`}
                 {...register('complaint')}
               />
             </div>
@@ -161,14 +152,14 @@ export function NewLeadDialog({ open, onOpenChange, onCreated }: Props) {
               type="button"
               onClick={() => onOpenChange(false)}
               disabled={loading}
-              className="px-4 py-2.5 rounded-xl text-sm font-medium text-[#bec9c9] hover:text-[#dfe2eb] bg-[#31353c] hover:bg-[#262a31] transition-colors"
+              className="px-4 py-2.5 rounded-xl text-sm font-medium text-[#718096] hover:text-[#021541] bg-[#f5f6f8] hover:bg-[rgba(2,21,65,0.06)] transition-colors"
             >
               Cancelar
             </button>
             <button
               type="submit"
               disabled={loading}
-              className="px-4 py-2.5 rounded-xl text-sm font-bold bg-gradient-to-br from-[#006e72] to-[#61d8dd] text-[#003739] hover:opacity-90 transition-opacity disabled:opacity-50 flex items-center gap-2"
+              className="px-4 py-2.5 rounded-xl text-sm font-bold bg-gradient-to-br from-[#021541] to-[#032170] text-white hover:opacity-90 transition-opacity disabled:opacity-50 flex items-center gap-2"
             >
               {loading ? (
                 <>

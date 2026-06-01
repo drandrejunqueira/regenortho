@@ -1,0 +1,317 @@
+<!DOCTYPE html>
+
+<html class="light" lang="pt-BR"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Serif:ital,wght@0,400;0,700;1,400&amp;family=Manrope:wght@300;400;500;600;700;800&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<script id="tailwind-config">
+      tailwind.config = {
+        darkMode: "class",
+        theme: {
+          extend: {
+            "colors": {
+                    "tertiary-container": "#202e3f",
+                    "surface": "#f7f9fb",
+                    "primary-fixed-dim": "#b5c5f9",
+                    "error-container": "#ffdad6",
+                    "surface-container-low": "#f2f4f6",
+                    "tertiary-fixed-dim": "#b9c8de",
+                    "surface-variant": "#e0e3e5",
+                    "on-secondary-fixed": "#001f25",
+                    "surface-tint": "#4d5d8b",
+                    "secondary-fixed": "#a1efff",
+                    "on-error": "#ffffff",
+                    "on-secondary-container": "#006573",
+                    "surface-container-highest": "#e0e3e5",
+                    "surface-dim": "#d8dadc",
+                    "error": "#ba1a1a",
+                    "on-error-container": "#93000a",
+                    "outline": "#757680",
+                    "on-tertiary-container": "#8796aa",
+                    "on-primary": "#ffffff",
+                    "secondary": "#006876",
+                    "on-secondary-fixed-variant": "#004e59",
+                    "tertiary-fixed": "#d4e4fa",
+                    "on-secondary": "#ffffff",
+                    "on-primary-fixed-variant": "#354572",
+                    "on-surface": "#191c1e",
+                    "primary-container": "#1a2b56",
+                    "primary-fixed": "#dae1ff",
+                    "on-background": "#191c1e",
+                    "on-primary-fixed": "#051944",
+                    "surface-container-lowest": "#ffffff",
+                    "on-tertiary": "#ffffff",
+                    "inverse-surface": "#2d3133",
+                    "secondary-container": "#58e6ff",
+                    "on-tertiary-fixed": "#0d1c2d",
+                    "background": "#f7f9fb",
+                    "on-surface-variant": "#45464f",
+                    "outline-variant": "#c5c6d0",
+                    "inverse-on-surface": "#eff1f3",
+                    "tertiary": "#0a1929",
+                    "on-tertiary-fixed-variant": "#39485a",
+                    "inverse-primary": "#b5c5f9",
+                    "surface-container-high": "#e6e8ea",
+                    "surface-container": "#eceef0",
+                    "secondary-fixed-dim": "#44d8f1",
+                    "surface-bright": "#f7f9fb",
+                    "on-primary-container": "#8393c5",
+                    "primary": "#021541"
+            },
+            "borderRadius": {
+                    "DEFAULT": "0.125rem",
+                    "lg": "0.25rem",
+                    "xl": "0.5rem",
+                    "full": "0.75rem"
+            },
+            "fontFamily": {
+                    "headline": ["Noto Serif"],
+                    "body": ["Manrope"],
+                    "label": ["Manrope"]
+            }
+          },
+        },
+      }
+    </script>
+<style>
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 300, 'GRAD' 0, 'opsz' 24;
+        }
+        .text-serif { font-family: 'Noto Serif', serif; }
+        .text-sans { font-family: 'Manrope', sans-serif; }
+        .dot-pattern {
+            background-image: radial-gradient(circle, #006876 1px, transparent 1px);
+            background-size: 24px 24px;
+        }
+    </style>
+</head>
+<body class="bg-surface text-on-surface font-body">
+<!-- TopAppBar -->
+<nav class="fixed top-0 w-full z-50 flex justify-between items-center px-12 py-4 bg-[#021541]/70 backdrop-blur-xl shadow-[0px_12px_32px_rgba(2,21,65,0.06)]">
+<div class="flex items-center gap-4">
+<img alt="RegenOrtho Logo" class="h-10 w-10 object-contain" data-alt="minimalist professional medical logo for RegenOrtho with a stylized regenerative cell icon in cyan and navy blue" src="https://lh3.googleusercontent.com/aida-public/AB6AXuBTE4rOAE4ZszwIvU9FfDaW8oVzQZOW2hWDgFCJKVSEy4V6Xe3v7XFDvVOIJuDcm5KWTG0uAiOUvTTgZKc5lw-9V3aYKcfYMlVlNyDIQxZQVJdajPziOXsbIjRMJqKtmTZLwCqx3ET8NdJUuKPT8HC2FV3ASvQInxZb1_bMIoUKFV3Wx-motc1JIgQobO3_Gb6Q4IR_tzG7oa27s23sdzu0XnR6zAc-WQQNECb4EyqR4E0YJ44kVbTaXjzWFzP0Kzhh3VSMOG1Zh78"/>
+<span class="text-2xl font-bold tracking-widest text-white uppercase font-sans">RegenOrtho</span>
+</div>
+<div class="hidden md:flex items-center gap-8">
+<a class="text-cyan-400 font-medium border-b-2 border-cyan-400 pb-1 font-sans text-sm tracking-wide" href="#">Tratamentos</a>
+<a class="text-slate-300 font-normal hover:text-white transition-colors font-sans text-sm tracking-wide" href="#">A Clínica</a>
+<a class="text-slate-300 font-normal hover:text-white transition-colors font-sans text-sm tracking-wide" href="#">Especialidades</a>
+<a class="text-slate-300 font-normal hover:text-white transition-colors font-sans text-sm tracking-wide" href="#">Dr. André</a>
+<a class="text-slate-300 font-normal hover:text-white transition-colors font-sans text-sm tracking-wide" href="#">Convênios</a>
+<a class="text-slate-300 font-normal hover:text-white transition-colors font-sans text-sm tracking-wide" href="#">Blog</a>
+</div>
+<button class="bg-gradient-to-r from-primary to-primary-container text-white px-6 py-2.5 rounded-md font-sans text-sm font-bold tracking-tight hover:scale-95 transition-all duration-300">
+            Agendar Consulta
+        </button>
+</nav>
+<!-- Hero Section -->
+<header class="relative pt-32 pb-24 overflow-hidden bg-primary">
+<div class="absolute inset-0 z-0 opacity-20 dot-pattern"></div>
+<div class="absolute inset-0 bg-gradient-to-b from-transparent to-primary"></div>
+<div class="max-w-7xl mx-auto px-6 lg:px-12 relative z-10 flex flex-col md:flex-row items-center gap-16">
+<div class="md:w-1/2 space-y-8">
+<div class="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-secondary/10 border border-secondary/20">
+<span class="material-symbols-outlined text-secondary text-sm" data-icon="clinical_notes">clinical_notes</span>
+<span class="text-secondary text-[10px] uppercase font-bold tracking-[0.2em] font-sans">Ortopedia Regenerativa</span>
+</div>
+<h1 class="text-serif text-5xl md:text-7xl text-white font-bold leading-tight tracking-tight">
+                    Ciência que <br/><span class="text-secondary-fixed">Restaura</span>
+</h1>
+<p class="text-slate-300 text-lg leading-relaxed max-w-lg font-sans">
+                    Utilizamos os mais avançados protocolos biotecnológicos para estimular a cura natural do corpo, preservando a biomecânica articular com precisão cirúrgica e abordagem minimamente invasiva.
+                </p>
+<div class="flex items-center gap-6">
+<button class="bg-secondary text-white px-8 py-4 rounded-md font-sans font-bold hover:bg-secondary/90 transition-all">Explorar Protocolos</button>
+<button class="text-white flex items-center gap-2 group font-sans font-medium">
+                        Ver Vídeo Institucional
+                        <span class="material-symbols-outlined group-hover:translate-x-1 transition-transform" data-icon="play_circle">play_circle</span>
+</button>
+</div>
+</div>
+<div class="md:w-1/2 relative group">
+<div class="absolute -inset-4 bg-secondary/20 blur-3xl rounded-full"></div>
+<div class="relative rounded-xl overflow-hidden shadow-2xl border border-white/10 aspect-[4/3]">
+<img alt="RegenOrtho Clinic Interior" class="w-full h-full object-cover grayscale-[20%] hover:grayscale-0 transition-all duration-700" data-alt="ultra-modern luxury medical clinic interior with clean minimalist design high-end architectural lighting and sophisticated clinical furniture in navy and white" src="https://lh3.googleusercontent.com/aida-public/AB6AXuCHhqiiHjuNNHWUua_3FTtsGRkOunXFpVBdmN7tsw2CKmyZmWWn9gK_rT2QWIEn3DG6pp-D-3Cyx3pFvILzDa2JkBdA9FxvQZvWfFA3HzWf-ymQO31J0cFMMVRRQcw4bnhofq6B8FjlXINzzBPn5kgMvaCaYD3hQmP6yFzlqMRLHRZDNtn50F0F7-A7Pfmi_1So64Md4gizFrb-VkNW12Z1ovdQatIkWYsatPIO9phtc6cV9LFbJzDgYafyWM80AXiRZwKcDAqyhFk"/>
+</div>
+<!-- Data Texture Overlay -->
+<div class="absolute bottom-6 -left-6 bg-white/90 backdrop-blur-md p-6 rounded-lg shadow-xl max-w-[200px] border border-white/20">
+<div class="flex items-center gap-3 mb-2">
+<span class="material-symbols-outlined text-secondary" data-icon="biotech">biotech</span>
+<span class="text-primary font-bold text-xs uppercase tracking-tighter">Bio-Tecnologia</span>
+</div>
+<p class="text-[10px] text-on-surface-variant font-sans leading-tight">Processamento celular autólogo com certificação de biossegurança internacional.</p>
+</div>
+</div>
+</div>
+</header>
+<!-- Detailed Treatments Grid -->
+<section class="py-24 bg-surface relative">
+<div class="max-w-7xl mx-auto px-6 lg:px-12">
+<div class="flex flex-col md:flex-row justify-between items-end mb-20 gap-8">
+<div class="max-w-2xl">
+<h2 class="text-serif text-4xl text-primary font-bold mb-4 tracking-tight">Protocolos de Elite em Medicina Regenerativa</h2>
+<p class="text-on-surface-variant font-sans leading-relaxed">Nossa abordagem integra o que há de mais refinado na bioengenharia para tratar lesões condrais, tendíneas e ligamentares sem a necessidade de intervenções invasivas tradicionais.</p>
+</div>
+<div class="hidden md:block">
+<div class="text-right">
+<span class="text-secondary font-bold text-4xl font-sans tracking-tighter">98%</span>
+<p class="text-on-surface-variant text-[10px] uppercase font-bold tracking-widest">Taxa de Sucesso Clínico</p>
+</div>
+</div>
+</div>
+<div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
+<!-- PRP Card -->
+<div class="bg-surface-container-lowest p-8 rounded-xl shadow-[0px_12px_32px_rgba(2,21,65,0.06)] border border-outline-variant/15 flex flex-col h-full hover:translate-y-[-8px] transition-transform duration-300">
+<div class="w-12 h-12 rounded-lg bg-secondary/10 flex items-center justify-center mb-6">
+<span class="material-symbols-outlined text-secondary" data-icon="opacity">opacity</span>
+</div>
+<h3 class="text-serif text-2xl text-primary font-bold mb-4">PRP</h3>
+<p class="text-sm text-on-surface-variant leading-relaxed mb-8 flex-grow font-sans">Plasma Rico em Plaquetas. Concentração de fatores de crescimento autólogos que aceleram a cicatrização de tecidos moles e regeneração tendínea através da sinalização celular.</p>
+<button class="w-full py-3 border border-secondary/40 text-secondary font-bold text-xs uppercase tracking-widest hover:bg-secondary hover:text-white transition-colors flex items-center justify-center gap-2">
+                        Saiba mais <span class="material-symbols-outlined text-sm" data-icon="arrow_forward">arrow_forward</span>
+</button>
+</div>
+<!-- BMAC Card -->
+<div class="bg-surface-container-lowest p-8 rounded-xl shadow-[0px_12px_32px_rgba(2,21,65,0.06)] border border-outline-variant/15 flex flex-col h-full hover:translate-y-[-8px] transition-transform duration-300">
+<div class="w-12 h-12 rounded-lg bg-secondary/10 flex items-center justify-center mb-6">
+<span class="material-symbols-outlined text-secondary" data-icon="dna">genetics</span>
+</div>
+<h3 class="text-serif text-2xl text-primary font-bold mb-4">BMAC</h3>
+<p class="text-sm text-on-surface-variant leading-relaxed mb-8 flex-grow font-sans">Aspirado de Concentrado de Medula Óssea. Terapia avançada rica em células progenitoras mesenquimais, indicada para artrose moderada e lesões ósseas complexas.</p>
+<button class="w-full py-3 border border-secondary/40 text-secondary font-bold text-xs uppercase tracking-widest hover:bg-secondary hover:text-white transition-colors flex items-center justify-center gap-2">
+                        Saiba mais <span class="material-symbols-outlined text-sm" data-icon="arrow_forward">arrow_forward</span>
+</button>
+</div>
+<!-- Ácido Hialurônico Card -->
+<div class="bg-surface-container-lowest p-8 rounded-xl shadow-[0px_12px_32px_rgba(2,21,65,0.06)] border border-outline-variant/15 flex flex-col h-full hover:translate-y-[-8px] transition-transform duration-300">
+<div class="w-12 h-12 rounded-lg bg-secondary/10 flex items-center justify-center mb-6">
+<span class="material-symbols-outlined text-secondary" data-icon="vaccines">vaccines</span>
+</div>
+<h3 class="text-serif text-2xl text-primary font-bold mb-4">Viscosuplementação</h3>
+<p class="text-sm text-on-surface-variant leading-relaxed mb-8 flex-grow font-sans">Aplicação intra-articular de Ácido Hialurônico de alto peso molecular. Restaura a lubrificação articular, reduz o atrito e possui propriedades anti-inflamatórias potentes.</p>
+<button class="w-full py-3 border border-secondary/40 text-secondary font-bold text-xs uppercase tracking-widest hover:bg-secondary hover:text-white transition-colors flex items-center justify-center gap-2">
+                        Saiba mais <span class="material-symbols-outlined text-sm" data-icon="arrow_forward">arrow_forward</span>
+</button>
+</div>
+<!-- Proloterapia Card -->
+<div class="bg-surface-container-lowest p-8 rounded-xl shadow-[0px_12px_32px_rgba(2,21,65,0.06)] border border-outline-variant/15 flex flex-col h-full hover:translate-y-[-8px] transition-transform duration-300">
+<div class="w-12 h-12 rounded-lg bg-secondary/10 flex items-center justify-center mb-6">
+<span class="material-symbols-outlined text-secondary" data-icon="healing">healing</span>
+</div>
+<h3 class="text-serif text-2xl text-primary font-bold mb-4">Proloterapia</h3>
+<p class="text-sm text-on-surface-variant leading-relaxed mb-8 flex-grow font-sans">Injeções proliferativas que estimulam a resposta inflamatória controlada, fortalecendo ligamentos e tendões laxos ou enfraquecidos por trauma crônico.</p>
+<button class="w-full py-3 border border-secondary/40 text-secondary font-bold text-xs uppercase tracking-widest hover:bg-secondary hover:text-white transition-colors flex items-center justify-center gap-2">
+                        Saiba mais <span class="material-symbols-outlined text-sm" data-icon="arrow_forward">arrow_forward</span>
+</button>
+</div>
+</div>
+</div>
+</section>
+<!-- Safety & Efficacy Protocol -->
+<section class="py-24 bg-surface-container-low overflow-hidden">
+<div class="max-w-7xl mx-auto px-6 lg:px-12">
+<div class="bg-primary rounded-2xl p-12 lg:p-20 relative overflow-hidden flex flex-col lg:flex-row items-center gap-16">
+<div class="absolute top-0 right-0 w-1/3 h-full opacity-5 dot-pattern"></div>
+<div class="lg:w-1/2 relative z-10">
+<span class="text-secondary font-bold text-xs uppercase tracking-[0.3em] mb-6 block font-sans">Excellence Benchmark</span>
+<h2 class="text-serif text-4xl text-white font-bold mb-8 leading-tight">Protocolo de Segurança e Eficácia</h2>
+<ul class="space-y-6">
+<li class="flex items-start gap-4">
+<span class="material-symbols-outlined text-secondary mt-1" data-icon="verified_user">verified_user</span>
+<div>
+<h4 class="text-white font-bold font-sans">Biossegurança Nível III</h4>
+<p class="text-slate-400 text-sm font-sans">Processamento celular em ambiente controlado com filtragem HEPA e monitoramento constante.</p>
+</div>
+</li>
+<li class="flex items-start gap-4">
+<span class="material-symbols-outlined text-secondary mt-1" data-icon="monitoring">monitoring</span>
+<div>
+<h4 class="text-white font-bold font-sans">Guiamento Ultrassonográfico</h4>
+<p class="text-slate-400 text-sm font-sans">100% dos procedimentos são realizados com precisão de imagem milimétrica.</p>
+</div>
+</li>
+<li class="flex items-start gap-4">
+<span class="material-symbols-outlined text-secondary mt-1" data-icon="assignment_turned_in">assignment_turned_in</span>
+<div>
+<h4 class="text-white font-bold font-sans">Certificação Clínica</h4>
+<p class="text-slate-400 text-sm font-sans">Adesão estrita às normas da ANVISA e protocolos internacionais de ortopedia regenerativa.</p>
+</div>
+</li>
+</ul>
+</div>
+<div class="lg:w-1/2 flex justify-center">
+<div class="grid grid-cols-2 gap-4">
+<div class="w-40 h-40 bg-white/5 rounded-2xl flex flex-col items-center justify-center p-6 border border-white/10">
+<span class="text-secondary font-bold text-3xl font-sans">ISO</span>
+<span class="text-[10px] text-slate-400 uppercase tracking-widest mt-2">Qualidade</span>
+</div>
+<div class="w-40 h-40 bg-secondary/10 rounded-2xl flex flex-col items-center justify-center p-6 border border-secondary/20 translate-y-8">
+<span class="material-symbols-outlined text-secondary text-4xl" data-icon="biotech">biotech</span>
+<span class="text-[10px] text-white uppercase tracking-widest mt-2">Tecnologia</span>
+</div>
+</div>
+</div>
+</div>
+</div>
+</section>
+<!-- Footer -->
+<footer class="bg-[#021541] dark:bg-[#010a1f] pt-20 pb-10">
+<div class="grid grid-cols-1 md:grid-cols-4 gap-12 px-16 py-20 max-w-7xl mx-auto">
+<div class="md:col-span-1 space-y-6">
+<div class="text-3xl font-black text-white font-sans tracking-tight">RegenOrtho</div>
+<p class="text-slate-400 text-sm leading-relaxed font-sans">
+                    Excelência em ortopedia regenerativa e medicina da dor. Tecnologia de ponta aliada ao cuidado humanizado.
+                </p>
+<div class="flex gap-4">
+<span class="material-symbols-outlined text-slate-400 hover:text-cyan-400 cursor-pointer" data-icon="share">share</span>
+<span class="material-symbols-outlined text-slate-400 hover:text-cyan-400 cursor-pointer" data-icon="public">public</span>
+</div>
+</div>
+<div>
+<h4 class="text-white font-bold mb-6 font-sans">Tratamentos</h4>
+<ul class="space-y-4">
+<li><a class="text-slate-400 hover:text-cyan-400 transition-colors text-sm font-sans" href="#">PRP Terapia</a></li>
+<li><a class="text-slate-400 hover:text-cyan-400 transition-colors text-sm font-sans" href="#">BMAC Celular</a></li>
+<li><a class="text-slate-400 hover:text-cyan-400 transition-colors text-sm font-sans" href="#">Ácido Hialurônico</a></li>
+<li><a class="text-slate-400 hover:text-cyan-400 transition-colors text-sm font-sans" href="#">Proloterapia</a></li>
+</ul>
+</div>
+<div>
+<h4 class="text-white font-bold mb-6 font-sans">Links Rápidos</h4>
+<ul class="space-y-4">
+<li><a class="text-slate-400 hover:text-cyan-400 transition-colors text-sm font-sans" href="#">A Clínica</a></li>
+<li><a class="text-slate-400 hover:text-cyan-400 transition-colors text-sm font-sans" href="#">Especialidades</a></li>
+<li><a class="text-slate-400 hover:text-cyan-400 transition-colors text-sm font-sans" href="#">Dr. André</a></li>
+<li><a class="text-slate-400 hover:text-cyan-400 transition-colors text-sm font-sans" href="#">Convênios</a></li>
+</ul>
+</div>
+<div>
+<h4 class="text-white font-bold mb-6 font-sans">Contato</h4>
+<ul class="space-y-4">
+<li class="flex items-center gap-3 text-slate-400 text-sm font-sans">
+<span class="material-symbols-outlined text-cyan-500 text-sm" data-icon="location_on">location_on</span>
+                        São Paulo, SP - Brasil
+                    </li>
+<li class="flex items-center gap-3 text-slate-400 text-sm font-sans">
+<span class="material-symbols-outlined text-cyan-500 text-sm" data-icon="call">call</span>
+                        +55 11 9999-9999
+                    </li>
+<li class="flex items-center gap-3 text-slate-400 text-sm font-sans">
+<span class="material-symbols-outlined text-cyan-500 text-sm" data-icon="mail">mail</span>
+                        contato@regenortho.com.br
+                    </li>
+</ul>
+</div>
+</div>
+<div class="max-w-7xl mx-auto px-16 border-t border-white/10 pt-8 flex flex-col md:flex-row justify-between items-center gap-4">
+<span class="text-slate-400 text-[10px] uppercase tracking-widest font-sans">© 2024 RegenOrtho Clinical Atelier. All rights reserved.</span>
+<div class="flex gap-8">
+<a class="text-slate-400 hover:text-cyan-400 text-[10px] uppercase tracking-widest font-sans" href="#">Privacidade</a>
+<a class="text-slate-400 hover:text-cyan-400 text-[10px] uppercase tracking-widest font-sans" href="#">Termos</a>
+</div>
+</div>
+</footer>
+</body></html>

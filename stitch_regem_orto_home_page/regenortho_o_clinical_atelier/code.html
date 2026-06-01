@@ -1,0 +1,352 @@
+<!DOCTYPE html>
+
+<html lang="pt-BR"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Serif:ital,wght@0,400;0,700;1,400&amp;family=Manrope:wght@300;400;500;600;700;800&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+      tailwind.config = {
+        darkMode: "class",
+        theme: {
+          extend: {
+            "colors": {
+                    "tertiary-container": "#202e3f",
+                    "surface": "#f7f9fb",
+                    "primary-fixed-dim": "#b5c5f9",
+                    "error-container": "#ffdad6",
+                    "surface-container-low": "#f2f4f6",
+                    "tertiary-fixed-dim": "#b9c8de",
+                    "surface-variant": "#e0e3e5",
+                    "on-secondary-fixed": "#001f25",
+                    "surface-tint": "#4d5d8b",
+                    "secondary-fixed": "#a1efff",
+                    "on-error": "#ffffff",
+                    "on-secondary-container": "#006573",
+                    "surface-container-highest": "#e0e3e5",
+                    "surface-dim": "#d8dadc",
+                    "error": "#ba1a1a",
+                    "on-error-container": "#93000a",
+                    "outline": "#757680",
+                    "on-tertiary-container": "#8796aa",
+                    "on-primary": "#ffffff",
+                    "secondary": "#006876",
+                    "on-secondary-fixed-variant": "#004e59",
+                    "tertiary-fixed": "#d4e4fa",
+                    "on-secondary": "#ffffff",
+                    "on-primary-fixed-variant": "#354572",
+                    "on-surface": "#191c1e",
+                    "primary-container": "#1a2b56",
+                    "primary-fixed": "#dae1ff",
+                    "on-background": "#191c1e",
+                    "on-primary-fixed": "#051944",
+                    "surface-container-lowest": "#ffffff",
+                    "on-tertiary": "#ffffff",
+                    "inverse-surface": "#2d3133",
+                    "secondary-container": "#58e6ff",
+                    "on-tertiary-fixed": "#0d1c2d",
+                    "background": "#f7f9fb",
+                    "on-surface-variant": "#45464f",
+                    "outline-variant": "#c5c6d0",
+                    "inverse-on-surface": "#eff1f3",
+                    "tertiary": "#0a1929",
+                    "on-tertiary-fixed-variant": "#39485a",
+                    "inverse-primary": "#b5c5f9",
+                    "surface-container-high": "#e6e8ea",
+                    "surface-container": "#eceef0",
+                    "secondary-fixed-dim": "#44d8f1",
+                    "surface-bright": "#f7f9fb",
+                    "on-primary-container": "#8393c5",
+                    "primary": "#021541"
+            },
+            "borderRadius": {
+                    "DEFAULT": "0.125rem",
+                    "lg": "0.25rem",
+                    "xl": "0.5rem",
+                    "full": "0.75rem"
+            },
+            "fontFamily": {
+                    "headline": ["Noto Serif"],
+                    "body": ["Manrope"],
+                    "label": ["Manrope"]
+            }
+          },
+        },
+      }
+    </script>
+<style>
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 300, 'GRAD' 0, 'opsz' 24;
+            vertical-align: middle;
+        }
+        .glass-nav {
+            backdrop-filter: blur(24px);
+            -webkit-backdrop-filter: blur(24px);
+        }
+        .dot-pattern {
+            background-image: radial-gradient(circle, currentColor 1px, transparent 1px);
+            background-size: 24px 24px;
+        }
+    </style>
+</head>
+<body class="bg-surface text-on-surface font-body selection:bg-secondary/30">
+<!-- TopNavBar -->
+<header class="fixed top-0 w-full z-50 flex justify-between items-center px-12 py-4 bg-[#021541]/70 dark:bg-[#021541]/70 backdrop-blur-xl shadow-[0px_12px_32px_rgba(2,21,65,0.06)]">
+<div class="flex items-center gap-3">
+<img alt="RegenOrtho Logo" class="h-10 w-auto" data-alt="minimalist professional medical logo for RegenOrtho with clean geometric lines and premium dark navy finish" src="https://lh3.googleusercontent.com/aida-public/AB6AXuCujwQwDvssVRXN8dN7kXXUNB8_52dAsz6Msd8FATRjeH58MhYDxIXy9thoFp2_EgoppTWq7AiVS_5DIFuWVAzQPqDfZbVIwxxDTbqJ_3hirbXDLsHQZl-iMMmOzJ48clxobh_R44m3yDbIerjzgFxX516dUTVawv0vmQ4tuLHbk1iPKWg5hnu2dr2FxpuG5sKG9FUIx9EGqifF2_O1MIkfWkfNmAo26WV2Lyr5LpaFSWwHyMFixKcK1Om-Ln5x02mjYE8MPABxF2g"/>
+<span class="text-2xl font-bold tracking-widest text-white uppercase font-body">RegenOrtho</span>
+</div>
+<nav class="hidden md:flex items-center gap-8">
+<a class="text-slate-300 font-normal hover:text-white transition-colors text-sm tracking-wide" href="#">Tratamentos</a>
+<a class="text-cyan-400 font-medium border-b-2 border-cyan-400 pb-1 text-sm tracking-wide" href="#">A Clínica</a>
+<a class="text-slate-300 font-normal hover:text-white transition-colors text-sm tracking-wide" href="#">Especialidades</a>
+<a class="text-slate-300 font-normal hover:text-white transition-colors text-sm tracking-wide" href="#">Dr. André</a>
+<a class="text-slate-300 font-normal hover:text-white transition-colors text-sm tracking-wide" href="#">Convênios</a>
+<a class="text-slate-300 font-normal hover:text-white transition-colors text-sm tracking-wide" href="#">Blog</a>
+</nav>
+<button class="bg-gradient-to-r from-primary to-primary-container text-white px-6 py-2.5 rounded-md font-label text-sm tracking-wider hover:opacity-90 transition-all scale-95 active:scale-90">
+            Agendar Consulta
+        </button>
+</header>
+<main class="pt-20">
+<!-- Hero Section: Clinical Atelier -->
+<section class="relative h-[870px] flex items-center overflow-hidden bg-primary">
+<div class="absolute inset-0 z-0">
+<img alt="Clinical Atelier Interior" class="w-full h-full object-cover opacity-60" data-alt="luxurious medical clinic interior with high-end furniture, soft ambient lighting, clean white surfaces and sophisticated architectural details" src="https://lh3.googleusercontent.com/aida-public/AB6AXuAozEYRkI_7nbwLJutcwP6Ok5FvIbggUz4953j4DgMnnPz0gLUi4TVlHQ7d0Tg6FPHRGLNPUo40VRqolS2BnrSikrFqNew_6Xf9SNAUqOkdKz8B41a2KurDk3M5L3FR3VLT1kU1b92hCBXgpBiOHeoZd2i-RBPX_D-IgfrkAKhNhgPfo3sUb7M1fdydoLC2Pa-dXAtIGsLXzbFzwX1O84s1ogxPF4yMio_IURbNy2ZcWWAfKTC9O78hd1mu7H54vi9QPvzv7BfjEIk"/>
+<div class="absolute inset-0 bg-gradient-to-r from-primary via-primary/40 to-transparent"></div>
+</div>
+<div class="container mx-auto px-12 relative z-10">
+<div class="max-w-2xl">
+<span class="inline-block text-secondary font-label tracking-[0.2em] text-xs uppercase mb-6 bg-secondary/10 px-4 py-1 rounded-full">The Regenerative Luminary</span>
+<h1 class="text-6xl md:text-7xl font-headline text-white leading-tight mb-8 tracking-tight italic">O Conceito <br/><span class="not-italic font-bold">Clinical Atelier</span></h1>
+<p class="text-lg text-slate-300 font-light leading-relaxed max-w-lg mb-10">
+                        Um espaço onde a precisão cirúrgica encontra a hospitalidade de alto padrão. Redefinimos a experiência ortopédica através de um ambiente curado para o seu bem-estar.
+                    </p>
+</div>
+</div>
+<div class="absolute bottom-12 right-12 text-white/20 dot-pattern w-32 h-32"></div>
+</section>
+<!-- Nossa Missão: Asymmetric Layout -->
+<section class="py-32 bg-surface">
+<div class="container mx-auto px-12">
+<div class="grid grid-cols-1 md:grid-cols-12 gap-16 items-center">
+<div class="md:col-span-5 relative">
+<div class="aspect-[4/5] bg-surface-container-low rounded-lg overflow-hidden relative shadow-2xl">
+<img alt="Mission Vision" class="w-full h-full object-cover grayscale hover:grayscale-0 transition-all duration-700" data-alt="Close up of a medical professional's hands holding a modern orthopedic joint model in a brightly lit clean laboratory" src="https://lh3.googleusercontent.com/aida-public/AB6AXuBKPHZ5-H-_mFoDhcGI2YHuRABvFH9D5bMR3F387QuVof-6DaNl-t85Nke-u3cOvzc1ta3_S9mpyy1BmzQ2zEj4oleJYznjzgKkFRvAIqRL_6LH5VrkNG5tYoR68NGCJQfIIZ1j9ouUUN-g41h6uFeO6uMOQ-cw87SLGph74xHBZ-HdkXyyLubilhd0V4UXyZP5pnWxUcjIIL0Bqw_YweqxtgA3uwaBSbvcqZFa_GC8bOrm7WwDRuaXFRGO-xz5GssIrbFN4lZMpn0"/>
+</div>
+<div class="absolute -bottom-8 -right-8 w-48 h-48 bg-secondary/10 rounded-full blur-3xl"></div>
+</div>
+<div class="md:col-span-7 pl-0 md:pl-12">
+<h2 class="text-4xl font-headline text-primary mb-8 tracking-tight">Nossa Missão</h2>
+<div class="space-y-6 text-on-surface-variant leading-relaxed text-lg">
+<p>Na RegenOrtho, não tratamos apenas patologias; restauramos a liberdade de movimento. Nossa missão é integrar as tecnologias regenerativas mais avançadas do mundo a um atendimento profundamente humanizado.</p>
+<p class="border-l-4 border-secondary pl-6 italic text-primary font-medium">"A medicina de excelência exige tempo, silêncio e um olhar artesanal sobre cada caso clínico."</p>
+<p>Acreditamos que o ambiente de cura começa no primeiro contato, em um espaço projetado para inspirar confiança e serenidade.</p>
+</div>
+</div>
+</div>
+</div>
+</section>
+<!-- Experiência do Paciente: Bento Grid -->
+<section class="py-32 bg-surface-container-low">
+<div class="container mx-auto px-12">
+<div class="text-center mb-20">
+<span class="text-secondary font-label tracking-widest text-xs uppercase mb-4 block">Hospitalidade Premium</span>
+<h2 class="text-5xl font-headline text-primary tracking-tight">Experiência do Paciente</h2>
+</div>
+<div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+<div class="md:col-span-2 bg-surface-container-lowest p-12 rounded-xl flex flex-col justify-between group overflow-hidden relative">
+<div class="relative z-10">
+<span class="material-symbols-outlined text-4xl text-secondary mb-6">concierge</span>
+<h3 class="text-2xl font-headline text-primary mb-4">Concierge Dedicado</h3>
+<p class="text-on-surface-variant max-w-md">Acompanhamento personalizado desde o agendamento até o pós-procedimento, garantindo que cada detalhe da sua jornada seja impecável.</p>
+</div>
+<div class="absolute top-0 right-0 p-8 opacity-5 text-primary dot-pattern w-64 h-64"></div>
+</div>
+<div class="bg-primary p-12 rounded-xl text-white flex flex-col justify-end min-h-[400px]">
+<span class="material-symbols-outlined text-4xl text-cyan-400 mb-6">coffee</span>
+<h3 class="text-2xl font-headline mb-4">Lounge de Acolhimento</h3>
+<p class="text-slate-300 font-light">Um refúgio de tranquilidade com menu gourmet e conectividade de alta velocidade para seu conforto absoluto.</p>
+</div>
+<div class="bg-secondary p-12 rounded-xl text-white flex flex-col justify-end min-h-[400px]">
+<span class="material-symbols-outlined text-4xl text-white mb-6">privacy_tip</span>
+<h3 class="text-2xl font-headline mb-4">Privacidade Total</h3>
+<p class="text-cyan-100 font-light">Consultórios isolados acusticamente e fluxos de atendimento desenhados para garantir discrição absoluta.</p>
+</div>
+<div class="md:col-span-2 bg-surface-container-lowest p-12 rounded-xl flex items-center gap-12 group">
+<div class="flex-1">
+<span class="material-symbols-outlined text-4xl text-secondary mb-6">health_and_safety</span>
+<h3 class="text-2xl font-headline text-primary mb-4">Segurança Sanitária</h3>
+<p class="text-on-surface-variant">Protocolos de esterilização e purificação de ar que excedem as normas internacionais, em um ambiente de nível hospitalar com alma de atelier.</p>
+</div>
+<div class="hidden lg:block w-48 h-48 rounded-lg overflow-hidden grayscale group-hover:grayscale-0 transition-all duration-500">
+<img alt="Clinical Safety" class="w-full h-full object-cover" data-alt="high-tech clinical air purification unit and sterile medical equipment in a modern white hospital room" src="https://lh3.googleusercontent.com/aida-public/AB6AXuDK_8n5jXZSMQd18eB0YEhHh09hGWe67tuJkiGNro9sn0vN29zLMoPTvWDRQikHoPzJbQ_p_ihNOrR5ixXQR1WBKiVJVXZxAEzPSW6_7GPVZT-HiSWHmvSpH52ABkLHz7cLUi77W14zaJ9uqUfEtR06MKVWlwE8yRKAv0yIYzWWSY-zCyEmo8-pkhitZLrWM__aGp1yzP7G4rIS0MK45kgaqJZ29CmUJLD83kxjxCVOVlPFvTF2dE1BRMI8DdUt-aJ2MTYiOCQxDxY"/>
+</div>
+</div>
+</div>
+</div>
+</section>
+<!-- Tecnologia de Ponta -->
+<section class="py-32 bg-surface overflow-hidden relative">
+<div class="container mx-auto px-12">
+<div class="flex flex-col md:flex-row items-end justify-between mb-16 gap-8">
+<div class="max-w-xl">
+<h2 class="text-5xl font-headline text-primary tracking-tight mb-6">Tecnologia de Ponta</h2>
+<p class="text-on-surface-variant text-lg">Investimos continuamente nas fronteiras da medicina regenerativa e diagnóstica para oferecer tratamentos menos invasivos e recuperações aceleradas.</p>
+</div>
+<div class="flex gap-4">
+<div class="px-6 py-3 border border-outline-variant/30 rounded-full flex items-center gap-2">
+<span class="w-2 h-2 rounded-full bg-secondary"></span>
+<span class="text-xs font-label uppercase tracking-widest text-on-surface-variant">ISO 9001:2015</span>
+</div>
+<div class="px-6 py-3 border border-outline-variant/30 rounded-full flex items-center gap-2">
+<span class="w-2 h-2 rounded-full bg-secondary"></span>
+<span class="text-xs font-label uppercase tracking-widest text-on-surface-variant">SBR ONA III</span>
+</div>
+</div>
+</div>
+<div class="grid grid-cols-1 md:grid-cols-4 gap-8">
+<div class="space-y-4">
+<div class="h-64 rounded-xl bg-surface-container overflow-hidden">
+<img alt="Bio-Regenerative Tech" class="w-full h-full object-cover" data-alt="Close up of laboratory centrifuge and biological samples in a high-tech medical research facility with blue lighting" src="https://lh3.googleusercontent.com/aida-public/AB6AXuCvOod21fvJbAzkJyT6eAF60GUCN4XxtKG6n6V9S56ROV9HBo8lWWSgKYP3ANdEq1uT04C_UKtPMJevVushooBlh6W3sNoSG3KyrtvjGq8_nVE9LJDL8wY2rXU8nrkpDffi1YVAGLZ4VE_cNpORol6Sa9HJTD_csBrMBiFPddzr0vAaSk-D2tsNJAfoJnTZwqCbB4HPcyHjYwfGyXgqJTo-azkmUIM2ftGxRsv_Dd70v2LI5awj_Gtn4MU7brY5D5-X88sUZiDyhDs"/>
+</div>
+<h4 class="font-headline text-xl text-primary">Biologia Regenerativa</h4>
+<p class="text-sm text-on-surface-variant leading-relaxed">Processamento celular autólogo com protocolos de alta precisão biológica.</p>
+</div>
+<div class="space-y-4">
+<div class="h-64 rounded-xl bg-surface-container overflow-hidden">
+<img alt="Precision Ultrasound" class="w-full h-full object-cover" data-alt="Modern ultrasound machine screen showing detailed joint anatomy with advanced diagnostic imaging software" src="https://lh3.googleusercontent.com/aida-public/AB6AXuDATwITtKVqgucxhh6SeHPmxOyQs7TBNZSH0ufgU1dIsQJPlnuyXPZbzm0KECu4cRXK8f65TZrwfpSp7TSRVTfYJ0xf5UFNRjNkjVHLwsIbI5ifvl6UyD4MzoikcYJ24_tyOw7OTtO_vzItgWy2XRYCfC3H3en9hAsers5huGO5YITg_LpHr43Rh5X3M3te9JgtOgVC17vAHoiJdnqIqw6Rnt3L6FuIqPBjoG1Pj4GFsJSAdxkv6pxozqfCehANdbs7pwDf01dyKIY"/>
+</div>
+<h4 class="font-headline text-xl text-primary">Ultrassonografia de Alta Resolução</h4>
+<p class="text-sm text-on-surface-variant leading-relaxed">Guiamento por imagem em tempo real para procedimentos minimamente invasivos.</p>
+</div>
+<div class="space-y-4">
+<div class="h-64 rounded-xl bg-surface-container overflow-hidden">
+<img alt="Shockwave Therapy" class="w-full h-full object-cover" data-alt="Professional medical shockwave therapy device in a clean clinical setting for orthopedic treatments" src="https://lh3.googleusercontent.com/aida-public/AB6AXuC_Dpw25zVATtQILlkO4t9iWTwP_ktWZ8LAoGH3mPxeMlfNRl-MsueNi0Ll8rH-F97MNFy95Dgo4q_9JNDhiAHZMi6dQ6Jnl1lgf4Ic8mXIa--iofqwVdiFD-7N9biR-1618fp0vpvrWYd0JUjH6FeorYqNe80oFnZSYJW0exxayGsq_sAKdLJFtnHZGNuria5Cau5UkAGW5UBQtTO9MzKKX5gCmVx9jEwf0alEc83T9a2RSLJjIwNFvcoiFXn1GFdMZM9qD5k1Uek"/>
+</div>
+<h4 class="font-headline text-xl text-primary">Terapia de Ondas de Choque</h4>
+<p class="text-sm text-on-surface-variant leading-relaxed">Equipamentos focais de última geração para tratamento de tendinopatias crônicas.</p>
+</div>
+<div class="space-y-4">
+<div class="h-64 rounded-xl bg-surface-container overflow-hidden">
+<img alt="Robotic Precision" class="w-full h-full object-cover" data-alt="Detail of a robotic surgical arm with precision instruments in a sterile high-tech operating room" src="https://lh3.googleusercontent.com/aida-public/AB6AXuA0yUIYvC1IhpQAh9kpQgoMPd1ZlXYq6a5Mz58g3iuRUh8Frtsjl4_xebDWUk2DHojwmnM0U8wd8jactE87fa1jDZChvQJRkw_XjBqoqHNCuHnHk06lZMH0ba2zPNqcUmj6nLELlqcLWvru933IOmryT6IVtFyVDZP1vMhCLBHU_ZiWIeYl1GnNZ4dN2Hg1GoJdaeoHMFLYNPYypU1rDgP1HKI4Bm7PgyIlAKxSUh04jTrVvfRn4TNTvgeEH3rS_Ak0MtmftVMdcJQ"/>
+</div>
+<h4 class="font-headline text-xl text-primary">Auxílio Robótico</h4>
+<p class="text-sm text-on-surface-variant leading-relaxed">Integração de sistemas inteligentes para planejamento cirúrgico e execução milimétrica.</p>
+</div>
+</div>
+</div>
+</section>
+<!-- Unidades: Location Focus -->
+<section class="py-32 bg-[#021541] text-white">
+<div class="container mx-auto px-12">
+<div class="text-center mb-20">
+<h2 class="text-5xl font-headline tracking-tight mb-4">Nossas Unidades</h2>
+<p class="text-slate-400 font-light max-w-xl mx-auto">Estrategicamente localizadas para oferecer conveniência e excelência técnica nos principais polos de saúde.</p>
+</div>
+<div class="grid grid-cols-1 md:grid-cols-2 gap-12">
+<!-- Unidade SJC -->
+<div class="group cursor-pointer">
+<div class="relative overflow-hidden rounded-2xl aspect-video mb-8">
+<img alt="SJC Unit" class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-1000" data-alt="Exterior of a modern glass office building in Jardim Aquarius, San Jose dos Campos, during twilight with warm interior lights" src="https://lh3.googleusercontent.com/aida-public/AB6AXuDU5QQQzGRQWSYMpXNNygS-0r4E4KfMfd2-BDTkT7czKGhs3eCuArH89Fj4PLSQ6P6_Z5H9vpzE9BACH2M7EJDsJX-PPm2rNDHNCRZoxs1Apgl4i7NiZYTOjsF6IYvU_-udWCrz8v5UX2W2PbUPzjoUakDgG6tTlTC4HK2BuxDQ7NQ0u5zsD0LN4Ip1qZGm8Wia3XU3D5IqlirOjcn9GpsUuSpPIh2VDFjUX9fhBuATtem26Oay3wVwr8HWJeuPjY6iAE1g7vfjMrM"/>
+<div class="absolute inset-0 bg-primary/20 group-hover:bg-transparent transition-colors"></div>
+</div>
+<div class="flex justify-between items-start">
+<div>
+<h3 class="text-3xl font-headline mb-2">São José dos Campos</h3>
+<p class="text-cyan-400 font-label text-sm uppercase tracking-widest mb-4">Jardim Aquarius</p>
+<p class="text-slate-400 text-sm max-w-xs">Edifício Prime Corporate. <br/>Av. Cassiano Ricardo, 601.</p>
+</div>
+<span class="material-symbols-outlined text-4xl text-white/20 group-hover:text-cyan-400 transition-colors">location_on</span>
+</div>
+</div>
+<!-- Unidade SP -->
+<div class="group cursor-pointer">
+<div class="relative overflow-hidden rounded-2xl aspect-video mb-8">
+<img alt="SP Unit" class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-1000" data-alt="Modern architectural detail of a premium commercial building in Itaim Bibi, Sao Paulo, with sleek glass and steel elements" src="https://lh3.googleusercontent.com/aida-public/AB6AXuCjpoKIEPFFof3w3Qo5dmJhDS3hK2CErkIIWS-703WkAo-A6KWwEWtRf8eJ-M_rJ6kzL1e3mMASY_Wqq0DeH8FQQPBYSKlkGaY-gh9lkgQ4S8sv5XE-W0QCcbt8wYVwEzDgxKowozXky_k_DyqhFP9Wpl-yZXPUvOVgqlkO7yqm_Ehg4tbEACJl_xsFylgx8AtQO59kRRaDwOzLc0rMipo_JAtNyWKI0Y8otUG_EDTI1w3Bzj4HZgTh-ndpC3WK-M7AF5lbXwmomSQ"/>
+<div class="absolute inset-0 bg-primary/20 group-hover:bg-transparent transition-colors"></div>
+</div>
+<div class="flex justify-between items-start">
+<div>
+<h3 class="text-3xl font-headline mb-2">São Paulo</h3>
+<p class="text-cyan-400 font-label text-sm uppercase tracking-widest mb-4">Itaim Bibi</p>
+<p class="text-slate-400 text-sm max-w-xs">Medical Center Itaim. <br/>Rua Joaquim Floriano, 466.</p>
+</div>
+<span class="material-symbols-outlined text-4xl text-white/20 group-hover:text-cyan-400 transition-colors">location_on</span>
+</div>
+</div>
+</div>
+</div>
+</section>
+<!-- CTA Section -->
+<section class="py-24 bg-surface relative overflow-hidden">
+<div class="container mx-auto px-12 text-center relative z-10">
+<h2 class="text-4xl font-headline text-primary mb-8 tracking-tight">Pronto para uma nova experiência em ortopedia?</h2>
+<div class="flex flex-col md:flex-row justify-center gap-6">
+<button class="bg-primary text-white px-10 py-4 rounded-md font-label tracking-widest hover:bg-primary/90 transition-all flex items-center justify-center gap-3">
+<span class="material-symbols-outlined text-xl">calendar_month</span>
+                        AGENDAR CONSULTA
+                    </button>
+<button class="border border-secondary/40 text-secondary px-10 py-4 rounded-md font-label tracking-widest hover:bg-secondary/5 transition-all">
+                        FALAR PELO WHATSAPP
+                    </button>
+</div>
+</div>
+<div class="absolute top-0 left-0 w-full h-full opacity-[0.03] dot-pattern pointer-events-none"></div>
+</section>
+</main>
+<!-- Footer -->
+<footer class="bg-[#021541] dark:bg-[#010a1f] text-slate-400 font-body">
+<div class="grid grid-cols-1 md:grid-cols-4 gap-12 px-16 py-20 max-w-7xl mx-auto">
+<div class="col-span-1 md:col-span-1">
+<div class="text-3xl font-black text-white mb-6 uppercase tracking-tighter">RegenOrtho</div>
+<p class="text-sm leading-relaxed mb-6">Onde a tecnologia e a hospitalidade se unem para restaurar sua qualidade de vida.</p>
+<div class="flex gap-4">
+<a class="w-10 h-10 rounded-full border border-slate-700 flex items-center justify-center hover:text-cyan-400 hover:border-cyan-400 transition-colors" href="#">
+<span class="material-symbols-outlined text-lg">share</span>
+</a>
+<a class="w-10 h-10 rounded-full border border-slate-700 flex items-center justify-center hover:text-cyan-400 hover:border-cyan-400 transition-colors" href="#">
+<span class="material-symbols-outlined text-lg">medical_services</span>
+</a>
+</div>
+</div>
+<div>
+<h4 class="text-white font-headline text-lg mb-6">Tratamentos</h4>
+<ul class="space-y-3 text-sm">
+<li><a class="hover:text-cyan-400 transition-colors" href="#">Medicina Regenerativa</a></li>
+<li><a class="hover:text-cyan-400 transition-colors" href="#">Cirurgia Robótica</a></li>
+<li><a class="hover:text-cyan-400 transition-colors" href="#">Artroscopia</a></li>
+<li><a class="hover:text-cyan-400 transition-colors" href="#">Gestão da Dor</a></li>
+</ul>
+</div>
+<div>
+<h4 class="text-white font-headline text-lg mb-6">Links Rápidos</h4>
+<ul class="space-y-3 text-sm">
+<li><a class="hover:text-cyan-400 transition-colors" href="#">A Clínica</a></li>
+<li><a class="hover:text-cyan-400 transition-colors" href="#">Especialidades</a></li>
+<li><a class="hover:text-cyan-400 transition-colors" href="#">Dr. André</a></li>
+<li><a class="hover:text-cyan-400 transition-colors" href="#">Blog</a></li>
+<li><a class="hover:text-cyan-400 transition-colors" href="#">Privacidade</a></li>
+</ul>
+</div>
+<div>
+<h4 class="text-white font-headline text-lg mb-6">Contatos</h4>
+<ul class="space-y-4 text-sm">
+<li class="flex items-start gap-3">
+<span class="material-symbols-outlined text-cyan-500">call</span>
+<span>SJC: (12) 3922-9988<br/>SP: (11) 3078-1122</span>
+</li>
+<li class="flex items-start gap-3">
+<span class="material-symbols-outlined text-cyan-500">mail</span>
+<span>contato@regenortho.com.br</span>
+</li>
+</ul>
+</div>
+</div>
+<div class="border-t border-white/5 py-8 text-center text-xs tracking-widest uppercase text-slate-500">
+            © 2024 RegenOrtho Clinical Atelier. All rights reserved.
+        </div>
+</footer>
+</body></html>

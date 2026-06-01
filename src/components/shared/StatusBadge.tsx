@@ -9,46 +9,46 @@ import {
 } from '@/lib/constants'
 
 const LEAD_STATUS_COLORS: Record<string, string> = {
-  new: 'bg-[#61d8dd]/10 text-[#61d8dd]',
-  contacted: 'bg-[#e6c364]/10 text-[#e6c364]',
-  scheduled: 'bg-[#d3bbff]/10 text-[#d3bbff]',
-  attended: 'bg-[#006e72]/20 text-[#61d8dd]',
-  active_patient: 'bg-[#4ade80]/10 text-[#4ade80]',
-  lost: 'bg-[#ffb4ab]/10 text-[#ffb4ab]',
+  new: 'bg-cyan-50 text-cyan-700',
+  contacted: 'bg-blue-50 text-blue-700',
+  scheduled: 'bg-violet-50 text-violet-700',
+  attended: 'bg-green-50 text-green-700',
+  active_patient: 'bg-emerald-50 text-emerald-700',
+  lost: 'bg-red-50 text-red-600',
 }
 
 const APPOINTMENT_STATUS_COLORS: Record<string, string> = {
-  scheduled: 'bg-[#61d8dd]/10 text-[#61d8dd]',
-  confirmed: 'bg-[#4ade80]/10 text-[#4ade80]',
-  attended: 'bg-[#006e72]/20 text-[#61d8dd]',
-  no_show: 'bg-[#ffb4ab]/10 text-[#ffb4ab]',
-  rescheduled: 'bg-[#e6c364]/10 text-[#e6c364]',
-  cancelled: 'bg-[#dfe2eb]/10 text-[#bec9c9]',
+  scheduled: 'bg-cyan-50 text-cyan-700',
+  confirmed: 'bg-green-50 text-green-700',
+  attended: 'bg-emerald-50 text-emerald-700',
+  no_show: 'bg-red-50 text-red-600',
+  rescheduled: 'bg-amber-50 text-amber-700',
+  cancelled: 'bg-slate-50 text-slate-500',
 }
 
 const STOCK_STATUS_COLORS: Record<string, string> = {
-  ok: 'bg-[#61d8dd]/10 text-[#61d8dd]',
-  low: 'bg-[#e6c364]/10 text-[#e6c364]',
-  critical: 'bg-[#ffb4ab]/10 text-[#ffb4ab]',
-  out_of_stock: 'bg-[#ffb4ab]/10 text-[#ffb4ab]',
+  ok: 'bg-cyan-50 text-cyan-700',
+  low: 'bg-amber-50 text-amber-700',
+  critical: 'bg-red-50 text-red-600',
+  out_of_stock: 'bg-red-50 text-red-600',
 }
 
 const ROLE_COLORS: Record<string, string> = {
-  admin: 'bg-[#d3bbff]/10 text-[#d3bbff]',
-  receptionist: 'bg-[#61d8dd]/10 text-[#61d8dd]',
-  financial: 'bg-[#4ade80]/10 text-[#4ade80]',
-  doctor: 'bg-[#d3bbff]/10 text-[#d3bbff]',
+  admin: 'bg-violet-50 text-violet-700',
+  receptionist: 'bg-cyan-50 text-cyan-700',
+  financial: 'bg-green-50 text-green-700',
+  doctor: 'bg-violet-50 text-violet-700',
 }
 
 const SOURCE_COLORS: Record<string, string> = {
-  google_ads: 'bg-[#61d8dd]/10 text-[#61d8dd]',
-  meta_ads: 'bg-[#d3bbff]/10 text-[#d3bbff]',
-  instagram_organic: 'bg-[#ffb4ab]/10 text-[#ffb4ab]',
-  facebook_organic: 'bg-[#61d8dd]/10 text-[#61d8dd]',
-  google_organic: 'bg-[#4ade80]/10 text-[#4ade80]',
-  referral: 'bg-[#e6c364]/10 text-[#e6c364]',
-  whatsapp: 'bg-[#4ade80]/10 text-[#4ade80]',
-  other: 'bg-[#dfe2eb]/10 text-[#bec9c9]',
+  google_ads: 'bg-cyan-50 text-cyan-700',
+  meta_ads: 'bg-violet-50 text-violet-700',
+  instagram_organic: 'bg-pink-50 text-pink-700',
+  facebook_organic: 'bg-blue-50 text-blue-700',
+  google_organic: 'bg-green-50 text-green-700',
+  referral: 'bg-amber-50 text-amber-700',
+  whatsapp: 'bg-emerald-50 text-emerald-700',
+  other: 'bg-slate-50 text-slate-500',
 }
 
 interface StatusBadgeProps {
@@ -78,7 +78,7 @@ export function StatusBadge({ type, value, className, pulse }: StatusBadgeProps)
   }
 
   const label = labels[type]?.[value] ?? value
-  const color = colors[type]?.[value] ?? 'bg-[#dfe2eb]/10 text-[#bec9c9]'
+  const color = colors[type]?.[value] ?? 'bg-slate-50 text-slate-500'
 
   return (
     <span

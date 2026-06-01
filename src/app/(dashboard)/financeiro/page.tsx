@@ -15,8 +15,8 @@ import type { Transaction } from '@/types'
 const INCOME_CATEGORIES = ['consultation_fee', 'prp_procedure', 'bmac_procedure', 'hyaluronic_procedure', 'surgery_fee', 'other_income']
 const EXPENSE_CATEGORIES = ['rent', 'staff', 'marketing', 'materials', 'equipment', 'utilities', 'insurance', 'accounting', 'other_expense']
 
-const inputCls = 'w-full bg-[#31353c] border-none rounded-xl px-3 py-2.5 text-sm text-[#dfe2eb] placeholder:text-[#bec9c9]/40 focus:outline-none focus:ring-2 focus:ring-[#61d8dd]/30'
-const labelCls = 'text-[10px] font-bold text-[#bec9c9] uppercase tracking-wider'
+const inputCls = 'w-full bg-[#f5f6f8] border border-[rgba(2,21,65,0.12)] rounded-xl px-3 py-2.5 text-sm text-[#021541] placeholder:text-[#718096]/60 focus:outline-none focus:ring-2 focus:ring-[#00BCE4]/30'
+const labelCls = 'text-[10px] font-bold text-[#718096] uppercase tracking-wider'
 
 export default function FinanceiroPage() {
   const [transactions, setTransactions] = useState<Transaction[]>([])
@@ -74,7 +74,7 @@ export default function FinanceiroPage() {
         action={
           <button
             onClick={() => setNewDialog(true)}
-            className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-gradient-to-br from-[#006e72] to-[#61d8dd] text-[#003739] text-sm font-bold hover:opacity-90 transition-opacity"
+            className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-[#021541] text-white text-sm font-bold hover:opacity-90 transition-opacity"
           >
             <span className="material-symbols-outlined" style={{ fontSize: '18px' }}>add</span>
             Novo Lançamento
@@ -91,15 +91,15 @@ export default function FinanceiroPage() {
       </div>
 
       {/* Filtros */}
-      <div className="flex gap-2 mb-4">
+      <div className="flex gap-2 mb-4 flex-wrap">
         {FILTERS.map((f) => (
           <button
             key={f.value}
             onClick={() => setTypeFilter(f.value)}
-            className={`px-4 py-2 rounded-xl text-sm font-medium transition-colors ${
+            className={`rounded-full px-4 py-1.5 text-sm font-medium transition-colors ${
               typeFilter === f.value
-                ? 'bg-gradient-to-br from-[#006e72] to-[#61d8dd] text-[#003739] font-bold'
-                : 'bg-[#1c2026] text-[#bec9c9] hover:text-[#dfe2eb]'
+                ? 'bg-[#021541] text-white'
+                : 'text-[#718096] hover:text-[#021541] hover:bg-[rgba(2,21,65,0.06)]'
             }`}
           >
             {f.label}
@@ -109,46 +109,46 @@ export default function FinanceiroPage() {
 
       {/* Tabela */}
       {loading ? (
-        <p className="text-sm text-[#bec9c9] py-8 text-center">Carregando...</p>
+        <p className="text-sm text-[#718096] py-8 text-center">Carregando...</p>
       ) : transactions.length === 0 ? (
-        <div className="flex flex-col items-center justify-center py-12 text-center bg-[#1c2026] rounded-xl">
-          <div className="w-12 h-12 rounded-full bg-[#262a31] flex items-center justify-center mb-4">
-            <span className="material-symbols-outlined text-[#bec9c9]" style={{ fontSize: '24px' }}>payments</span>
+        <div className="flex flex-col items-center justify-center py-12 text-center bg-white border border-[rgba(2,21,65,0.06)] rounded-xl">
+          <div className="w-12 h-12 rounded-full bg-[rgba(0,188,228,0.08)] flex items-center justify-center mb-4">
+            <span className="material-symbols-outlined text-[#00BCE4]" style={{ fontSize: '24px' }}>payments</span>
           </div>
-          <p className="text-sm font-medium text-[#dfe2eb]">Nenhum lançamento encontrado</p>
+          <p className="text-sm font-medium text-[#021541]">Nenhum lançamento encontrado</p>
         </div>
       ) : (
-        <div className="rounded-xl overflow-hidden bg-[#1c2026]">
-          <table className="w-full text-sm">
+        <div className="overflow-x-auto rounded-xl border border-[rgba(2,21,65,0.06)]">
+          <table className="w-full text-sm bg-white">
             <thead>
-              <tr className="bg-[#262a31]">
-                <th className="text-left px-5 py-3 text-[10px] font-bold text-[#bec9c9] uppercase tracking-wider">Data</th>
-                <th className="text-left px-5 py-3 text-[10px] font-bold text-[#bec9c9] uppercase tracking-wider">Descrição</th>
-                <th className="text-left px-5 py-3 text-[10px] font-bold text-[#bec9c9] uppercase tracking-wider">Categoria</th>
-                <th className="text-right px-5 py-3 text-[10px] font-bold text-[#bec9c9] uppercase tracking-wider">Valor</th>
-                <th className="text-center px-5 py-3 text-[10px] font-bold text-[#bec9c9] uppercase tracking-wider">Status</th>
+              <tr className="bg-[rgba(2,21,65,0.03)]">
+                <th className="text-left px-5 py-3 text-xs font-semibold text-[#021541] uppercase tracking-wider">Data</th>
+                <th className="text-left px-5 py-3 text-xs font-semibold text-[#021541] uppercase tracking-wider">Descrição</th>
+                <th className="text-left px-5 py-3 text-xs font-semibold text-[#021541] uppercase tracking-wider hidden sm:table-cell">Categoria</th>
+                <th className="text-right px-5 py-3 text-xs font-semibold text-[#021541] uppercase tracking-wider">Valor</th>
+                <th className="text-center px-5 py-3 text-xs font-semibold text-[#021541] uppercase tracking-wider">Status</th>
                 <th className="w-20" />
               </tr>
             </thead>
-            <tbody className="divide-y divide-[#3e4949]/20">
+            <tbody>
               {transactions.map((tx) => (
-                <tr key={tx.id} className="hover:bg-[#262a31]/50 transition-colors">
-                  <td className="px-5 py-3 font-technical text-xs text-[#bec9c9]">{formatDate(tx.date)}</td>
+                <tr key={tx.id} className="border-b border-[rgba(2,21,65,0.05)] hover:bg-[rgba(2,21,65,0.015)] transition-colors">
+                  <td className="px-5 py-3 font-technical text-xs text-[#718096] whitespace-nowrap">{formatDate(tx.date)}</td>
                   <td className="px-5 py-3">
-                    <p className="font-medium text-[#dfe2eb]">{tx.description}</p>
-                    {tx.patient && <p className="text-xs text-[#bec9c9]">{tx.patient.name}</p>}
+                    <p className="font-medium text-[#021541]">{tx.description}</p>
+                    {tx.patient && <p className="text-xs text-[#718096]">{tx.patient.name}</p>}
                   </td>
-                  <td className="px-5 py-3 text-xs text-[#bec9c9]">
+                  <td className="px-5 py-3 text-xs text-[#718096] hidden sm:table-cell">
                     {TRANSACTION_CATEGORY_LABELS[tx.category] ?? tx.category}
                   </td>
-                  <td className={`px-5 py-3 text-right font-technical font-bold text-sm ${tx.type === 'income' ? 'text-[#61d8dd]' : 'text-[#ffb4ab]'}`}>
+                  <td className={`px-5 py-3 text-right font-technical font-semibold text-sm whitespace-nowrap ${tx.type === 'income' ? 'text-[#059669]' : 'text-[#DC2626]'}`}>
                     {tx.type === 'income' ? '+' : '-'}{formatCurrency(tx.amount)}
                   </td>
                   <td className="px-5 py-3 text-center">
-                    <span className={`px-2.5 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider ${
+                    <span className={`px-2.5 py-0.5 rounded-full text-xs font-medium ${
                       tx.isPaid
-                        ? 'bg-[#61d8dd]/10 text-[#61d8dd]'
-                        : 'bg-[#e6c364]/10 text-[#e6c364]'
+                        ? 'bg-[rgba(0,188,228,0.08)] text-[#00BCE4]'
+                        : 'bg-[rgba(245,158,11,0.1)] text-[#D97706]'
                     }`}>
                       {tx.isPaid ? 'Pago' : 'Pendente'}
                     </span>
@@ -157,7 +157,7 @@ export default function FinanceiroPage() {
                     {!tx.isPaid && (
                       <button
                         onClick={() => markPaid(tx.id)}
-                        className="text-xs font-bold text-[#61d8dd] hover:underline"
+                        className="bg-[rgba(0,188,228,0.08)] text-[#00BCE4] hover:bg-[rgba(0,188,228,0.15)] rounded-full px-3 py-1 text-xs font-medium transition-colors whitespace-nowrap"
                       >
                         Pagar
                       </button>
@@ -208,9 +208,9 @@ function NewTransactionDialog({ open, onOpenChange, onCreated }: { open: boolean
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-md bg-[#1c2026] border-[#3e4949]/20">
+      <DialogContent className="max-w-md bg-white border border-[rgba(2,21,65,0.08)]">
         <DialogHeader>
-          <DialogTitle className="text-[#dfe2eb] font-bold">Novo Lançamento</DialogTitle>
+          <DialogTitle className="text-[#021541] font-bold">Novo Lançamento</DialogTitle>
         </DialogHeader>
         <div className="space-y-3">
           <div className="flex gap-2">
@@ -218,8 +218,8 @@ function NewTransactionDialog({ open, onOpenChange, onCreated }: { open: boolean
               onClick={() => { setType('income'); setForm({ ...form, category: '' }) }}
               className={`flex-1 py-2.5 rounded-xl text-sm font-bold transition-all ${
                 type === 'income'
-                  ? 'bg-gradient-to-br from-[#006e72] to-[#61d8dd] text-[#003739]'
-                  : 'bg-[#31353c] text-[#bec9c9] hover:text-[#dfe2eb]'
+                  ? 'bg-[rgba(0,188,228,0.1)] text-[#00BCE4] border border-[rgba(0,188,228,0.3)]'
+                  : 'bg-[#f5f6f8] text-[#718096] hover:text-[#021541]'
               }`}
             >
               Receita
@@ -228,8 +228,8 @@ function NewTransactionDialog({ open, onOpenChange, onCreated }: { open: boolean
               onClick={() => { setType('expense'); setForm({ ...form, category: '' }) }}
               className={`flex-1 py-2.5 rounded-xl text-sm font-bold transition-all ${
                 type === 'expense'
-                  ? 'bg-[#93000a]/60 text-[#ffb4ab]'
-                  : 'bg-[#31353c] text-[#bec9c9] hover:text-[#dfe2eb]'
+                  ? 'bg-[rgba(239,68,68,0.08)] text-[#DC2626] border border-[rgba(239,68,68,0.2)]'
+                  : 'bg-[#f5f6f8] text-[#718096] hover:text-[#021541]'
               }`}
             >
               Despesa
@@ -238,12 +238,12 @@ function NewTransactionDialog({ open, onOpenChange, onCreated }: { open: boolean
           <div className="space-y-1.5">
             <label className={labelCls}>Categoria *</label>
             <Select value={form.category} onValueChange={(v) => setForm({ ...form, category: v ?? '' })}>
-              <SelectTrigger className="bg-[#31353c] border-none rounded-xl text-sm text-[#dfe2eb] h-10">
+              <SelectTrigger className="bg-[#f5f6f8] border border-[rgba(2,21,65,0.12)] rounded-xl text-sm text-[#021541] h-10">
                 <SelectValue placeholder="Selecionar..." />
               </SelectTrigger>
-              <SelectContent className="bg-[#31353c] border-[#3e4949]/30">
+              <SelectContent className="bg-white border border-[rgba(2,21,65,0.1)]">
                 {categories.map((c) => (
-                  <SelectItem key={c} value={c} className="text-[#dfe2eb] text-sm">
+                  <SelectItem key={c} value={c} className="text-[#021541] text-sm">
                     {TRANSACTION_CATEGORY_LABELS[c]}
                   </SelectItem>
                 ))}
@@ -266,7 +266,7 @@ function NewTransactionDialog({ open, onOpenChange, onCreated }: { open: boolean
           </div>
           <div className="flex items-center gap-2">
             <Checkbox id="isPaid" checked={form.isPaid} onCheckedChange={(v) => setForm({ ...form, isPaid: Boolean(v) })} />
-            <Label htmlFor="isPaid" className="text-sm text-[#bec9c9]">Marcar como pago</Label>
+            <Label htmlFor="isPaid" className="text-sm text-[#718096]">Marcar como pago</Label>
           </div>
           <div className="space-y-1.5">
             <label className={labelCls}>Observações</label>
@@ -274,10 +274,10 @@ function NewTransactionDialog({ open, onOpenChange, onCreated }: { open: boolean
           </div>
         </div>
         <DialogFooter className="gap-2">
-          <button onClick={() => onOpenChange(false)} disabled={loading} className="px-4 py-2.5 rounded-xl text-sm font-medium text-[#bec9c9] bg-[#31353c] hover:bg-[#262a31] transition-colors">
+          <button onClick={() => onOpenChange(false)} disabled={loading} className="px-4 py-2.5 rounded-xl text-sm font-medium text-[#718096] bg-[#f5f6f8] hover:bg-[rgba(2,21,65,0.06)] transition-colors">
             Cancelar
           </button>
-          <button onClick={submit} disabled={loading} className="px-4 py-2.5 rounded-xl text-sm font-bold bg-gradient-to-br from-[#006e72] to-[#61d8dd] text-[#003739] hover:opacity-90 transition-opacity disabled:opacity-50">
+          <button onClick={submit} disabled={loading} className="px-4 py-2.5 rounded-xl text-sm font-bold bg-[#021541] text-white hover:opacity-90 transition-opacity disabled:opacity-50">
             {loading ? 'Salvando...' : 'Salvar'}
           </button>
         </DialogFooter>

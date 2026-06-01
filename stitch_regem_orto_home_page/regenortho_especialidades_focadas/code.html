@@ -1,0 +1,278 @@
+<!DOCTYPE html>
+
+<html lang="pt-BR"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Serif:ital,wght@0,400;0,700;1,400&amp;family=Manrope:wght@300;400;500;600;700;800&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+      tailwind.config = {
+        darkMode: "class",
+        theme: {
+          extend: {
+            "colors": {
+                    "tertiary-container": "#202e3f",
+                    "surface": "#f7f9fb",
+                    "primary-fixed-dim": "#b5c5f9",
+                    "error-container": "#ffdad6",
+                    "surface-container-low": "#f2f4f6",
+                    "tertiary-fixed-dim": "#b9c8de",
+                    "surface-variant": "#e0e3e5",
+                    "on-secondary-fixed": "#001f25",
+                    "surface-tint": "#4d5d8b",
+                    "secondary-fixed": "#a1efff",
+                    "on-error": "#ffffff",
+                    "on-secondary-container": "#006573",
+                    "surface-container-highest": "#e0e3e5",
+                    "surface-dim": "#d8dadc",
+                    "error": "#ba1a1a",
+                    "on-error-container": "#93000a",
+                    "outline": "#757680",
+                    "on-tertiary-container": "#8796aa",
+                    "on-primary": "#ffffff",
+                    "secondary": "#006876",
+                    "on-secondary-fixed-variant": "#004e59",
+                    "tertiary-fixed": "#d4e4fa",
+                    "on-secondary": "#ffffff",
+                    "on-primary-fixed-variant": "#354572",
+                    "on-surface": "#191c1e",
+                    "primary-container": "#1a2b56",
+                    "primary-fixed": "#dae1ff",
+                    "on-background": "#191c1e",
+                    "on-primary-fixed": "#051944",
+                    "surface-container-lowest": "#ffffff",
+                    "on-tertiary": "#ffffff",
+                    "inverse-surface": "#2d3133",
+                    "secondary-container": "#58e6ff",
+                    "on-tertiary-fixed": "#0d1c2d",
+                    "background": "#f7f9fb",
+                    "on-surface-variant": "#45464f",
+                    "outline-variant": "#c5c6d0",
+                    "inverse-on-surface": "#eff1f3",
+                    "tertiary": "#0a1929",
+                    "on-tertiary-fixed-variant": "#39485a",
+                    "inverse-primary": "#b5c5f9",
+                    "surface-container-high": "#e6e8ea",
+                    "surface-container": "#eceef0",
+                    "secondary-fixed-dim": "#44d8f1",
+                    "surface-bright": "#f7f9fb",
+                    "on-primary-container": "#8393c5",
+                    "primary": "#021541"
+            },
+            "borderRadius": {
+                    "DEFAULT": "0.125rem",
+                    "lg": "0.25rem",
+                    "xl": "0.5rem",
+                    "full": "0.75rem"
+            },
+            "fontFamily": {
+                    "headline": ["Noto Serif"],
+                    "body": ["Manrope"],
+                    "label": ["Manrope"]
+            }
+          },
+        },
+      }
+    </script>
+<style>
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 200, 'GRAD' 0, 'opsz' 24;
+        }
+        .data-texture {
+            background-image: radial-gradient(circle, rgba(0, 104, 118, 0.1) 1px, transparent 1px);
+            background-size: 24px 24px;
+        }
+    </style>
+</head>
+<body class="bg-surface font-body text-on-surface">
+<!-- TopNavBar -->
+<header class="fixed top-0 w-full z-50 flex justify-between items-center px-12 py-4 bg-[#021541]/70 dark:bg-[#021541]/70 backdrop-blur-xl shadow-[0px_12px_32px_rgba(2,21,65,0.06)]">
+<div class="flex items-center gap-4">
+<img alt="RegenOrtho Logo" class="h-10 w-auto" data-alt="minimalist professional medical logo for RegenOrtho featuring clean geometric shapes and medical cross integration in navy and cyan" src="https://lh3.googleusercontent.com/aida-public/AB6AXuB516hLJju7P6ZZPLgsOWVYMbuown9gFghBTju5qP4SxOZ729Tn9v5jeV7iPkVTdRq77LDsu6lJK1U0iKvUDmC1JXdx9a9Za7SWu1cerd0c1rbwTbEl8QOZ-LMN6m0CvmjaKsadtkvXYChAykkxBJ6dpYJPHbuOUzoTTIE5IWvWsnXhConGW3M7nBxbK_uGFTZBOydIiKUH9QL8-23z3NqKIQ-Cpmja65QEu1Fark7v8TSGxF_s-vVaTbUf-WQO5Z4MwR1QGZGAHYo"/>
+<span class="text-2xl font-bold tracking-widest text-white uppercase font-label">RegenOrtho</span>
+</div>
+<nav class="hidden md:flex gap-8 items-center">
+<a class="text-slate-300 font-normal hover:text-white transition-colors font-label text-sm tracking-wide" href="#">Tratamentos</a>
+<a class="text-slate-300 font-normal hover:text-white transition-colors font-label text-sm tracking-wide" href="#">A Clínica</a>
+<a class="text-cyan-400 font-medium border-b-2 border-cyan-400 pb-1 font-label text-sm tracking-wide" href="#">Especialidades</a>
+<a class="text-slate-300 font-normal hover:text-white transition-colors font-label text-sm tracking-wide" href="#">Dr. André</a>
+<a class="text-slate-300 font-normal hover:text-white transition-colors font-label text-sm tracking-wide" href="#">Convênios</a>
+<a class="text-slate-300 font-normal hover:text-white transition-colors font-label text-sm tracking-wide" href="#">Blog</a>
+</nav>
+<button class="bg-gradient-to-r from-primary to-primary-container text-white px-6 py-2 rounded-md font-label text-sm font-semibold tracking-wide hover:scale-95 transition-all duration-300">
+            Agendar Consulta
+        </button>
+</header>
+<main class="pt-24 min-h-screen">
+<!-- Hero Section -->
+<section class="relative overflow-hidden bg-primary py-32 px-12">
+<div class="absolute inset-0 data-texture opacity-20"></div>
+<div class="absolute -right-24 -top-24 w-96 h-96 bg-secondary/20 blur-[120px] rounded-full"></div>
+<div class="max-w-7xl mx-auto relative z-10 flex flex-col items-center text-center">
+<span class="text-cyan-400 font-label text-xs uppercase tracking-[0.3em] mb-4">Nossa Expertise</span>
+<h1 class="font-headline text-5xl md:text-7xl text-white tracking-tight leading-tight max-w-4xl">
+                    Especialistas focados no <span class="italic text-cyan-500">seu movimento</span>
+</h1>
+<p class="mt-8 text-slate-400 font-body text-lg max-w-2xl tracking-wide">
+                    Aliamos o rigor cirúrgico às mais avançadas terapias regenerativas para restaurar sua funcionalidade e qualidade de vida.
+                </p>
+</div>
+</section>
+<!-- Specialties Grid (Bento Style) -->
+<section class="py-24 px-6 md:px-12 max-w-7xl mx-auto">
+<div class="grid grid-cols-1 md:grid-cols-12 gap-6">
+<!-- Joelho - Large Feature -->
+<div class="md:col-span-8 bg-surface-container-lowest p-10 rounded-xl relative overflow-hidden group shadow-[0px_12px_32px_rgba(2,21,65,0.03)] border border-outline-variant/15">
+<div class="absolute top-0 right-0 p-8 opacity-5 group-hover:opacity-10 transition-opacity">
+<span class="material-symbols-outlined text-8xl" style="font-variation-settings: 'FILL' 0;">skateboarding</span>
+</div>
+<div class="relative z-10 flex flex-col h-full justify-between">
+<div>
+<div class="w-12 h-12 bg-secondary/10 flex items-center justify-center rounded-lg mb-6">
+<span class="material-symbols-outlined text-secondary" data-icon="settings_accessibility">settings_accessibility</span>
+</div>
+<h3 class="font-headline text-3xl text-primary mb-4">Joelho</h3>
+<div class="flex flex-wrap gap-2 mb-6">
+<span class="px-3 py-1 bg-surface-container-high text-on-surface-variant text-xs font-label rounded-full">Artrose</span>
+<span class="px-3 py-1 bg-surface-container-high text-on-surface-variant text-xs font-label rounded-full">LCA</span>
+<span class="px-3 py-1 bg-surface-container-high text-on-surface-variant text-xs font-label rounded-full">Menisco</span>
+</div>
+<p class="text-on-surface-variant max-w-md leading-relaxed">
+                                Tratamentos focados na regeneração cartilaginosa e estabilização ligamentar. Utilizamos protocolos de viscosuplementação avançada e terapias biológicas para evitar ou postergar próteses.
+                            </p>
+</div>
+<div class="mt-12 flex items-center gap-4 text-secondary font-label text-sm font-bold tracking-widest uppercase cursor-pointer group/link">
+                            Ver Tratamentos <span class="material-symbols-outlined group-hover/link:translate-x-2 transition-transform">arrow_forward</span>
+</div>
+</div>
+</div>
+<!-- Ombro -->
+<div class="md:col-span-4 bg-primary p-10 rounded-xl relative overflow-hidden group">
+<div class="absolute inset-0 bg-gradient-to-br from-primary to-primary-container opacity-50"></div>
+<div class="relative z-10">
+<div class="w-12 h-12 bg-cyan-400/20 flex items-center justify-center rounded-lg mb-6">
+<span class="material-symbols-outlined text-cyan-400" data-icon="fitness_center">fitness_center</span>
+</div>
+<h3 class="font-headline text-3xl text-white mb-4">Ombro</h3>
+<p class="text-slate-400 text-sm leading-relaxed mb-6">
+                            Especialistas em lesões do manguito rotador e instabilidade articular. Abordagem regenerativa para tendinites crônicas.
+                        </p>
+<div class="space-y-2">
+<div class="flex items-center gap-3 text-white text-xs font-label">
+<span class="w-1 h-1 bg-cyan-400 rounded-full"></span> Manguito Rotador
+                            </div>
+<div class="flex items-center gap-3 text-white text-xs font-label">
+<span class="w-1 h-1 bg-cyan-400 rounded-full"></span> Luxações Recorrentes
+                            </div>
+</div>
+</div>
+</div>
+<!-- Coluna -->
+<div class="md:col-span-4 bg-surface-container-lowest p-10 rounded-xl border border-outline-variant/15 group hover:bg-surface-container transition-colors duration-500">
+<div class="w-12 h-12 bg-secondary/10 flex items-center justify-center rounded-lg mb-6">
+<span class="material-symbols-outlined text-secondary" data-icon="accessibility_new">accessibility_new</span>
+</div>
+<h3 class="font-headline text-2xl text-primary mb-4">Coluna</h3>
+<p class="text-on-surface-variant text-sm leading-relaxed mb-6">
+                        Soluções para hérnia de disco e dor lombar crônica através de procedimentos minimamente invasivos e modulação biológica.
+                    </p>
+<div class="pt-4 border-t border-outline-variant/30 flex justify-between items-center">
+<span class="text-xs text-secondary font-bold font-label uppercase tracking-wider">Detalhamento</span>
+<span class="material-symbols-outlined text-primary">add_circle</span>
+</div>
+</div>
+<!-- Quadril -->
+<div class="md:col-span-4 bg-surface-container-low p-10 rounded-xl relative overflow-hidden">
+<div class="relative z-10">
+<div class="w-12 h-12 bg-secondary/10 flex items-center justify-center rounded-lg mb-6">
+<span class="material-symbols-outlined text-secondary" data-icon="recent_actors">recent_actors</span>
+</div>
+<h3 class="font-headline text-2xl text-primary mb-4">Quadril</h3>
+<p class="text-on-surface-variant text-sm leading-relaxed">
+                            Tratamento de impacto femoroacetabular e bursites com foco em preservação articular e reabilitação funcional acelerada.
+                        </p>
+</div>
+<div class="absolute bottom-0 right-0 p-4 data-texture w-full h-1/3 opacity-10"></div>
+</div>
+<!-- Mão/Punho -->
+<div class="md:col-span-4 bg-surface-container-lowest p-10 rounded-xl border border-outline-variant/15 group">
+<div class="w-12 h-12 bg-secondary/10 flex items-center justify-center rounded-lg mb-6">
+<span class="material-symbols-outlined text-secondary" data-icon="pan_tool">pan_tool</span>
+</div>
+<h3 class="font-headline text-2xl text-primary mb-4">Mão &amp; Punho</h3>
+<p class="text-on-surface-variant text-sm leading-relaxed">
+                        Precisão no tratamento de síndrome do túnel do carpo, artroses de mão e lesões tendíneas complexas.
+                    </p>
+</div>
+<!-- Pé/Tornozelo - Asymmetric Bottom -->
+<div class="md:col-span-12 bg-white p-12 rounded-xl flex flex-col md:flex-row items-center gap-12 shadow-[0px_12px_32px_rgba(2,21,65,0.06)]">
+<div class="md:w-1/3">
+<img alt="Clinical precision Foot/Ankle" class="rounded-lg object-cover w-full h-64 shadow-xl" data-alt="high-detail anatomical illustration of a foot and ankle with clean glowing clinical highlights and professional medical aesthetic" src="https://lh3.googleusercontent.com/aida-public/AB6AXuBRGNP_FsYYY0rrIIUI9Q9LDAnSfSCELPa89f148Lm2E2qL19gExSJ_BySKwRe9AGs4yDD2UlzfZp7y2nZnT0NEodWcAxsWNQMAHdSXEQf0-mxHWzBxhRZ7JrqN7DuklwXwGoW5c06KKhcJ3eG4TfFXBb-kXDtHe40CzVF9wGTd57Yck8hRcqG8Hwg6C3RaLR2SmreqHfXOoJ63skDYNHr7hTyu4b8_Q1sIMn0qHmJojS6gh_PK3bagnhlv0UB0ktyKN1mr08euIb0"/>
+</div>
+<div class="md:w-2/3">
+<div class="w-12 h-12 bg-secondary/10 flex items-center justify-center rounded-lg mb-6">
+<span class="material-symbols-outlined text-secondary" data-icon="directions_walk">directions_walk</span>
+</div>
+<h3 class="font-headline text-3xl text-primary mb-4">Pé &amp; Tornozelo</h3>
+<p class="text-on-surface-variant leading-relaxed mb-8">
+                            Atendimento especializado em lesões esportivas, entorses de repetição e deformidades, utilizando técnicas regenerativas para acelerar o retorno às atividades diárias e esportivas.
+                        </p>
+<div class="flex gap-4">
+<button class="px-6 py-3 bg-secondary text-white font-label text-xs font-bold uppercase tracking-widest rounded-md hover:bg-primary transition-colors">Conhecer Técnicas</button>
+<button class="px-6 py-3 border border-secondary/40 text-secondary font-label text-xs font-bold uppercase tracking-widest rounded-md hover:bg-secondary/5 transition-colors">Corpo Clínico</button>
+</div>
+</div>
+</div>
+</div>
+</section>
+<!-- CTA Section -->
+<section class="py-24 bg-surface-container-low">
+<div class="max-w-4xl mx-auto px-6 text-center">
+<h2 class="font-headline text-4xl text-primary mb-8">Pronto para retomar sua <span class="italic">liberdade</span>?</h2>
+<p class="text-on-surface-variant font-body text-lg mb-10">
+                    Nossa equipe está pronta para realizar uma avaliação detalhada e propor o melhor caminho regenerativo para o seu caso.
+                </p>
+<div class="inline-flex items-center p-2 bg-white rounded-full shadow-lg border border-outline-variant/10">
+<span class="px-6 py-3 text-primary font-bold font-label">Atendimento Particular &amp; Convênios</span>
+<button class="bg-secondary text-white px-8 py-3 rounded-full font-label font-bold uppercase tracking-widest hover:bg-primary transition-all">Agende sua consulta</button>
+</div>
+</div>
+</section>
+</main>
+<!-- Footer -->
+<footer class="bg-[#021541] dark:bg-[#010a1f] text-slate-400">
+<div class="grid grid-cols-1 md:grid-cols-4 gap-12 px-16 py-20 max-w-7xl mx-auto font-body text-sm tracking-wide">
+<div class="flex flex-col gap-6">
+<span class="text-3xl font-black text-white font-headline">RegenOrtho</span>
+<p class="opacity-80">Regenerando movimentos, transformando vidas com tecnologia e humanização.</p>
+<div class="flex gap-4">
+<span class="material-symbols-outlined text-cyan-500 cursor-pointer hover:text-white transition-colors">phone_in_talk</span>
+<span class="material-symbols-outlined text-cyan-500 cursor-pointer hover:text-white transition-colors">location_on</span>
+<span class="material-symbols-outlined text-cyan-500 cursor-pointer hover:text-white transition-colors">mail</span>
+</div>
+</div>
+<div class="flex flex-col gap-4">
+<h4 class="text-white font-headline text-lg mb-2">Clínica</h4>
+<a class="hover:text-cyan-400 transition-colors" href="#">A Clínica</a>
+<a class="hover:text-cyan-400 transition-colors" href="#">Dr. André</a>
+<a class="hover:text-cyan-400 transition-colors" href="#">Convênios</a>
+<a class="hover:text-cyan-400 transition-colors" href="#">Blog</a>
+</div>
+<div class="flex flex-col gap-4">
+<h4 class="text-white font-headline text-lg mb-2">Especialidades</h4>
+<a class="hover:text-cyan-400 transition-colors" href="#">Joelho</a>
+<a class="hover:text-cyan-400 transition-colors" href="#">Coluna</a>
+<a class="hover:text-cyan-400 transition-colors" href="#">Ombro</a>
+<a class="hover:text-cyan-400 transition-colors" href="#">Tratamentos</a>
+</div>
+<div class="flex flex-col gap-4">
+<h4 class="text-white font-headline text-lg mb-2">Legal</h4>
+<a class="hover:text-cyan-400 transition-colors" href="#">Privacidade</a>
+<a class="hover:text-cyan-400 transition-colors" href="#">Termos</a>
+<p class="mt-4 text-xs opacity-60">© 2024 RegenOrtho Clinical Atelier. All rights reserved.</p>
+</div>
+</div>
+</footer>
+</body></html>

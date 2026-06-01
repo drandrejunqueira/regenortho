@@ -7,7 +7,7 @@
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
-  --font-sans: var(--font-sans);
+  --font-sans: 'Plus Jakarta Sans', var(--font-sans);
   --font-mono: var(--font-mono);
   --color-ring: var(--ring);
   --color-input: var(--input);
@@ -29,7 +29,20 @@
   --radius-md: calc(var(--radius) * 0.75);
   --radius-lg: var(--radius);
   --radius-xl: calc(var(--radius) * 1.5);
-  /* Obsidian surface tokens */
+  --radius-2xl: calc(var(--radius) * 2);
+
+  --animate-aurora: aurora 60s linear infinite;
+
+  @keyframes aurora {
+    from {
+      background-position: 50% 50%, 50% 50%;
+    }
+    to {
+      background-position: 350% 50%, 350% 50%;
+    }
+  }
+
+  /* Surface tokens */
   --color-surface: var(--surface);
   --color-surface-low: var(--surface-low);
   --color-surface-card: var(--surface-card);
@@ -40,70 +53,88 @@
   --color-outline-variant: var(--outline-variant);
   --color-outline: var(--outline);
   /* Brand */
-  --color-teal: var(--teal);
-  --color-teal-container: var(--teal-container);
-  --color-on-teal: var(--on-teal);
+  --color-navy: var(--navy);
+  --color-navy-light: var(--navy-light);
+  --color-cyan: var(--cyan);
+  --color-cyan-container: var(--cyan-container);
+  --color-on-cyan: var(--on-cyan);
   --color-gold: var(--gold);
   --color-gold-container: var(--gold-container);
+  --color-slate: var(--slate);
   --color-tertiary: var(--tertiary);
   --color-tertiary-container: var(--tertiary-container);
 }
 
-/* Always dark — Obsidian system */
+/* Dashboard — Navy dark mode */
 :root {
   color-scheme: dark;
-  --background: #10141a;
-  --foreground: #dfe2eb;
-  --card: #1c2026;
-  --card-foreground: #dfe2eb;
-  --popover: #31353c;
-  --popover-foreground: #dfe2eb;
-  --primary: #61d8dd;
-  --primary-foreground: #003739;
-  --secondary: #e6c364;
-  --secondary-foreground: #003739;
-  --muted: #262a31;
-  --muted-foreground: #bec9c9;
-  --accent: #006e72;
-  --accent-foreground: #7df2f7;
-  --destructive: #ffb4ab;
-  --border: rgba(62,73,73,0.3);
-  --input: #31353c;
-  --ring: #61d8dd;
-  --radius: 0.875rem;
-  /* Surfaces */
-  --surface: #10141a;
-  --surface-low: #181c22;
-  --surface-card: #1c2026;
-  --surface-high: #262a31;
-  --surface-highest: #31353c;
-  --on-surface: #dfe2eb;
-  --on-surface-variant: #bec9c9;
-  --outline-variant: #3e4949;
-  --outline: #889393;
+
+  /* Base backgrounds — navy-tinted dark */
+  --background:          #0c1221;
+  --foreground:          #e2e8f0;
+  --card:                #131b2e;
+  --card-foreground:     #e2e8f0;
+  --popover:             #1e2d4a;
+  --popover-foreground:  #e2e8f0;
+
   /* Brand */
-  --teal: #61d8dd;
-  --teal-container: #006e72;
-  --on-teal: #003739;
-  --gold: #e6c364;
-  --gold-container: #785d00;
-  --tertiary: #d3bbff;
-  --tertiary-container: #744bbf;
+  --primary:             #00BCD4;
+  --primary-foreground:  #001820;
+  --secondary:           #e6c364;
+  --secondary-foreground:#1A2B56;
+
+  /* UI neutrals */
+  --muted:               #1a2640;
+  --muted-foreground:    #94A3B8;
+  --accent:              #0097a7;
+  --accent-foreground:   #b2ebf2;
+  --destructive:         #ffb4ab;
+
+  /* Borders + inputs */
+  --border:              rgba(0,188,212,0.15);
+  --input:               #1e2d4a;
+  --ring:                #00BCD4;
+  --radius:              0.875rem;
+
+  /* Surfaces */
+  --surface:             #0c1221;
+  --surface-low:         #101929;
+  --surface-card:        #131b2e;
+  --surface-high:        #1a2640;
+  --surface-highest:     #1e2d4a;
+  --on-surface:          #e2e8f0;
+  --on-surface-variant:  #94A3B8;
+  --outline-variant:     #1A2B56;
+  --outline:             #2a4070;
+
+  /* Brand tokens */
+  --navy:                #1A2B56;
+  --navy-light:          #2a4070;
+  --cyan:                #00BCD4;
+  --cyan-container:      #0097a7;
+  --on-cyan:             #001820;
+  --gold:                #e6c364;
+  --gold-container:      #785d00;
+  --slate:               #94A3B8;
+  --tertiary:            #d3bbff;
+  --tertiary-container:  #744bbf;
+
   /* Charts */
-  --chart-1: #61d8dd;
+  --chart-1: #00BCD4;
   --chart-2: #e6c364;
   --chart-3: #d3bbff;
-  --chart-4: #006e72;
+  --chart-4: #1A2B56;
   --chart-5: #ffb4ab;
+
   /* Sidebar */
-  --sidebar: #181c22;
-  --sidebar-foreground: #dfe2eb;
-  --sidebar-primary: #61d8dd;
-  --sidebar-primary-foreground: #003739;
-  --sidebar-accent: #1c2026;
-  --sidebar-accent-foreground: #61d8dd;
-  --sidebar-border: rgba(62,73,73,0.2);
-  --sidebar-ring: #61d8dd;
+  --sidebar:                    #0e1628;
+  --sidebar-foreground:         #e2e8f0;
+  --sidebar-primary:            #00BCD4;
+  --sidebar-primary-foreground: #001820;
+  --sidebar-accent:             #131b2e;
+  --sidebar-accent-foreground:  #00BCD4;
+  --sidebar-border:             rgba(0,188,212,0.12);
+  --sidebar-ring:               #00BCD4;
 }
 
 @layer base {
@@ -112,12 +143,15 @@
   }
   body {
     @apply bg-background text-foreground;
-    font-family: 'Plus Jakarta Sans', sans-serif;
-    background-color: #10141a;
-    color: #dfe2eb;
+    font-family: 'Plus Jakarta Sans', 'Inter', 'Manrope', sans-serif;
+    background-color: #0c1221;
+    color: #e2e8f0;
   }
   html {
-    font-family: 'Plus Jakarta Sans', sans-serif;
+    font-family: 'Plus Jakarta Sans', 'Inter', 'Manrope', sans-serif;
+  }
+  h1, h2.serif, h3.serif, .font-serif {
+    font-family: 'Noto Serif', serif;
   }
   /* Material Symbols */
   .material-symbols-outlined {
@@ -127,10 +161,633 @@
   }
   /* Technical/data font */
   .font-technical {
-    font-family: 'Space Mono', monospace;
+    font-family: 'Plus Jakarta Sans', 'Space Mono', monospace;
   }
   /* Custom scrollbar */
   ::-webkit-scrollbar { width: 4px; height: 4px; }
   ::-webkit-scrollbar-track { background: transparent; }
-  ::-webkit-scrollbar-thumb { background: #3e4949; border-radius: 10px; }
+  ::-webkit-scrollbar-thumb { background: rgba(2,21,65,0.15); border-radius: 10px; }
+  ::-webkit-scrollbar-thumb:hover { background: #00BCD4; }
+}
+
+/* ============================================================
+   SITE PÚBLICO — "Clinical Luminary" Design System
+   Inspired by Arton Design Guide — Light & Clean
+   Brand: Navy #021541 · Cyan #00BCE4 · White canvas
+   ============================================================ */
+
+/* ─── SITE SKIN — Light Canvas ─────────────────────────────── */
+.site-skin {
+  /* Surface stack — Tonal Carving */
+  --s-base:          #f5f6f8;
+  --s-surface:       #ffffff;
+  --s-surface-high:  #f0f2f5;
+  --s-border-ghost:  rgba(2, 21, 65, 0.06);
+
+  /* Brand */
+  --s-navy:          #021541;
+  --s-navy-mid:      #1A2B56;
+  --s-cyan:          #00BCE4;
+  --s-cyan-glow:     rgba(0, 188, 228, 0.12);
+  --s-cyan-subtle:   rgba(0, 188, 228, 0.07);
+
+  /* Text hierarchy */
+  --s-text:          #0d1117;
+  --s-text-mid:      #2d3748;
+  --s-text-muted:    #718096;
+  --s-text-faint:    rgba(13, 17, 23, 0.38);
+
+  color-scheme: light;
+}
+
+/* ─── TYPOGRAPHY SYSTEM ─────────────────────────────────────── */
+/* Display LG — Outfit Black (from Arton Guide) */
+.font-display {
+  font-family: 'Outfit', sans-serif;
+  font-weight: 800;
+  font-style: italic;
+  letter-spacing: -0.04em;
+}
+
+/* Headline MD — Outfit Bold */
+.font-headline-outfit {
+  font-family: 'Outfit', sans-serif;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+}
+
+/* Body — Inter (clean) */
+.font-body-site {
+  font-family: 'Inter', 'Manrope', sans-serif;
+}
+
+/* Label SM — Plus Jakarta Sans (uppercase tag) */
+.font-label-site {
+  font-family: 'Plus Jakarta Sans', sans-serif;
+  font-size: 0.6875rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+}
+
+/* ─── GLASS HUD (from Arton Guide — Header) ─────────────────── */
+.glass-hud {
+  background: rgba(255, 255, 255, 0.72);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border: 1px solid rgba(2, 21, 65, 0.08);
+}
+
+.glass-hud-dark {
+  background: rgba(2, 21, 65, 0.85);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border: 1px solid rgba(255, 255, 255, 0.07);
+}
+
+/* ─── CARD KINETIC (Arton Signature) ────────────────────────── */
+/* Yellow bar on top-left → adapted to Cyan for REGENORTHO brand */
+.card-kinetic {
+  position: relative;
+  overflow: hidden;
+  transition: transform 0.35s cubic-bezier(0.2, 0.8, 0.2, 1),
+              box-shadow 0.35s cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+
+.card-kinetic::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: 2px;
+  height: 20%;
+  background: var(--s-cyan, #00BCE4);
+  transition: height 0.4s cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+
+.card-kinetic:hover::before {
+  height: 50%;
+}
+
+.card-kinetic:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 20px 48px rgba(2, 21, 65, 0.10), 0 4px 12px rgba(0, 188, 228, 0.08);
+}
+
+/* ─── AURORA GLOW (Arton Footer / Section Depth) ────────────── */
+.site-aurora {
+  background: radial-gradient(circle at 50% 50%, rgba(0,188,228,0.13) 0%, transparent 70%);
+  filter: blur(80px);
+}
+
+.site-aurora-navy {
+  background: radial-gradient(circle at 50% 50%, rgba(2,21,65,0.20) 0%, transparent 70%);
+  filter: blur(100px);
+}
+
+/* ─── PATTERNS ─────────────────────────────────────────────── */
+.dot-pattern-light {
+  background-image: radial-gradient(circle, rgba(2, 21, 65, 0.055) 1px, transparent 1px);
+  background-size: 26px 26px;
+}
+
+.dot-pattern-bg {
+  background-image: radial-gradient(circle, rgba(0,188,228,0.08) 1.5px, transparent 1.5px);
+  background-size: 28px 28px;
+}
+
+.grid-pattern-light {
+  background-image:
+    linear-gradient(rgba(2, 21, 65, 0.04) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(2, 21, 65, 0.04) 1px, transparent 1px);
+  background-size: 40px 40px;
+}
+
+/* ─── HERO ELEMENTS ────────────────────────────────────────── */
+/* Watermark — text in background ultra-low opacity (from Arton Guide) */
+.site-watermark {
+  position: absolute;
+  font-family: 'Outfit', sans-serif;
+  font-weight: 900;
+  font-size: clamp(8rem, 22vw, 22rem);
+  letter-spacing: -0.04em;
+  opacity: 0.028;
+  color: var(--s-navy, #021541);
+  pointer-events: none;
+  user-select: none;
+  white-space: nowrap;
+  line-height: 1;
+}
+
+/* Barra lateral colorida (from Arton Guide — hero left accent) */
+.site-accent-bar {
+  position: fixed;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: 3px;
+  background: linear-gradient(
+    180deg,
+    transparent 0%,
+    var(--s-cyan, #00BCE4) 20%,
+    var(--s-navy, #021541) 80%,
+    transparent 100%
+  );
+  z-index: 40;
+  pointer-events: none;
+}
+
+/* Stroke-only headline word (from Arton Guide — text-stroke) */
+.text-stroke-navy {
+  -webkit-text-stroke: 2px var(--s-navy, #021541);
+  -webkit-text-fill-color: transparent;
+  color: transparent;
+}
+
+.text-stroke-cyan {
+  -webkit-text-stroke: 2px var(--s-cyan, #00BCE4);
+  -webkit-text-fill-color: transparent;
+  color: transparent;
+}
+
+/* ─── ACTIVE NAV DOT ────────────────────────────────────────── */
+/* Small dot below active link (from Arton Guide) */
+.nav-dot-active {
+  position: relative;
+}
+.nav-dot-active::after {
+  content: '';
+  position: absolute;
+  bottom: -6px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 4px;
+  height: 4px;
+  border-radius: 9999px;
+  background: var(--s-cyan, #00BCE4);
+}
+
+/* ─── BUTTONS ───────────────────────────────────────────────── */
+.btn-primary-site {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.875rem 2rem;
+  background: var(--s-navy, #021541);
+  color: #ffffff;
+  font-family: 'Plus Jakarta Sans', 'Manrope', sans-serif;
+  font-size: 0.6875rem;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  border-radius: 2px;
+  transition: all 0.3s cubic-bezier(0.2, 0.8, 0.2, 1);
+  box-shadow: 0 4px 20px rgba(2, 21, 65, 0.20);
+}
+.btn-primary-site:hover {
+  background: #1A2B56;
+  box-shadow: 0 8px 30px rgba(2, 21, 65, 0.28);
+  transform: translateY(-1px);
+}
+.btn-primary-site:active { transform: scale(0.97); }
+
+.btn-cyan-site {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.875rem 2rem;
+  background: var(--s-cyan, #00BCE4);
+  color: #021541;
+  font-family: 'Plus Jakarta Sans', 'Manrope', sans-serif;
+  font-size: 0.6875rem;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  border-radius: 2px;
+  transition: all 0.3s cubic-bezier(0.2, 0.8, 0.2, 1);
+  box-shadow: 0 4px 20px rgba(0, 188, 228, 0.28);
+}
+.btn-cyan-site:hover {
+  box-shadow: 0 8px 32px rgba(0, 188, 228, 0.38);
+  transform: translateY(-1px);
+  filter: brightness(1.05);
+}
+.btn-cyan-site:active { transform: scale(0.97); }
+
+.btn-ghost-site {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.875rem 2rem;
+  background: transparent;
+  color: var(--s-navy, #021541);
+  font-family: 'Plus Jakarta Sans', 'Manrope', sans-serif;
+  font-size: 0.6875rem;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  border-radius: 2px;
+  border: 1px solid rgba(2, 21, 65, 0.20);
+  transition: all 0.3s cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+.btn-ghost-site:hover {
+  background: rgba(2, 21, 65, 0.04);
+  border-color: rgba(2, 21, 65, 0.35);
+}
+
+/* ─── SECTIONS / SURFACES ────────────────────────────────────── */
+.section-base {
+  background: var(--s-base, #f5f6f8);
+}
+.section-surface {
+  background: var(--s-surface, #ffffff);
+}
+.section-navy {
+  background: var(--s-navy, #021541);
+}
+
+/* Hero light gradient */
+.hero-gradient-light {
+  background:
+    radial-gradient(ellipse at 65% 40%, rgba(0,188,228,0.10) 0%, transparent 55%),
+    radial-gradient(ellipse at 20% 80%, rgba(2,21,65,0.06) 0%, transparent 50%),
+    #f5f6f8;
+}
+
+/* ─── GHOST BORDER ────────────────────────────────────────────── */
+.ghostborder {
+  border: 1px solid var(--s-border-ghost, rgba(2,21,65,0.06));
+}
+.ghostborder-cyan {
+  border: 1px solid rgba(0, 188, 228, 0.18);
+}
+
+/* ─── GLOW EFFECTS ───────────────────────────────────────────── */
+.glow-cyan {
+  box-shadow: 0 0 25px rgba(0, 188, 228, 0.28);
+}
+.glow-cyan-strong {
+  box-shadow: 0 0 35px rgba(0, 188, 228, 0.40), inset 0 0 10px rgba(0, 188, 228, 0.08);
+}
+.glow-navy {
+  box-shadow: 0 8px 30px rgba(2, 21, 65, 0.18);
+}
+
+/* ─── TEXT UTILITIES ─────────────────────────────────────────── */
+.text-gradient-navy-cyan {
+  background: linear-gradient(135deg, #021541 0%, #00BCE4 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+.text-gradient-cyan {
+  background: linear-gradient(135deg, #0097a7 0%, #00BCE4 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+/* ─── STAT COUNTER DISPLAY ──────────────────────────────────── */
+.stat-value {
+  font-family: 'Outfit', sans-serif;
+  font-weight: 800;
+  letter-spacing: -0.03em;
+}
+
+/* ─── TREATMENT CARD ─────────────────────────────────────────── */
+.treatment-card {
+  background: var(--s-surface, #ffffff);
+  border: 1px solid var(--s-border-ghost, rgba(2,21,65,0.06));
+  transition: all 0.35s cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+.treatment-card:hover {
+  border-color: rgba(0, 188, 228, 0.25);
+  box-shadow: 0 12px 40px rgba(2, 21, 65, 0.08);
+}
+
+/* ─── SPECIALTY PILL ─────────────────────────────────────────── */
+.specialty-pill {
+  background: #ffffff;
+  border: 1px solid rgba(2, 21, 65, 0.08);
+  transition: all 0.3s cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+.specialty-pill:hover {
+  background: #021541;
+  border-color: #021541;
+  transform: translateY(-2px);
+  box-shadow: 0 8px 24px rgba(2, 21, 65, 0.20);
+}
+.specialty-pill:hover .pill-label {
+  color: #ffffff;
+}
+.specialty-pill:hover .pill-emoji {
+  filter: grayscale(0);
+  transform: scale(1.2);
+}
+.pill-emoji {
+  filter: grayscale(0.3);
+  transition: all 0.3s ease;
+}
+
+/* ─── FOOTER AURORA REVEAL ───────────────────────────────────── */
+.footer-kinetic {
+  background: var(--s-navy, #021541);
+  position: relative;
+  overflow: hidden;
+}
+.footer-kinetic::before {
+  content: '';
+  position: absolute;
+  top: -60%;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 70%;
+  height: 300px;
+  background: radial-gradient(circle at 50% 0%, rgba(0,188,228,0.18) 0%, transparent 70%);
+  filter: blur(60px);
+  pointer-events: none;
+}
+
+/* ─── TESTIMONIAL CARD ───────────────────────────────────────── */
+.testimonial-card {
+  background: #ffffff;
+  border: 1px solid rgba(2, 21, 65, 0.06);
+  transition: all 0.35s cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+.testimonial-card:hover {
+  box-shadow: 0 16px 48px rgba(2, 21, 65, 0.08);
+  transform: translateY(-4px);
+}
+.testimonial-card.featured {
+  border-color: rgba(0, 188, 228, 0.25);
+  box-shadow: 0 8px 32px rgba(0, 188, 228, 0.10);
+}
+
+/* ─── BADGE / TAG ────────────────────────────────────────────── */
+.badge-cyan {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.375rem;
+  padding: 0.25rem 0.75rem;
+  background: rgba(0, 188, 228, 0.08);
+  color: #006876;
+  border-radius: 9999px;
+  font-family: 'Plus Jakarta Sans', sans-serif;
+  font-size: 0.6875rem;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+
+.badge-navy {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.375rem;
+  padding: 0.25rem 0.75rem;
+  background: rgba(2, 21, 65, 0.06);
+  color: #021541;
+  border-radius: 9999px;
+  font-family: 'Plus Jakarta Sans', sans-serif;
+  font-size: 0.6875rem;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+
+/* ─── SITE TRANSITION ────────────────────────────────────────── */
+.site-transition {
+  transition: all 0.35s cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+
+/* ─── WHATSAPP FAB ───────────────────────────────────────────── */
+.whatsapp-fab {
+  position: fixed;
+  bottom: 2rem;
+  right: 2rem;
+  z-index: 60;
+  width: 3.5rem;
+  height: 3.5rem;
+  background: #25D366;
+  border-radius: 9999px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 8px 24px rgba(37, 211, 102, 0.35);
+  transition: transform 0.25s cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+.whatsapp-fab:hover { transform: scale(1.1); }
+.whatsapp-fab:active { transform: scale(0.96); }
+
+/* ─── CUSTOM SELECTION ───────────────────────────────────────── */
+.site-skin ::selection {
+  background: rgba(0, 188, 228, 0.20);
+  color: #021541;
+}
+
+/* ─── ANIMATIONS ─────────────────────────────────────────────── */
+@keyframes gear-spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+.animate-gear-slow {
+  animation: gear-spin 12s linear infinite;
+}
+
+@keyframes pulse-ring {
+  0%   { box-shadow: 0 0 0 0 rgba(0, 188, 228, 0.35); }
+  70%  { box-shadow: 0 0 0 12px rgba(0, 188, 228, 0); }
+  100% { box-shadow: 0 0 0 0 rgba(0, 188, 228, 0); }
+}
+.animate-pulse-ring {
+  animation: pulse-ring 2.4s ease-out infinite;
+}
+
+@keyframes float-gentle {
+  0%, 100% { transform: translateY(0); }
+  50%       { transform: translateY(-8px); }
+}
+.animate-float-gentle {
+  animation: float-gentle 3.5s ease-in-out infinite;
+}
+
+@keyframes shimmer {
+  0%   { transform: translateX(-100%) skewX(-12deg); }
+  100% { transform: translateX(200%) skewX(-12deg); }
+}
+.shimmer-effect {
+  position: relative;
+  overflow: hidden;
+}
+.shimmer-effect::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    90deg,
+    transparent 0%,
+    rgba(255,255,255,0.6) 50%,
+    transparent 100%
+  );
+  animation: shimmer 2.5s ease-in-out infinite;
+  pointer-events: none;
+}
+
+/* ─── PREMIUM GLASS CARD ────────────────────────────────────── */
+.premium-glass {
+  background: rgba(255, 255, 255, 0.72);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid rgba(2, 21, 65, 0.08);
+  box-shadow: 0 4px 24px rgba(2, 21, 65, 0.06);
+}
+
+/* ─── CREDENTIAL LIST ITEM ──────────────────────────────────── */
+.credential-item {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.75rem;
+  padding: 0.875rem 0;
+  border-bottom: 1px solid rgba(2, 21, 65, 0.06);
+}
+.credential-item:last-child {
+  border-bottom: none;
+}
+
+/* ─── CTA BLOCK ─────────────────────────────────────────────── */
+.cta-block {
+  background: var(--s-navy, #021541);
+  position: relative;
+  overflow: hidden;
+}
+.cta-block::before {
+  content: '';
+  position: absolute;
+  bottom: -40%;
+  right: -10%;
+  width: 500px;
+  height: 500px;
+  background: radial-gradient(circle, rgba(0,188,228,0.15) 0%, transparent 65%);
+  filter: blur(60px);
+  pointer-events: none;
+}
+
+/* ─── LENIS SMOOTH SCROLL ────────────────────────────────────── */
+html.lenis,
+html.lenis body {
+  height: auto;
+}
+.lenis.lenis-smooth {
+  scroll-behavior: auto !important;
+}
+.lenis.lenis-smooth [data-lenis-prevent] {
+  overscroll-behavior: contain;
+}
+.lenis.lenis-stopped {
+  overflow: hidden;
+}
+
+/* ─── 3D SCROLL UTILITIES ────────────────────────────────────── */
+/* Preserve-3d wrapper — envolve seções com efeito de profundidade */
+.perspective-wrap {
+  perspective: 1200px;
+  perspective-origin: 50% 40%;
+}
+
+/* Card 3D hover tilt — nos cards de tratamento e depoimentos */
+.card-3d-hover {
+  transform-style: preserve-3d;
+  transition: transform 0.45s cubic-bezier(0.2, 0.8, 0.2, 1),
+              box-shadow 0.45s cubic-bezier(0.2, 0.8, 0.2, 1);
+  will-change: transform;
+}
+.card-3d-hover:hover {
+  transform: perspective(900px) rotateX(-4deg) rotateY(4deg) translateZ(12px);
+  box-shadow: 0 24px 56px rgba(2, 21, 65, 0.12), 0 4px 16px rgba(0, 188, 228, 0.10);
+}
+
+/* Badge flutuante 3D — "10+ anos" etc */
+.badge-3d-float {
+  transform-style: preserve-3d;
+  transform: perspective(600px) rotateY(-8deg) rotateX(6deg);
+  box-shadow: 8px 8px 30px rgba(0, 0, 0, 0.18);
+  transition: transform 0.4s ease;
+}
+.badge-3d-float:hover {
+  transform: perspective(600px) rotateY(0deg) rotateX(0deg) translateZ(8px);
+}
+
+/* Stat card 3D — números de destaque */
+.stat-card-3d {
+  transition: transform 0.35s cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+.stat-card-3d:hover {
+  transform: perspective(800px) translateZ(16px) scale(1.03);
+}
+
+/* GSAP initial hidden state — evita flash antes da animação */
+.gsap-hero,
+.gsap-reveal-3d,
+.gsap-reveal-left,
+.gsap-reveal-right,
+.gsap-stagger-child,
+.gsap-scale-in {
+  opacity: 0;
+}
+
+/* ─── MOBILE REDUCED MOTION ──────────────────────────────────── */
+@media (prefers-reduced-motion: reduce) {
+  .card-3d-hover:hover,
+  .badge-3d-float,
+  .stat-card-3d:hover {
+    transform: none;
+  }
+  .gsap-hero,
+  .gsap-reveal-3d,
+  .gsap-reveal-left,
+  .gsap-reveal-right,
+  .gsap-stagger-child,
+  .gsap-scale-in {
+    opacity: 1;
+  }
 }
