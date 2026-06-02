@@ -2,6 +2,7 @@
 
 import { useRef, useState, useEffect } from 'react'
 import { toast } from 'sonner'
+import { processImageToDataUrl } from '@/lib/upload'
 
 type UploadType = 'logo' | 'icon' | 'header' | 'og'
 
@@ -31,6 +32,14 @@ const LABELS: Record<UploadType, string> = {
   og:     '4 MB · PNG, JPG, WEBP (1200×630px)',
 }
 
+// Limite de tamanho do arquivo bruto (antes da conversão para WebP).
+const MAX_BYTES: Record<UploadType, number> = {
+  logo:   2 * 1024 * 1024,
+  icon:   1 * 1024 * 1024,
+  header: 4 * 1024 * 1024,
+  og:     4 * 1024 * 1024,
+}
+
 export default function ImageUploader({
   type,
   label,
@@ -56,6 +65,14 @@ export default function ImageUploader({
 
   async function handleFile(file: File) {
     if (!file) return
+
+    // Valida tamanho do arquivo bruto
+    if (file.size > MAX_BYTES[type]) {
+      const mb = (MAX_BYTES[type] / 1024 / 1024).toFixed(0)
+      toast.error(`Arquivo muito grande. Limite: ${mb}MB`)
+      return
+    }
+
     setUploading(true)
 
     // Preview local imediato
@@ -64,23 +81,14 @@ export default function ImageUploader({
     reader.readAsDataURL(file)
 
     try {
-      const fd = new FormData()
-      fd.append('file', file)
-      fd.append('type', type)
-
-      const res = await fetch('/api/upload', { method: 'POST', body: fd })
-      const json = await res.json()
-
-      if (!res.ok) {
-        toast.error(json.error ?? 'Erro no upload')
-        setPreview(currentUrl ?? null)
-        return
-      }
-
-      onUploaded(json.url)
+      // Processamento 100% no cliente: raster → WebP, SVG/ICO direto.
+      // Resultado é um data URL base64 salvo direto no banco (sem /api/upload).
+      const dataUrl = await processImageToDataUrl(file)
+      setPreview(dataUrl)
+      onUploaded(dataUrl)
       toast.success(`${label} enviado com sucesso!`)
     } catch {
-      toast.error('Erro de conexão no upload')
+      toast.error('Falha ao processar a imagem')
       setPreview(currentUrl ?? null)
     } finally {
       setUploading(false)
