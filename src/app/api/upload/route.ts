@@ -44,19 +44,29 @@ export async function POST(req: NextRequest) {
 
     // Garante que o diretório existe
     const uploadDir = join(process.cwd(), 'public', 'uploads')
-    if (!existsSync(uploadDir)) {
-      await mkdir(uploadDir, { recursive: true })
+    try {
+      if (!existsSync(uploadDir)) {
+        await mkdir(uploadDir, { recursive: true })
+      }
+
+      // Nome único: tipo + timestamp + ext
+      const fileName = `${type}-${Date.now()}.${ext}`
+      const filePath = join(uploadDir, fileName)
+
+      const bytes = await file.arrayBuffer()
+      await writeFile(filePath, Buffer.from(bytes))
+
+      const url = `/uploads/${fileName}`
+      return NextResponse.json({ url }, { status: 200 })
+    } catch (writeErr) {
+      console.warn('[upload] Falha na gravação em disco, usando fallback Base64:', writeErr)
+      const bytes = await file.arrayBuffer()
+      const buffer = Buffer.from(bytes)
+      const base64 = buffer.toString('base64')
+      const mimeType = file.type || 'image/png'
+      const url = `data:${mimeType};base64,${base64}`
+      return NextResponse.json({ url }, { status: 200 })
     }
-
-    // Nome único: tipo + timestamp + ext
-    const fileName = `${type}-${Date.now()}.${ext}`
-    const filePath = join(uploadDir, fileName)
-
-    const bytes = await file.arrayBuffer()
-    await writeFile(filePath, Buffer.from(bytes))
-
-    const url = `/uploads/${fileName}`
-    return NextResponse.json({ url }, { status: 200 })
   } catch (err) {
     console.error('[upload]', err)
     return NextResponse.json({ error: 'Erro interno no upload' }, { status: 500 })

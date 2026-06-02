@@ -22,11 +22,23 @@ export default function DynamicFavicon() {
     link.href = clinic.headerImageUrl
     link.setAttribute('data-dynamic-favicon', 'true')
 
-    // Tenta inferir o type pelo nome do arquivo
-    const ext = clinic.headerImageUrl.split('.').pop()?.toLowerCase()
-    if (ext === 'svg') link.type = 'image/svg+xml'
-    else if (ext === 'ico') link.type = 'image/x-icon'
-    else if (ext === 'png') link.type = 'image/png'
+    // Tenta inferir o type pelo nome do arquivo ou data URI
+    let type = ''
+    if (clinic.headerImageUrl.startsWith('data:')) {
+      const match = clinic.headerImageUrl.match(/^data:([^;]+);base64/)
+      if (match) {
+        type = match[1]
+      }
+    } else {
+      const ext = clinic.headerImageUrl.split('.').pop()?.toLowerCase()
+      if (ext === 'svg') type = 'image/svg+xml'
+      else if (ext === 'ico') type = 'image/x-icon'
+      else if (ext === 'png') type = 'image/png'
+    }
+
+    if (type) {
+      link.type = type
+    }
 
     document.head.appendChild(link)
   }, [clinic.headerImageUrl])
