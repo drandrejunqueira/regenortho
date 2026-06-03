@@ -112,9 +112,7 @@ function PortalContent() {
           </a>
           
           <div className="flex items-center gap-4 text-[9px] uppercase tracking-[0.3em] text-white/20">
-             <span>SJC</span>
-             <div className="w-1 h-1 rounded-full bg-white/20" />
-             <span>São Paulo</span>
+             <span>São José dos Campos</span>
           </div>
         </div>
       </div>

@@ -9,7 +9,7 @@ import { AnimatedCell } from '@/components/site/AnimatedCell'
 export const metadata: Metadata = {
   title: 'Sobre o Dr. André Elias Junqueira — Ortopedista em SJC',
   description:
-    'Dr. André Elias Junqueira — CRM SP 150430. Ortopedista e traumatologista especialista em ombro, cotovelo e dor. Formado pela UNIFESP, com especialização em medicina regenerativa e procedimentos minimamente invasivos. Atende em São José dos Campos e São Paulo.',
+    'Dr. André Elias Junqueira — CRM SP 150430. Ortopedista e traumatologista especialista em ombro, cotovelo e dor. Formado pela UNIFESP, com especialização em medicina regenerativa e procedimentos minimamente invasivos. Atende em São José dos Campos.',
 }
 
 const TECHS = [
@@ -117,7 +117,7 @@ export default function AClinicaPage() {
                 { value: 'CRM SP', sub: '150430' },
                 { value: 'UNIFESP', sub: 'Formação' },
                 { value: 'USP', sub: 'Especialização' },
-                { value: 'SJC & SP', sub: 'Unidades' },
+                { value: 'SJC', sub: 'Unidade' },
               ].map((s) => (
                 <div
                   key={s.sub}
@@ -488,44 +488,45 @@ export default function AClinicaPage() {
               className="text-5xl text-white font-bold"
               style={{ fontFamily: 'Noto Serif, serif', letterSpacing: '-0.02em' }}
             >
-              Nossas Unidades
+              Nossa Unidade
             </h2>
             <div className="h-0.5 w-16 bg-[#00BCE4] mx-auto mt-5 gsap-line-draw" />
             <p className="text-white/40 font-light max-w-xl mx-auto mt-4">
-              Estrategicamente localizadas para oferecer conveniência e excelência técnica.
+              Localizada estrategicamente em São José dos Campos para oferecer conveniência e excelência técnica.
             </p>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-8 perspective-wrap gsap-stagger-parent">
+          <div className="max-w-2xl mx-auto">
             {[
               {
                 city: 'São José dos Campos',
                 area: 'Jardim Aquarius',
                 addr: 'Rua Armando D\'Oliveira Cobra, 50\nSala 1106 · CEP 12246-002',
               },
-              {
-                city: 'São Paulo',
-                area: 'Itaim Bibi',
-                addr: 'Rua Joaquim Floriano, 466\nMedical Center Itaim',
-              },
             ].map((u) => (
               <div
                 key={u.city}
-                className="group cursor-pointer rounded-2xl overflow-hidden gsap-stagger-child"
+                className="group cursor-pointer rounded-2xl overflow-hidden"
                 style={{ border: '1px solid rgba(255,255,255,0.06)' }}
               >
                 <div
                   className="relative overflow-hidden aspect-video flex items-center justify-center"
-                  style={{ background: 'rgba(255,255,255,0.03)' }}
                 >
+                  <Image
+                    src="/image/regen.webp"
+                    alt="Clínica São José dos Campos"
+                    fill
+                    className="object-cover group-hover:scale-105 site-transition"
+                  />
+                  <div className="absolute inset-0 bg-[#021541]/50" />
                   <span
-                    className="material-symbols-outlined text-[#00BCE4] group-hover:scale-110 site-transition gsap-float"
-                    style={{ fontSize: '80px', opacity: 0.4 }}
+                    className="relative z-10 material-symbols-outlined text-[#00BCE4] group-hover:scale-110 site-transition gsap-float"
+                    style={{ fontSize: '80px', opacity: 0.8 }}
                   >
                     location_city
                   </span>
                 </div>
-                <div className="flex justify-between items-start p-8">
+                <div className="flex justify-between items-start p-8 bg-[#021541]/40">
                   <div>
                     <h3
                       className="text-3xl font-bold mb-2"

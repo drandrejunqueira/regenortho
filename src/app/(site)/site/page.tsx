@@ -12,7 +12,7 @@ import InteractiveWhatsAppFab from '@/components/site/InteractiveWhatsAppFab'
 export const metadata: Metadata = {
   title: 'REGENORTHO — Ortopedia Regenerativa e Tratamento da Dor',
   description:
-    'Tecnologia de ponta em medicina regenerativa para restaurar sua biologia e eliminar a dor sem cirurgias invasivas. Dr. André Elias Junqueira — SJC e São Paulo.',
+    'Tecnologia de ponta em medicina regenerativa para restaurar sua biologia e eliminar a dor sem cirurgias invasivas. Dr. André Elias Junqueira — São José dos Campos.',
 }
 
 const TREATMENTS_CARDS = [
@@ -76,7 +76,7 @@ const CREDENTIALS = [
 const STATS = [
   { value: '500+', label: 'Pacientes Atendidos' },
   { value: '5.0★', label: 'Avaliação Google' },
-  { value: '2', label: 'Unidades · SJC & SP' },
+  { value: 'SJC', label: 'Jardim Aquarius' },
   { value: '10+', label: 'Anos em Ortopedia' },
 ]
 
@@ -595,7 +595,7 @@ export default function HomePage() {
             style={{ fontFamily: 'Manrope, sans-serif' }}
           >
             Agende sua consulta e conheça as possibilidades da ortopedia de nova
-            geração em São José dos Campos ou São Paulo.
+            geração em São José dos Campos.
           </p>
           <div className="flex flex-wrap gap-4 justify-center perspective-wrap gsap-stagger-parent">
             <Link
@@ -603,17 +603,8 @@ export default function HomePage() {
               id="cta-sjc"
               className="btn-cyan-site gsap-stagger-child"
             >
-              <span className="material-symbols-outlined" style={{ fontSize: '16px' }}>location_on</span>
-              Unidade SJC
-            </Link>
-            <Link
-              href="/site/agendar"
-              id="cta-sp"
-              className="gsap-stagger-child inline-flex items-center gap-2 px-8 py-3.5 text-white text-[11px] font-bold uppercase tracking-widest rounded-sm site-transition hover:bg-white/8"
-              style={{ border: '1px solid rgba(255,255,255,0.18)', borderRadius: '2px' }}
-            >
-              <span className="material-symbols-outlined" style={{ fontSize: '16px' }}>location_on</span>
-              Unidade Itaim (SP)
+              <span className="material-symbols-outlined" style={{ fontSize: '16px' }}>calendar_month</span>
+              Agendar Avaliação
             </Link>
           </div>
         </div>

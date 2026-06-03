@@ -8,7 +8,7 @@ export const metadata: Metadata = {
     default: 'REGENORTHO — Ortopedia Regenerativa e Tratamento da Dor',
     template: '%s | REGENORTHO',
   },
-  description: 'Referência em medicina regenerativa intervencionista. Tratamentos avançados com PRP, BMAC, Ácido Hialurônico e Proloterapia em São José dos Campos e São Paulo.',
+  description: 'Referência em medicina regenerativa intervencionista. Tratamentos avançados com PRP, BMAC, Ácido Hialurônico e Proloterapia em São José dos Campos.',
   keywords: ['ortopedia', 'medicina regenerativa', 'PRP', 'BMAC', 'ácido hialurônico', 'proloterapia', 'Dr. André Junqueira', 'São José dos Campos', 'tratamento da dor'],
   openGraph: {
     type: 'website',

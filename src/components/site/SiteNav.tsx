@@ -66,7 +66,7 @@ export default function SiteNav() {
                     className="text-[8.5px] font-semibold uppercase tracking-[0.12em] text-[#00BCE4]"
                     style={{ fontFamily: 'Plus Jakarta Sans, Manrope, sans-serif' }}
                   >
-                    Ortopedia Regenerativa · SJC & SP
+                    Ortopedia Regenerativa · SJC
                   </span>
                 </div>
               </>

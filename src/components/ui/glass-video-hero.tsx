@@ -26,19 +26,17 @@ const HeroSection = () => {
         {fullBleed ? <Minimize2 size={16} /> : <Maximize2 size={16} />}
       </button>
 
-      {/* Video Background */}
-      <video
-        autoPlay
-        loop
-        muted
-        playsInline
+      {/* Background Image */}
+      <Image
+        src="/image/regen.webp"
+        alt="REGENORTHO Clinic Background"
+        fill
         className="absolute inset-0 w-full h-full object-cover z-0"
-      >
-        <source src={VIDEO_URL} type="video/mp4" />
-      </video>
+        priority
+      />
 
       {/* Overlay for readability */}
-      <div className="absolute inset-0 bg-black/30 z-[1]" />
+      <div className="absolute inset-0 bg-[#021541]/75 z-[1]" />
 
       {/* Background Image Layer (15% Opacity) */}
       <div className="absolute top-32 bottom-0 left-0 right-0 z-[2] opacity-15 pointer-events-none">
@@ -84,7 +82,7 @@ const HeroSection = () => {
           className="font-sans font-light text-lg lg:text-xl text-white/70 mt-6 max-w-[700px] leading-relaxed"
           style={{ fontFamily: 'Plus Jakarta Sans, sans-serif' }}
         >
-          Tecnologia de ponta para eliminar a dor e restaurar sua qualidade de vida sem cirurgias invasivas. Dr. André Elias Junqueira — SJC e São Paulo.
+          Tecnologia de ponta para eliminar a dor e restaurar sua qualidade de vida sem cirurgias invasivas. Dr. André Elias Junqueira — São José dos Campos.
         </p>
 
         {/* CTA Buttons */}
@@ -108,7 +106,7 @@ const HeroSection = () => {
         {/* Trust badge */}
         <div className="mt-16 flex items-center gap-4 text-white/40 uppercase tracking-[0.3em] text-[10px] font-bold">
             <div className="h-px w-8 bg-white/20" />
-            <span>SJC &amp; São Paulo</span>
+            <span>São José dos Campos</span>
             <div className="h-px w-8 bg-white/20" />
         </div>
       </div>

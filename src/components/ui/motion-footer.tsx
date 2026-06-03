@@ -215,7 +215,7 @@ const MarqueeItem = () => (
     <span>Tratamento da Dor</span> <span className="text-secondary/60">✦</span>
     <span>Bio-Inteligência</span> <span className="text-primary/60">✦</span>
     <span>Tecnologia de Ponta</span> <span className="text-secondary/60">✦</span>
-    <span>SJC & São Paulo</span> <span className="text-primary/60">✦</span>
+    <span>São José dos Campos</span> <span className="text-primary/60">✦</span>
   </div>
 );
 
@@ -320,11 +320,7 @@ export function CinematicFooter() {
               {/* App Store Links (Primary) */}
               <div className="flex flex-wrap justify-center gap-4 w-full">
                 <MagneticButton as="a" href="https://wa.me/5512981767896" target="_blank" className="footer-glass-pill px-8 py-4 rounded-full text-foreground font-bold text-sm md:text-base flex items-center gap-3 group">
-                   Agendar SJC
-                </MagneticButton>
-                
-                <MagneticButton as="a" href="https://wa.me/5512981767896" target="_blank" className="footer-glass-pill px-8 py-4 rounded-full text-foreground font-bold text-sm md:text-base flex items-center gap-3 group">
-                   Agendar Itaim (SP)
+                   Agendar Consulta
                 </MagneticButton>
               </div>
 

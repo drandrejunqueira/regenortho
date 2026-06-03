@@ -18,13 +18,12 @@ const PROCEDURES = [
 
 const UNIDADES = [
   { id: 'sjc', label: 'São José dos Campos', sub: 'Jardim Aquarius · Sala 1106' },
-  { id: 'sp',  label: 'São Paulo',           sub: 'Itaim Bibi · Medical Center' },
 ]
 
 export default function AgendarPage() {
   const [form, setForm] = useState({
     name: '', phone: '', email: '',
-    procedure: '', unidade: '', message: '',
+    procedure: '', unidade: 'sjc', message: '',
   })
   const [saving, setSaving] = useState(false)
   const [error, setError]   = useState('')
@@ -290,7 +289,7 @@ export default function AgendarPage() {
                   >
                     Unidade de preferência
                   </label>
-                  <div className="grid grid-cols-2 gap-2">
+                  <div className="grid grid-cols-1 gap-2">
                     {UNIDADES.map(u => (
                       <button
                         key={u.id}
