@@ -35,8 +35,19 @@ const HeroSection = () => {
         priority
       />
 
+      {/* Subtle Video Movement Layer */}
+      <video
+        autoPlay
+        loop
+        muted
+        playsInline
+        className="absolute inset-0 w-full h-full object-cover z-[1] opacity-30 pointer-events-none"
+      >
+        <source src={VIDEO_URL} type="video/mp4" />
+      </video>
+
       {/* Overlay for readability */}
-      <div className="absolute inset-0 bg-[#021541]/75 z-[1]" />
+      <div className="absolute inset-0 bg-[#021541]/75 z-[2]" />
 
 
       {/* Hero Content */}
