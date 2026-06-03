@@ -368,7 +368,7 @@ export default function DynamicLP() {
           <div className="hidden sm:flex items-center gap-6">
             <span className="text-xs font-semibold text-[#718096] flex items-center gap-1.5">
               <span className="material-symbols-outlined text-[#00BCE4] text-base">verified</span>
-              CRM-SP: 172.932 | RQE: 89.243
+              CRM-SP: 150.430 | RQE: 62.485
             </span>
             <a
               href={`https://wa.me/5512981767896?text=Ol%C3%A1%2C+vi+a+p%C3%A1gina+sobre+${encodeURIComponent(data.title)}+e+gostaria+de+saber+mais.`}
@@ -614,7 +614,7 @@ export default function DynamicLP() {
               Médico Ortopedista e Traumatologista com mais de 10 anos de experiência clínica. Especialista pela Associação Médica Brasileira e membro da Sociedade Brasileira de Ortopedia e Traumatologia (SBOT). Formação sólida com rigor acadêmico pela UNIFESP e USP, focado em reabilitação de dor articular e infiltrações regenerativas sob guias de precisão por imagem.
             </p>
             <div className="flex flex-wrap gap-2 pt-2">
-              {['CRM-SP 172.932', 'RQE 89.243', 'Membro SBOT', 'Ortopedia Intervencionista'].map(chip => (
+              {['CRM-SP 150.430', 'RQE 62.485', 'Membro SBOT', 'Ortopedia Intervencionista'].map(chip => (
                 <span
                   key={chip}
                   className="px-3.5 py-1 text-[10px] font-bold text-[#021541] bg-[rgba(2,21,65,0.04)] rounded-full border border-[rgba(2,21,65,0.08)] uppercase tracking-wider"
@@ -678,7 +678,7 @@ export default function DynamicLP() {
           </p>
           <div className="h-px bg-white/08 w-24 mx-auto my-4" />
           <p className="text-[10px]">
-            © {new Date().getFullYear()} REGENORTHO. Todos os direitos reservados. Responsabilidade Técnica: Dr. André Elias Junqueira CRM-SP 172.932 | RQE 89.243
+            © {new Date().getFullYear()} REGENORTHO. Todos os direitos reservados. Responsabilidade Técnica: Dr. André Elias Junqueira CRM-SP 150.430 | RQE 62.485
           </p>
         </div>
       </footer>

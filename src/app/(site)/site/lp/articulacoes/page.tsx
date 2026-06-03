@@ -98,7 +98,7 @@ export default function ArticulacoesLP() {
           <div className="hidden sm:flex items-center gap-6">
             <span className="text-xs font-semibold text-[#718096] flex items-center gap-1.5">
               <span className="material-symbols-outlined text-[#00BCE4] text-base">verified</span>
-              CRM-SP: 172.932 | RQE: 89.243
+              CRM-SP: 150.430 | RQE: 62.485
             </span>
             <a 
               href="https://wa.me/5512981767896?text=Ol%C3%A1%2C+vi+a+p%C3%A1gina+sobre+regenera%C3%A7%C3%A3o+articular+e+gostaria+de+saber+mais."
@@ -359,7 +359,7 @@ export default function ArticulacoesLP() {
               />
               <div className="absolute bottom-4 left-4 right-4 bg-[#021541] px-4 py-2 rounded-xl text-center border border-white/10">
                 <span className="text-[#00BCE4] text-[10px] font-black uppercase tracking-widest">DR. ANDRÉ JUNQUEIRA</span>
-                <span className="text-[8px] text-white/50 block font-bold uppercase mt-0.5">CRM-SP 172.932 | RQE 89.243</span>
+                <span className="text-[8px] text-white/50 block font-bold uppercase mt-0.5">CRM-SP 150.430 | RQE 62.485</span>
               </div>
             </div>
           </div>
@@ -438,7 +438,7 @@ export default function ArticulacoesLP() {
             </span>
           </div>
           <p className="max-w-2xl mx-auto text-[10px] leading-relaxed">
-            AVISO LEGAL: Os conteúdos desta página são informativos e baseados na literatura médica de ortopedia e medicina regenerativa. Consultas clínicas individuais são fundamentais para diagnosticar e prescrever qualquer protocolo terapêutico. Dr. André Elias Junqueira | CRM-SP 172.932 | RQE 89.243.
+            AVISO LEGAL: Os conteúdos desta página são informativos e baseados na literatura médica de ortopedia e medicina regenerativa. Consultas clínicas individuais são fundamentais para diagnosticar e prescrever qualquer protocolo terapêutico. Dr. André Elias Junqueira | CRM-SP 150.430 | RQE 62.485.
           </p>
           <div className="h-px bg-white/08 max-w-xs mx-auto" />
           <p className="text-[9px]">
