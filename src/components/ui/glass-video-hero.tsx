@@ -38,16 +38,6 @@ const HeroSection = () => {
       {/* Overlay for readability */}
       <div className="absolute inset-0 bg-[#021541]/75 z-[1]" />
 
-      {/* Background Image Layer (15% Opacity) */}
-      <div className="absolute top-32 bottom-0 left-0 right-0 z-[2] opacity-15 pointer-events-none">
-        <Image
-          src="/image/drandre-alias.png"
-          alt="Dr. André Elias Junqueira Background"
-          fill
-          className="object-contain object-bottom"
-          priority
-        />
-      </div>
 
       {/* Hero Content */}
       <div className="relative z-10 flex flex-col items-center text-center mt-32 px-6">
