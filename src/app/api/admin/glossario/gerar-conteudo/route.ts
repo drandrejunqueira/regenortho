@@ -3,6 +3,7 @@ import { auth } from '@/lib/auth/config'
 import { getConfig } from '@/lib/db/queries/configuracoes'
 import { getTermoById, updateTermo } from '@/lib/db/queries/glossario'
 import { notificarBuscadores } from '@/lib/seo/notificar'
+import { revalidatePath } from 'next/cache'
 
 const PROVIDER_BASES: Record<string, string> = {
   openai:       'https://api.openai.com/v1',
@@ -177,6 +178,7 @@ Retorne APENAS um objeto JSON válido (sem formatação markdown, sem comentári
     // Notifica buscadores (Google sitemap + IndexNow) — não bloqueia em caso de falha
     const slug = updated?.slug ?? termo.slug
     if (slug) {
+      revalidatePath('/sitemap.xml')
       await notificarBuscadores([`/site/glossario/${slug}`])
     }
 

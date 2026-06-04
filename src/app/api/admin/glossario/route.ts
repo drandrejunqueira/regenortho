@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { auth } from '@/lib/auth/config'
 import { getTermosAdmin, deleteTermo, createTermos, updateTermo } from '@/lib/db/queries/glossario'
 import { slugify } from '@/lib/utils'
+import { revalidatePath } from 'next/cache'
 
 export async function GET(req: NextRequest) {
   const session = await auth()
@@ -72,6 +73,7 @@ export async function PUT(req: NextRequest) {
     }
 
     const updated = await updateTermo(id, updateData)
+    revalidatePath('/sitemap.xml')
     return NextResponse.json(updated)
   } catch (error) {
     console.error('[glossario-admin-update] Error:', error)
@@ -88,6 +90,7 @@ export async function DELETE(req: NextRequest) {
     if (!id) return NextResponse.json({ error: 'id é obrigatório' }, { status: 400 })
 
     await deleteTermo(id)
+    revalidatePath('/sitemap.xml')
     return NextResponse.json({ ok: true })
   } catch (error) {
     console.error('[glossario-admin-delete] Error:', error)

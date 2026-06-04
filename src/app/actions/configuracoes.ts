@@ -13,6 +13,7 @@ export async function saveConfigs(entries: Record<string, string>) {
   revalidatePath('/site')
   revalidatePath('/configuracoes')
   revalidatePath('/configuracoes/site')
+  revalidatePath('/sitemap.xml')
 }
 
 /** Liga/desliga flags de funcionalidades (tracking, leitura, ads do glossário). */
