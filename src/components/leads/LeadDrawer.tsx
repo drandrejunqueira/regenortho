@@ -48,6 +48,7 @@ export function LeadDrawer({ lead, interactions, open, onOpenChange, onUpdate, o
   const [noteContent, setNoteContent] = useState('')
   const [savingNote, setSavingNote] = useState(false)
   const [updatingStatus, setUpdatingStatus] = useState(false)
+  const [deleting, setDeleting] = useState(false)
 
   // Estados para Tags
   const [newTagInput, setNewTagInput] = useState('')
@@ -78,6 +79,26 @@ export function LeadDrawer({ lead, interactions, open, onOpenChange, onUpdate, o
       toast.error('Erro ao atualizar status')
     } finally {
       setUpdatingStatus(false)
+    }
+  }
+
+  async function deleteLead() {
+    if (!lead) return
+    if (!confirm(`Deseja realmente excluir o lead "${lead.name}" permanentemente do CRM?`)) return
+
+    setDeleting(true)
+    try {
+      const res = await fetch(`/api/leads/${lead.id}`, {
+        method: 'DELETE',
+      })
+      if (!res.ok) throw new Error()
+      toast.success('Lead excluído permanentemente!')
+      onOpenChange(false)
+      onUpdate()
+    } catch {
+      toast.error('Erro ao excluir o lead.')
+    } finally {
+      setDeleting(false)
     }
   }
 
@@ -442,7 +463,7 @@ export function LeadDrawer({ lead, interactions, open, onOpenChange, onUpdate, o
                 onScheduleLead(lead)
               }
             }}
-            disabled={updatingStatus || lead.status === 'scheduled'}
+            disabled={updatingStatus || deleting || lead.status === 'scheduled'}
             className="flex-1 flex items-center justify-center gap-2 py-3 rounded-2xl bg-gradient-to-br from-[#021541] to-[#032170] text-white text-[11px] font-bold uppercase tracking-widest shadow-lg hover:opacity-90 transition-opacity disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer"
           >
             <span className="material-symbols-outlined" style={{ fontSize: '16px' }}>calendar_today</span>
@@ -450,11 +471,19 @@ export function LeadDrawer({ lead, interactions, open, onOpenChange, onUpdate, o
           </button>
           <button
             onClick={() => { updateStatus('lost'); onOpenChange(false) }}
-            disabled={updatingStatus || lead.status === 'lost'}
+            disabled={updatingStatus || deleting || lead.status === 'lost'}
             className="w-12 flex items-center justify-center rounded-2xl bg-red-50 border border-red-100 text-red-400 hover:bg-red-500 hover:text-white hover:border-red-500 transition-all disabled:opacity-30 disabled:cursor-not-allowed cursor-pointer"
             aria-label="Marcar como perdido"
           >
             <span className="material-symbols-outlined" style={{ fontSize: '18px' }}>person_off</span>
+          </button>
+          <button
+            onClick={deleteLead}
+            disabled={updatingStatus || deleting}
+            className="w-12 flex items-center justify-center rounded-2xl bg-red-50 border border-red-100 text-red-500 hover:bg-red-600 hover:text-white hover:border-red-600 transition-all disabled:opacity-30 disabled:cursor-not-allowed cursor-pointer"
+            aria-label="Excluir lead permanentemente"
+          >
+            <span className="material-symbols-outlined" style={{ fontSize: '18px' }}>delete</span>
           </button>
         </div>
       </SheetContent>
