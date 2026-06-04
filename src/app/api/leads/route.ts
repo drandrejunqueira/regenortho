@@ -2,6 +2,7 @@ import { auth } from '@/lib/auth/config'
 import { db } from '@/lib/db'
 import { leads } from '@/lib/db/schema'
 import { hasPermission } from '@/lib/permissions'
+import { logActivity } from '@/lib/db/logger'
 import { NextRequest, NextResponse } from 'next/server'
 import { and, gte, lte, eq, ilike, or, desc, sql } from 'drizzle-orm'
 import { z } from 'zod'
@@ -74,6 +75,22 @@ export async function POST(req: NextRequest) {
     ...parsed.data,
     email: parsed.data.email || null,
   }).returning()
+
+  // Registra no log de auditoria
+  const ip = req.headers.get('x-forwarded-for') || req.headers.get('x-real-ip')
+  await logActivity({
+    userId: session.user.id,
+    userName: session.user.name || session.user.email || null,
+    action: 'lead:create',
+    module: 'leads',
+    targetId: lead.id,
+    targetName: lead.name,
+    ip,
+    details: {
+      source: lead.source,
+      phone: lead.phone
+    }
+  })
 
   return NextResponse.json({ data: lead }, { status: 201 })
 }

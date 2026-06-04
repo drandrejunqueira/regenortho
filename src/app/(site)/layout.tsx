@@ -32,6 +32,9 @@ export async function generateMetadata(): Promise<Metadata> {
       siteName: clinic?.name || 'REGENORTHO Clinical Atelier',
       images: [{ url: ogImage }],
     },
+    verification: {
+      google: 'o-YuvObMWgLt9q4nWBsCntEtTkgSaPJfzlIJg77Sp30',
+    },
     other: {
       'ai-context': configs.geo_ai_summary || description,
     }

@@ -4,6 +4,8 @@ import { useState, useEffect, useCallback } from 'react'
 import { PageHeader } from '@/components/shared/PageHeader'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
+import ImageUploader from '@/components/shared/ImageUploader'
+import PatientPreview from '@/components/patients/PatientPreview'
 import Link from 'next/link'
 import { toast } from 'sonner'
 import type { Patient } from '@/types'
@@ -15,6 +17,7 @@ const EMPTY_FORM = {
   name: '', phone: '', email: '', cpf: '', birthDate: '',
   gender: '' as '' | 'male' | 'female' | 'other',
   address: '', city: '', insurance: '', insuranceNum: '', notes: '',
+  photoUrl: '', internalNotes: '',
 }
 
 function NovoPacienteDialog({ open, onOpenChange, onCreated }: {
@@ -46,6 +49,8 @@ function NovoPacienteDialog({ open, onOpenChange, onCreated }: {
         insurance: form.insurance || null,
         insuranceNum: form.insuranceNum || null,
         notes: form.notes || null,
+        photoUrl: form.photoUrl || null,
+        internalNotes: form.internalNotes || null,
       }
       const res = await fetch('/api/pacientes', {
         method: 'POST',
@@ -74,19 +79,32 @@ function NovoPacienteDialog({ open, onOpenChange, onCreated }: {
         </DialogHeader>
 
         <div className="space-y-5 py-1">
-          {/* Dados pessoais */}
+          {/* Dados pessoais com Foto */}
           <div>
             <p className="text-[10px] font-bold text-[#00BCE4] uppercase tracking-wider mb-3 flex items-center gap-1.5">
               <span className="material-symbols-outlined" style={{ fontSize: '14px' }}>person</span>
               Dados Pessoais
             </p>
-            <div className="space-y-3">
-              <div className="grid grid-cols-2 gap-3">
-                <div className="col-span-2 space-y-1.5">
+            <div className="flex gap-4 items-start mb-3">
+              <div className="w-24 shrink-0">
+                <ImageUploader
+                  type="logo"
+                  label="Foto"
+                  hint="Enviar foto"
+                  currentUrl={form.photoUrl}
+                  onUploaded={(url) => set('photoUrl', url)}
+                  previewAspect="1/1"
+                  previewClass="rounded-full object-cover w-20 h-20"
+                />
+              </div>
+              <div className="flex-1 space-y-3">
+                <div className="space-y-1.5">
                   <label className={labelCls}>Nome completo *</label>
-                  <input value={form.name} onChange={e => set('name', e.target.value)} placeholder="Dr. Nome do Paciente" className={inputCls} autoFocus />
+                  <input value={form.name} onChange={e => set('name', e.target.value)} placeholder="Nome do Paciente" className={inputCls} autoFocus />
                 </div>
               </div>
+            </div>
+            <div className="space-y-3">
               <div className="grid grid-cols-3 gap-3">
                 <div className="space-y-1.5">
                   <label className={labelCls}>CPF</label>
@@ -167,7 +185,7 @@ function NovoPacienteDialog({ open, onOpenChange, onCreated }: {
             </div>
           </div>
 
-          {/* Observações */}
+          {/* Observações Iniciais */}
           <div>
             <p className="text-[10px] font-bold text-[#00BCE4] uppercase tracking-wider mb-3 flex items-center gap-1.5">
               <span className="material-symbols-outlined" style={{ fontSize: '14px' }}>note</span>
@@ -181,6 +199,24 @@ function NovoPacienteDialog({ open, onOpenChange, onCreated }: {
                 onChange={e => set('notes', e.target.value)}
                 placeholder="Anotações iniciais sobre o paciente, queixa principal, histórico médico relevante..."
                 className={inputCls + ' resize-none'}
+              />
+            </div>
+          </div>
+
+          {/* Observações Internas */}
+          <div>
+            <p className="text-[10px] font-bold text-rose-500 uppercase tracking-wider mb-3 flex items-center gap-1.5">
+              <span className="material-symbols-outlined" style={{ fontSize: '14px' }}>lock</span>
+              Observações Internas (Uso da Clínica)
+            </p>
+            <div className="space-y-1.5">
+              <label className={labelCls}>Alertas, notas confidenciais ou preferências restritas à equipe</label>
+              <textarea
+                rows={3}
+                value={form.internalNotes}
+                onChange={e => set('internalNotes', e.target.value)}
+                placeholder="Ex: Paciente possui preferência por atendimento no período da manhã, ou possui sensibilidade..."
+                className={inputCls + ' resize-none border-rose-100 bg-rose-50/5'}
               />
             </div>
           </div>
@@ -203,6 +239,8 @@ function NovoPacienteDialog({ open, onOpenChange, onCreated }: {
 export default function PacientesPage() {
   const [patients, setPatients] = useState<Patient[]>([])
   const [search, setSearch] = useState('')
+  const [financialFilter, setFinancialFilter] = useState('all')
+  const [treatmentFilter, setTreatmentFilter] = useState('')
   const [loading, setLoading] = useState(true)
   const [newDialog, setNewDialog] = useState(false)
 
@@ -211,6 +249,8 @@ export default function PacientesPage() {
     try {
       const params = new URLSearchParams()
       if (search) params.set('search', search)
+      if (financialFilter !== 'all') params.set('financialStatus', financialFilter)
+      if (treatmentFilter) params.set('treatment', treatmentFilter)
       const res = await fetch(`/api/pacientes?${params}`)
       if (res.ok) {
         const { data } = await res.json()
@@ -219,7 +259,7 @@ export default function PacientesPage() {
     } finally {
       setLoading(false)
     }
-  }, [search])
+  }, [search, financialFilter, treatmentFilter])
 
   useEffect(() => { fetchPatients() }, [fetchPatients])
 
@@ -230,7 +270,6 @@ export default function PacientesPage() {
   }
 
   function handleCreated(id: string) {
-    // Navega direto para a ficha do paciente após cadastro
     window.location.href = `/pacientes/${id}`
   }
 
@@ -250,14 +289,42 @@ export default function PacientesPage() {
         }
       />
 
-      <div className="mb-4 max-w-xs relative">
-        <span className="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-[#718096]" style={{ fontSize: '18px' }}>search</span>
-        <input
-          placeholder="Buscar por nome, CPF ou telefone..."
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-          className="w-full bg-[#f5f6f8] border border-[rgba(2,21,65,0.10)] rounded-full pl-10 pr-4 py-2.5 text-sm text-[#021541] placeholder:text-[#718096] focus:outline-none focus:ring-2 focus:ring-[#00BCE4]/30"
-        />
+      {/* Seção de Filtros */}
+      <div className="mb-4 flex flex-wrap gap-3 items-center">
+        <div className="relative max-w-xs flex-1">
+          <span className="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-[#718096]" style={{ fontSize: '18px' }}>search</span>
+          <input
+            placeholder="Buscar por nome, CPF ou telefone..."
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            className="w-full bg-white border border-[rgba(2,21,65,0.10)] rounded-xl pl-10 pr-4 py-2.5 text-sm text-[#021541] placeholder:text-[#718096] focus:outline-none focus:ring-2 focus:ring-[#00BCE4]/30 h-[42px]"
+          />
+        </div>
+
+        {/* Filtro Financeiro */}
+        <div className="w-56">
+          <Select value={financialFilter} onValueChange={(v) => setFinancialFilter(v || 'all')}>
+            <SelectTrigger className="bg-white border border-[rgba(2,21,65,0.10)] rounded-xl text-sm text-[#021541] h-[42px]">
+              <SelectValue placeholder="Status Financeiro" />
+            </SelectTrigger>
+            <SelectContent className="bg-white border border-[rgba(2,21,65,0.08)]">
+              <SelectItem value="all" className="text-[#021541] text-sm">Todos os status financeiros</SelectItem>
+              <SelectItem value="devendo" className="text-[#021541] text-sm">Com débitos vencidos (Devendo)</SelectItem>
+              <SelectItem value="a_vencer" className="text-[#021541] text-sm">Com parcelas a vencer</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+
+        {/* Filtro por Tratamento */}
+        <div className="relative w-56">
+          <span className="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-[#718096]" style={{ fontSize: '16px' }}>vaccines</span>
+          <input
+            placeholder="Filtrar por tratamento..."
+            value={treatmentFilter}
+            onChange={(e) => setTreatmentFilter(e.target.value)}
+            className="w-full bg-white border border-[rgba(2,21,65,0.10)] rounded-xl pl-10 pr-4 py-2 text-sm text-[#021541] placeholder:text-[#718096] focus:outline-none focus:ring-2 focus:ring-[#00BCE4]/30 h-[42px]"
+          />
+        </div>
       </div>
 
       {loading ? (
@@ -273,9 +340,9 @@ export default function PacientesPage() {
           </div>
           <div>
             <p className="text-sm font-medium text-[#021541]">Nenhum paciente encontrado</p>
-            <p className="text-sm text-[#718096] mt-1">{search ? 'Tente buscar com outros termos' : 'Clique em "Novo Paciente" para começar'}</p>
+            <p className="text-sm text-[#718096] mt-1">{search || financialFilter !== 'all' || treatmentFilter ? 'Tente buscar com outros termos ou limpar os filtros' : 'Clique em "Novo Paciente" para começar'}</p>
           </div>
-          {!search && (
+          {!search && financialFilter === 'all' && !treatmentFilter && (
             <button
               onClick={() => setNewDialog(true)}
               className="flex items-center gap-2 px-4 py-2 rounded-full bg-[#021541] text-white text-sm font-bold hover:bg-[#032170] transition-colors"
@@ -302,11 +369,20 @@ export default function PacientesPage() {
                 <tr key={patient.id} className="border-b border-[rgba(2,21,65,0.05)] hover:bg-[rgba(2,21,65,0.015)] transition-colors">
                   <td className="px-4 py-3">
                     <div className="flex items-center gap-3">
-                      <div className="w-9 h-9 rounded-full bg-gradient-to-br from-[#0097a7] to-[#00BCE4] flex items-center justify-center text-white font-bold text-xs shrink-0 select-none">
-                        {patient.name.split(' ').map((n: string) => n[0]).slice(0, 2).join('')}
+                      <div className="w-9 h-9 rounded-full bg-[#f5f6f8] flex items-center justify-center text-white font-bold text-xs shrink-0 overflow-hidden border border-[rgba(2,21,65,0.06)] relative">
+                        {patient.photoUrl ? (
+                          // eslint-disable-next-line @next/next/no-img-element
+                          <img src={patient.photoUrl} alt={patient.name} className="w-full h-full object-cover" />
+                        ) : (
+                          <div className="w-full h-full bg-gradient-to-br from-[#0097a7] to-[#00BCE4] flex items-center justify-center">
+                            {patient.name.split(' ').map((n: string) => n[0]).slice(0, 2).join('')}
+                          </div>
+                        )}
                       </div>
                       <div>
-                        <p className="font-medium text-[#021541] whitespace-nowrap">{patient.name}</p>
+                        <PatientPreview patient={patient}>
+                          <p className="font-semibold text-[#021541] hover:text-[#00BCE4] transition-colors whitespace-nowrap">{patient.name}</p>
+                        </PatientPreview>
                         {patient.insurance && (
                           <p className="text-xs text-[#718096]">{patient.insurance}</p>
                         )}

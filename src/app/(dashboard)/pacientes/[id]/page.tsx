@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation'
 import { toast } from 'sonner'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
+import ImageUploader from '@/components/shared/ImageUploader'
 import { cn } from '@/lib/utils'
 
 // ── Types ────────────────────────────────────────────────
@@ -12,6 +13,7 @@ interface Patient {
   id: string; name: string; email: string | null; phone: string; cpf: string | null
   birthDate: string | null; gender: string | null; address: string | null; city: string | null
   insurance: string | null; insuranceNum: string | null; notes: string | null
+  photoUrl: string | null; internalNotes: string | null
   isActive: boolean; nps: number | null; createdAt: string
 }
 interface Appointment {
@@ -583,6 +585,8 @@ export default function PacienteDetailPage({ params }: { params: { id: string } 
           insurance: editForm.insurance || null,
           insuranceNum: editForm.insuranceNum || null,
           notes: editForm.notes || null,
+          photoUrl: editForm.photoUrl || null,
+          internalNotes: editForm.internalNotes || null,
         }),
       })
       if (!res.ok) throw new Error()
@@ -618,8 +622,15 @@ export default function PacienteDetailPage({ params }: { params: { id: string } 
       {/* Patient header */}
       <div className="bg-white rounded-xl p-5">
         <div className="flex items-start gap-4">
-          <div className="w-14 h-14 rounded-xl bg-gradient-to-br from-[#021541] to-[#032170] flex items-center justify-center text-white font-bold text-2xl shrink-0 select-none">
-            {patient.name.charAt(0)}
+          <div className="w-14 h-14 rounded-xl bg-[#f5f6f8] flex items-center justify-center text-[#021541] font-bold text-2xl shrink-0 overflow-hidden border border-[rgba(2,21,65,0.06)] relative select-none">
+            {patient.photoUrl ? (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img src={patient.photoUrl} alt={patient.name} className="w-full h-full object-cover" />
+            ) : (
+              <div className="w-full h-full bg-gradient-to-br from-[#021541] to-[#032170] flex items-center justify-center text-white">
+                {patient.name.charAt(0)}
+              </div>
+            )}
           </div>
           <div className="flex-1 min-w-0">
             <div className="flex items-center gap-3 flex-wrap">
@@ -973,11 +984,31 @@ export default function PacienteDetailPage({ params }: { params: { id: string } 
                     <dd className="text-[#021541] mt-0.5 whitespace-pre-wrap">{patient.notes}</dd>
                   </div>
                 )}
+                {patient.internalNotes && (
+                  <div className="col-span-2 border border-rose-100 rounded-xl p-3 bg-rose-50/20">
+                    <dt className="text-[10px] font-bold text-rose-600 uppercase tracking-wider flex items-center gap-1">
+                      <span className="material-symbols-outlined text-rose-500" style={{ fontSize: '14px' }}>lock</span>
+                      Observações Internas (Uso da Clínica)
+                    </dt>
+                    <dd className="text-[#021541] mt-1.5 whitespace-pre-wrap font-medium">{patient.internalNotes}</dd>
+                  </div>
+                )}
               </dl>
             ) : (
               <div className="space-y-4">
-                <div className="grid grid-cols-2 gap-3">
-                  <div className="col-span-2 space-y-1.5">
+                <div className="flex gap-4 items-start">
+                  <div className="w-24 shrink-0">
+                    <ImageUploader
+                      type="logo"
+                      label="Foto"
+                      hint="Selecione"
+                      currentUrl={editForm.photoUrl}
+                      onUploaded={(url) => setEditForm(p => ({ ...p, photoUrl: url }))}
+                      previewAspect="1/1"
+                      previewClass="rounded-full object-cover w-20 h-20"
+                    />
+                  </div>
+                  <div className="flex-1 space-y-1.5">
                     <label className={labelCls}>Nome completo *</label>
                     <input value={editForm.name ?? ''} onChange={e => setEditForm(p => ({ ...p, name: e.target.value }))} className={inputCls} />
                   </div>
@@ -1038,6 +1069,10 @@ export default function PacienteDetailPage({ params }: { params: { id: string } 
                 <div className="space-y-1.5">
                   <label className={labelCls}>Observações</label>
                   <textarea rows={3} value={editForm.notes ?? ''} onChange={e => setEditForm(p => ({ ...p, notes: e.target.value }))} className={inputCls + ' resize-none'} />
+                </div>
+                <div className="space-y-1.5">
+                  <label className={labelCls} style={{ color: '#e11d48' }}>Observações Internas (Uso da Clínica)</label>
+                  <textarea rows={3} value={editForm.internalNotes ?? ''} onChange={e => setEditForm(p => ({ ...p, internalNotes: e.target.value }))} className={inputCls + ' resize-none border-rose-100 bg-rose-50/5'} />
                 </div>
               </div>
             )}

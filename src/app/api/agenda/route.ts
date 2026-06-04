@@ -3,6 +3,7 @@ import { db } from '@/lib/db'
 import { appointments, patients, leads, transactions } from '@/lib/db/schema'
 import { hasPermission } from '@/lib/permissions'
 import { syncAppointment } from '@/lib/google/calendar'
+import { logActivity } from '@/lib/db/logger'
 import { NextRequest, NextResponse } from 'next/server'
 import { and, gte, lte, eq, isNull, ne, isNotNull } from 'drizzle-orm'
 import { z } from 'zod'
@@ -165,6 +166,24 @@ export async function POST(req: NextRequest) {
         apt.googleEventId = eventId
       }
     }
+
+    // Registra no log de auditoria
+    const ip = req.headers.get('x-forwarded-for') || req.headers.get('x-real-ip')
+    await logActivity({
+      userId: session.user.id,
+      userName: session.user.name || session.user.email || null,
+      action: 'agenda:create',
+      module: 'agenda',
+      targetId: apt.id,
+      targetName: displayName || apt.title || 'Compromisso',
+      ip,
+      details: {
+        title: apt.title,
+        startAt: apt.startAt,
+        endAt: apt.endAt,
+        type: apt.type
+      }
+    })
 
     return NextResponse.json({ data: apt }, { status: 201 })
   } catch (err: any) {

@@ -2,6 +2,7 @@ import { auth } from '@/lib/auth/config'
 import { db } from '@/lib/db'
 import { patients } from '@/lib/db/schema'
 import { hasPermission } from '@/lib/permissions'
+import { logActivity } from '@/lib/db/logger'
 import { NextRequest, NextResponse } from 'next/server'
 import { eq } from 'drizzle-orm'
 import { z } from 'zod'
@@ -19,6 +20,8 @@ const updateSchema = z.object({
   insurance: z.string().nullable().optional(),
   insuranceNum: z.string().nullable().optional(),
   notes: z.string().nullable().optional(),
+  photoUrl: z.string().nullable().optional(),
+  internalNotes: z.string().nullable().optional(),
   isActive: z.boolean().optional(),
   nps: z.number().min(0).max(10).nullable().optional(),
 })
@@ -90,5 +93,22 @@ export async function PATCH(req: NextRequest, { params }: Params) {
     .returning()
 
   if (!updated) return NextResponse.json({ error: 'Paciente não encontrado' }, { status: 404 })
+
+  // Registra no log de auditoria
+  const ip = req.headers.get('x-forwarded-for') || req.headers.get('x-real-ip')
+  await logActivity({
+    userId: session.user.id,
+    userName: session.user.name || session.user.email || null,
+    action: 'patient:edit',
+    module: 'patients',
+    targetId: updated.id,
+    targetName: updated.name,
+    ip,
+    details: {
+      name: updated.name,
+      phone: updated.phone
+    }
+  })
+
   return NextResponse.json({ data: updated })
 }

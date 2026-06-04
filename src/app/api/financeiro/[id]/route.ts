@@ -2,6 +2,7 @@ import { auth } from '@/lib/auth/config'
 import { db } from '@/lib/db'
 import { transactions } from '@/lib/db/schema'
 import { hasPermission } from '@/lib/permissions'
+import { logActivity } from '@/lib/db/logger'
 import { NextRequest, NextResponse } from 'next/server'
 import { eq } from 'drizzle-orm'
 import { z } from 'zod'
@@ -39,10 +40,28 @@ export async function PATCH(req: NextRequest, { params }: Params) {
     .returning()
 
   if (!updated) return NextResponse.json({ error: 'Lançamento não encontrado' }, { status: 404 })
+
+  // Registra no log de auditoria
+  const ip = req.headers.get('x-forwarded-for') || req.headers.get('x-real-ip')
+  await logActivity({
+    userId: session.user.id,
+    userName: session.user.name || session.user.email || null,
+    action: 'financial:edit',
+    module: 'financial',
+    targetId: updated.id,
+    targetName: `R$ ${parseFloat(updated.amount).toFixed(2)} - ${updated.description}`,
+    ip,
+    details: {
+      type: updated.type,
+      category: updated.category,
+      isPaid: updated.isPaid
+    }
+  })
+
   return NextResponse.json({ data: updated })
 }
 
-export async function DELETE(_: NextRequest, { params }: Params) {
+export async function DELETE(req: NextRequest, { params }: Params) {
   const session = await auth()
   if (!session) return NextResponse.json({ error: 'Não autenticado' }, { status: 401 })
   if (!hasPermission(session.user.role as UserRole, 'financial:delete')) {
@@ -50,6 +69,32 @@ export async function DELETE(_: NextRequest, { params }: Params) {
   }
   const { id } = await params
 
+  // Get details before deleting for logs
+  const txData = await db.query.transactions.findFirst({
+    where: eq(transactions.id, id)
+  })
+
+  if (!txData) {
+    return NextResponse.json({ error: 'Lançamento não encontrado' }, { status: 404 })
+  }
+
   await db.delete(transactions).where(eq(transactions.id, id))
+
+  // Registra no log de auditoria
+  const ip = req.headers.get('x-forwarded-for') || req.headers.get('x-real-ip')
+  await logActivity({
+    userId: session.user.id,
+    userName: session.user.name || session.user.email || null,
+    action: 'financial:delete',
+    module: 'financial',
+    targetId: id,
+    targetName: `R$ ${parseFloat(txData.amount).toFixed(2)} - ${txData.description}`,
+    ip,
+    details: {
+      type: txData.type,
+      category: txData.category
+    }
+  })
+
   return NextResponse.json({ success: true })
 }

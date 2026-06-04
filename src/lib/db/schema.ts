@@ -271,6 +271,8 @@ export const patients = pgTable('patients', {
   insurance:    varchar('insurance', { length: 100 }),
   insuranceNum: varchar('insurance_number', { length: 50 }),
   notes:        text('notes'),
+  photoUrl:     text('photo_url'),
+  internalNotes: text('internal_notes'),
   isActive:     boolean('is_active').notNull().default(true),
   nps:          integer('nps'),
   createdAt:    timestamp('created_at').defaultNow().notNull(),
@@ -564,6 +566,7 @@ export const patientsRelations = relations(patients, ({ many }) => ({
   appointments:    many(appointments),
   clinicalRecords: many(clinicalRecords),
   transactions:    many(transactions),
+  treatments:      many(treatments),
 }))
 
 export const appointmentsRelations = relations(appointments, ({ one }) => ({

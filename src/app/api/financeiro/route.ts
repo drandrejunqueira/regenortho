@@ -2,6 +2,7 @@ import { auth } from '@/lib/auth/config'
 import { db } from '@/lib/db'
 import { transactions } from '@/lib/db/schema'
 import { hasPermission } from '@/lib/permissions'
+import { logActivity } from '@/lib/db/logger'
 import { NextRequest, NextResponse } from 'next/server'
 import { and, gte, lte, eq, desc } from 'drizzle-orm'
 import { z } from 'zod'
@@ -70,6 +71,23 @@ export async function POST(req: NextRequest) {
     ...parsed.data,
     createdById: session.user.id,
   }).returning()
+
+  // Registra no log de auditoria
+  const ip = req.headers.get('x-forwarded-for') || req.headers.get('x-real-ip')
+  await logActivity({
+    userId: session.user.id,
+    userName: session.user.name || session.user.email || null,
+    action: 'financial:create',
+    module: 'financial',
+    targetId: tx.id,
+    targetName: `R$ ${parseFloat(tx.amount).toFixed(2)} - ${tx.description}`,
+    ip,
+    details: {
+      type: tx.type,
+      category: tx.category,
+      isPaid: tx.isPaid
+    }
+  })
 
   return NextResponse.json({ data: tx }, { status: 201 })
 }

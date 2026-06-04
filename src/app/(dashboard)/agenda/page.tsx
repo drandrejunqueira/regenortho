@@ -54,6 +54,10 @@ export default function AgendaPage() {
   const [quickTreatmentOpen, setQuickTreatmentOpen] = useState(false)
   const [paymentMethods, setPaymentMethods] = useState<any[]>([])
   const [templates, setTemplates] = useState<any[]>([])
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false)
+  const [deleteReason, setDeleteReason] = useState('')
+  const [deletingId, setDeletingId] = useState<string | null>(null)
+  const [deletingApt, setDeletingApt] = useState<Appointment | null>(null)
 
   const loadGcalStatus = useCallback(() => {
     fetch('/api/perfil/google-agenda/status')
@@ -296,6 +300,27 @@ export default function AgendaPage() {
       fetchAppointments()
     } catch {
       toast.error('Erro ao atualizar pagamento da consulta')
+    }
+  }
+
+  async function confirmDeleteAppointment() {
+    if (!deletingId || !deleteReason.trim()) return
+    try {
+      const res = await fetch(`/api/agenda/${deletingId}`, {
+        method: 'DELETE',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ reason: deleteReason.trim() }),
+      })
+      const data = await res.json()
+      if (!res.ok) throw new Error(data.error ?? 'Erro ao excluir')
+      toast.success('Agendamento excluído com sucesso!')
+      setDeleteDialogOpen(false)
+      setDeleteReason('')
+      setDeletingId(null)
+      setDeletingApt(null)
+      fetchAppointments()
+    } catch (e: any) {
+      toast.error(e.message || 'Erro ao excluir agendamento')
     }
   }
 
@@ -697,6 +722,19 @@ export default function AgendaPage() {
                       </button>
                     ))}
                   </div>
+                  <button
+                    onClick={() => {
+                      setDeletingId(selectedApt.id)
+                      setDeletingApt(selectedApt)
+                      setDeleteReason('')
+                      setDeleteDialogOpen(true)
+                      setDetailOpen(false)
+                    }}
+                    className="w-full mt-2 py-2 rounded-xl bg-rose-50 hover:bg-rose-100/70 border border-rose-100 text-rose-600 hover:text-rose-700 text-xs font-bold transition-all flex items-center justify-center gap-1.5"
+                  >
+                    <span className="material-symbols-outlined" style={{ fontSize: '16px' }}>delete</span>
+                    Excluir Agendamento
+                  </button>
                 </div>
               )}
             </div>
@@ -721,6 +759,47 @@ export default function AgendaPage() {
         templates={templates}
         onCompleted={fetchAppointments}
       />
+
+      <Dialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+        <DialogContent className="max-w-sm bg-white border border-[rgba(2,21,65,0.06)] p-5">
+          <DialogHeader>
+            <DialogTitle className="text-[#021541] font-bold flex items-center gap-2">
+              <span className="material-symbols-outlined text-rose-500">warning</span>
+              Excluir Agendamento
+            </DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4 py-1.5">
+            <p className="text-xs text-[#718096]">
+              Tem certeza que deseja excluir o agendamento de <strong className="text-[#021541]">{deletingApt?.patient?.name || deletingApt?.lead?.name || deletingApt?.title || 'Compromisso'}</strong>? Esta ação é irreversível e removerá o evento da Google Agenda.
+            </p>
+            <div className="space-y-1.5">
+              <label className="text-[10px] font-bold text-[#718096] uppercase tracking-wider">Motivo da Exclusão *</label>
+              <textarea
+                rows={3}
+                value={deleteReason}
+                onChange={(e) => setDeleteReason(e.target.value)}
+                placeholder="Informe o motivo para histórico e auditoria..."
+                className="w-full bg-[#f5f6f8] border border-[rgba(2,21,65,0.12)] rounded-xl px-3 py-2 text-sm text-[#021541] placeholder:text-[#718096]/60 focus:outline-none focus:ring-2 focus:ring-rose-500/20 resize-none animate-none"
+              />
+            </div>
+          </div>
+          <DialogFooter className="gap-2 pt-2">
+            <button
+              onClick={() => { setDeleteDialogOpen(false); setDeletingId(null); setDeletingApt(null) }}
+              className="px-4 py-2 rounded-xl text-xs font-medium text-[#718096] bg-[#f5f6f8] border border-[rgba(2,21,65,0.08)] hover:bg-[rgba(2,21,65,0.04)] transition-colors"
+            >
+              Cancelar
+            </button>
+            <button
+              onClick={confirmDeleteAppointment}
+              disabled={deleteReason.trim().length < 3}
+              className="px-4 py-2 rounded-xl text-xs font-bold bg-rose-600 hover:bg-rose-700 text-white transition-colors disabled:opacity-50 flex items-center gap-1.5"
+            >
+              Confirmar Exclusão
+            </button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }

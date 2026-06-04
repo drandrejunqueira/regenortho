@@ -36,10 +36,12 @@ const ACTION_LABELS: Record<string, { label: string; icon: string }> = {
   'lead:delete':      { label: 'Lead excluído',        icon: 'delete' },
   'agenda:create':    { label: 'Agendamento criado',   icon: 'event' },
   'agenda:edit':      { label: 'Agendamento alterado', icon: 'edit_calendar' },
+  'agenda:delete':    { label: 'Agendamento excluído', icon: 'delete' },
   'patient:create':   { label: 'Paciente criado',      icon: 'person_add' },
   'patient:edit':     { label: 'Paciente editado',     icon: 'edit' },
   'financial:create': { label: 'Lançamento criado',    icon: 'add_circle' },
   'financial:edit':   { label: 'Lançamento editado',   icon: 'edit' },
+  'financial:delete': { label: 'Lançamento excluído',  icon: 'delete' },
   'settings:edit':    { label: 'Config. alterada',     icon: 'settings' },
 }
 
@@ -138,7 +140,12 @@ export default function LogsPage() {
                       {MODULE_LABELS[log.module ?? ''] ?? log.module}
                     </span>
                   </td>
-                  <td className="px-4 py-3 text-xs text-[#718096] max-w-[140px] truncate">{log.targetName ?? '—'}</td>
+                  <td className="px-4 py-3 text-xs text-[#718096] max-w-[140px] truncate">
+                    {log.targetName ?? '—'}
+                    {(log as any).details?.reason && (
+                      <span className="text-[10px] text-rose-500 block italic font-medium">Motivo: {(log as any).details.reason}</span>
+                    )}
+                  </td>
                   <td className="px-4 py-3 font-technical text-[11px] text-[#718096]">{log.ip}</td>
                   <td className="px-4 py-3 font-technical text-[11px] text-[#718096] whitespace-nowrap">{relativeTime(log.createdAt)}</td>
                 </tr>

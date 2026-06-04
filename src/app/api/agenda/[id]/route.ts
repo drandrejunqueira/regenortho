@@ -3,6 +3,7 @@ import { db } from '@/lib/db'
 import { appointments, patients, leads, transactions } from '@/lib/db/schema'
 import { hasPermission } from '@/lib/permissions'
 import { syncAppointment, removeAppointment } from '@/lib/google/calendar'
+import { logActivity } from '@/lib/db/logger'
 import { NextRequest, NextResponse } from 'next/server'
 import { eq } from 'drizzle-orm'
 import { z } from 'zod'
@@ -121,10 +122,37 @@ export async function PATCH(req: NextRequest, { params }: Params) {
     }
   }
 
+  // Registra no log de auditoria
+  const ip = req.headers.get('x-forwarded-for') || req.headers.get('x-real-ip')
+  let displayName: string | null = null
+  if (updated.patientId) {
+    const [p] = await db.select({ name: patients.name }).from(patients).where(eq(patients.id, updated.patientId))
+    displayName = p?.name ?? null
+  } else if (updated.leadId) {
+    const [l] = await db.select({ name: leads.name }).from(leads).where(eq(leads.id, updated.leadId))
+    displayName = l?.name ?? null
+  }
+
+  await logActivity({
+    userId: session.user.id,
+    userName: session.user.name || session.user.email || null,
+    action: 'agenda:edit',
+    module: 'agenda',
+    targetId: updated.id,
+    targetName: displayName || updated.title || 'Compromisso',
+    ip,
+    details: {
+      status: updated.status,
+      type: updated.type,
+      startAt: updated.startAt,
+      endAt: updated.endAt
+    }
+  })
+
   return NextResponse.json({ data: updated })
 }
 
-export async function DELETE(_: NextRequest, { params }: Params) {
+export async function DELETE(req: NextRequest, { params }: Params) {
   const session = await auth()
   if (!session) return NextResponse.json({ error: 'Não autenticado' }, { status: 401 })
   if (!hasPermission(session.user.role as UserRole, 'agenda:delete')) {
@@ -132,13 +160,64 @@ export async function DELETE(_: NextRequest, { params }: Params) {
   }
   const { id } = await params
 
-  // Remove o evento da Google Agenda antes de apagar (não-bloqueante)
-  const [existing] = await db.select({ doctorId: appointments.doctorId, googleEventId: appointments.googleEventId })
-    .from(appointments).where(eq(appointments.id, id))
-  if (existing?.googleEventId) {
-    await removeAppointment(existing.doctorId, existing.googleEventId)
+  let reason = 'Exclusão sem motivo'
+  try {
+    const body = await req.json().catch(() => ({}))
+    if (body?.reason && body.reason.trim().length >= 3) {
+      reason = body.reason.trim()
+    } else {
+      return NextResponse.json({ error: 'Motivo da exclusão é obrigatório (mínimo 3 caracteres)' }, { status: 400 })
+    }
+  } catch (e) {
+    return NextResponse.json({ error: 'Dados de requisição inválidos' }, { status: 400 })
   }
 
+  // Busca detalhes do agendamento para enriquecer o log antes de excluir
+  const appointmentData = await db.query.appointments.findFirst({
+    where: eq(appointments.id, id),
+    with: {
+      patient: { columns: { name: true } },
+      lead: { columns: { name: true } },
+      doctor: { columns: { name: true } }
+    }
+  })
+
+  if (!appointmentData) {
+    return NextResponse.json({ error: 'Agendamento não encontrado' }, { status: 404 })
+  }
+
+  const targetName = appointmentData.patient?.name || appointmentData.lead?.name || appointmentData.title || 'Compromisso'
+  const ip = req.headers.get('x-forwarded-for') || req.headers.get('x-real-ip')
+
+  // Registra no log de auditoria
+  await logActivity({
+    userId: session.user.id,
+    userName: session.user.name || session.user.email || null,
+    action: 'agenda:delete',
+    module: 'agenda',
+    targetId: id,
+    targetName,
+    ip,
+    details: {
+      reason,
+      title: appointmentData.title,
+      startAt: appointmentData.startAt,
+      endAt: appointmentData.endAt,
+      doctorName: appointmentData.doctor?.name,
+      room: appointmentData.room
+    }
+  })
+
+  // Remove o evento da Google Agenda antes de apagar (não-bloqueante)
+  if (appointmentData.googleEventId && appointmentData.doctorId) {
+    await removeAppointment(appointmentData.doctorId, appointmentData.googleEventId)
+  }
+
+  // Deleta a transação de faturamento relacionada (se houver)
+  await db.delete(transactions).where(eq(transactions.appointmentId, id))
+
+  // Deleta o agendamento
   await db.delete(appointments).where(eq(appointments.id, id))
+  
   return NextResponse.json({ success: true })
 }

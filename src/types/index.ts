@@ -62,6 +62,8 @@ export interface Patient {
   insurance: string | null
   insuranceNum: string | null
   notes: string | null
+  photoUrl: string | null
+  internalNotes: string | null
   isActive: boolean
   nps: number | null
   createdAt: string

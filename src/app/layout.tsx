@@ -7,6 +7,9 @@ import DynamicFavicon from '@/components/shared/DynamicFavicon'
 export const metadata: Metadata = {
   title: 'Regem Orto — Sistema de Gestão',
   description: 'Sistema de gestão da clínica Regem Orto',
+  verification: {
+    google: 'o-YuvObMWgLt9q4nWBsCntEtTkgSaPJfzlIJg77Sp30',
+  },
 }
 
 export default function RootLayout({

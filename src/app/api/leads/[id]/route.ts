@@ -2,6 +2,7 @@ import { auth } from '@/lib/auth/config'
 import { db } from '@/lib/db'
 import { leads, leadInteractions } from '@/lib/db/schema'
 import { hasPermission } from '@/lib/permissions'
+import { logActivity } from '@/lib/db/logger'
 import { NextRequest, NextResponse } from 'next/server'
 import { eq } from 'drizzle-orm'
 import { z } from 'zod'
@@ -68,10 +69,27 @@ export async function PATCH(req: NextRequest, { params }: Params) {
     .returning()
 
   if (!updated) return NextResponse.json({ error: 'Lead não encontrado' }, { status: 404 })
+
+  // Registra no log de auditoria
+  const ip = req.headers.get('x-forwarded-for') || req.headers.get('x-real-ip')
+  await logActivity({
+    userId: session.user.id,
+    userName: session.user.name || session.user.email || null,
+    action: 'lead:edit',
+    module: 'leads',
+    targetId: updated.id,
+    targetName: updated.name,
+    ip,
+    details: {
+      status: updated.status,
+      phone: updated.phone
+    }
+  })
+
   return NextResponse.json({ data: updated })
 }
 
-export async function DELETE(_: NextRequest, { params }: Params) {
+export async function DELETE(req: NextRequest, { params }: Params) {
   const session = await auth()
   if (!session) return NextResponse.json({ error: 'Não autenticado' }, { status: 401 })
   if (!hasPermission(session.user.role as UserRole, 'leads:delete')) {
@@ -79,6 +97,32 @@ export async function DELETE(_: NextRequest, { params }: Params) {
   }
   const { id } = await params
 
+  // Get lead details before deletion for logs
+  const leadData = await db.query.leads.findFirst({
+    where: eq(leads.id, id)
+  })
+
+  if (!leadData) {
+    return NextResponse.json({ error: 'Lead não encontrado' }, { status: 404 })
+  }
+
   await db.delete(leads).where(eq(leads.id, id))
+
+  // Registra no log de auditoria
+  const ip = req.headers.get('x-forwarded-for') || req.headers.get('x-real-ip')
+  await logActivity({
+    userId: session.user.id,
+    userName: session.user.name || session.user.email || null,
+    action: 'lead:delete',
+    module: 'leads',
+    targetId: id,
+    targetName: leadData.name,
+    ip,
+    details: {
+      phone: leadData.phone,
+      source: leadData.source
+    }
+  })
+
   return NextResponse.json({ success: true })
 }
