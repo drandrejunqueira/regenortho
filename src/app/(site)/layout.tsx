@@ -17,9 +17,18 @@ export async function generateMetadata(): Promise<Metadata> {
   const keywordsRaw = clinic?.seoKeywords || 'ortopedia, medicina regenerativa, PRP, BMAC, ácido hialurônico, proloterapia, Dr. André Junqueira, São José dos Campos, tratamento da dor'
   const keywords = keywordsRaw ? keywordsRaw.split(',').map((k) => k.trim()) : []
   const base = (configs.site_url || 'https://regenortho.com.br').replace(/\/$/, '')
-  const ogImage = clinic?.ogImageUrl || `${base}/logo.png`
+  const ogImage = clinic?.ogImageUrl || `${base}/image/logo.png`
+
+  let metadataBase: URL | undefined
+  try {
+    const canonical = base.startsWith('http') ? base : `https://${base}`
+    metadataBase = new URL(canonical)
+  } catch {
+    metadataBase = new URL('https://regenortho.com.br')
+  }
 
   return {
+    metadataBase,
     title: {
       default: title,
       template: `%s | ${clinic?.name || 'REGENORTHO'}`,

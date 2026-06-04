@@ -5,6 +5,7 @@ import { Toaster } from 'sonner'
 import DynamicFavicon from '@/components/shared/DynamicFavicon'
 
 export const metadata: Metadata = {
+  metadataBase: new URL('https://regenortho.com.br'),
   title: 'Regem Orto — Sistema de Gestão',
   description: 'Sistema de gestão da clínica Regem Orto',
   verification: {

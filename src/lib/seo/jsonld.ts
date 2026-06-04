@@ -32,7 +32,7 @@ export function getClinicJsonLd(
     name: clinic?.name || 'REGENORTHO',
     alternateName: 'RegenOrtho Clinical Atelier',
     url: base,
-    logo: clinic?.logoUrl || `${base}/logo.png`,
+    logo: clinic?.logoUrl || `${base}/image/logo.png`,
     image: clinic?.headerImageUrl || clinic?.logoUrl || undefined,
     description: configs.geo_ai_summary || clinic?.seoDescription || 'Clínica de referência em ortopedia regenerativa e tratamento intervencionista da dor.',
     telephone: clinic?.phone || clinic?.whatsapp || undefined,
