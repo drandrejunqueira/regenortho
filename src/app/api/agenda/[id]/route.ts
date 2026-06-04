@@ -1,7 +1,8 @@
 import { auth } from '@/lib/auth/config'
 import { db } from '@/lib/db'
-import { appointments } from '@/lib/db/schema'
+import { appointments, patients, leads, transactions } from '@/lib/db/schema'
 import { hasPermission } from '@/lib/permissions'
+import { syncAppointment, removeAppointment } from '@/lib/google/calendar'
 import { NextRequest, NextResponse } from 'next/server'
 import { eq } from 'drizzle-orm'
 import { z } from 'zod'
@@ -14,8 +15,17 @@ const updateSchema = z.object({
   endAt: z.string().datetime().optional(),
   notes: z.string().nullable().optional(),
   room: z.string().nullable().optional(),
+  roomId: z.string().uuid().nullable().optional(),
   confirmedAt: z.string().datetime().nullable().optional(),
   reminderSent: z.boolean().optional(),
+  returnDeadline: z.string().datetime().nullable().optional(),
+  returnEstimatedAt: z.string().datetime().nullable().optional(),
+  isPaidConsultation: z.boolean().optional(),
+  consultationPrice: z.string().nullable().optional(),
+  paymentMethodId: z.string().uuid().nullable().optional(),
+  paymentTiming: z.enum(['antecipado', 'no_ato']).nullable().optional(),
+  paymentStatus: z.enum(['pending', 'paid']).nullable().optional(),
+  paymentReceiptUrl: z.string().nullable().optional(),
 })
 
 type Params = { params: Promise<{ id: string }> }
@@ -38,6 +48,10 @@ export async function PATCH(req: NextRequest, { params }: Params) {
   if (parsed.data.startAt) updateData.startAt = new Date(parsed.data.startAt)
   if (parsed.data.endAt) updateData.endAt = new Date(parsed.data.endAt)
   if (parsed.data.confirmedAt) updateData.confirmedAt = new Date(parsed.data.confirmedAt)
+  if (parsed.data.returnDeadline) updateData.returnDeadline = new Date(parsed.data.returnDeadline)
+  if (parsed.data.returnDeadline === null) updateData.returnDeadline = null
+  if (parsed.data.returnEstimatedAt) updateData.returnEstimatedAt = new Date(parsed.data.returnEstimatedAt)
+  if (parsed.data.returnEstimatedAt === null) updateData.returnEstimatedAt = null
 
   const [updated] = await db.update(appointments)
     .set(updateData)
@@ -45,6 +59,68 @@ export async function PATCH(req: NextRequest, { params }: Params) {
     .returning()
 
   if (!updated) return NextResponse.json({ error: 'Agendamento não encontrado' }, { status: 404 })
+
+  // Sincroniza o faturamento/financeiro da consulta
+  if (updated.isPaidConsultation && updated.patientId) {
+    let displayName: string | null = null
+    if (updated.patientId) {
+      const [p] = await db.select({ name: patients.name }).from(patients).where(eq(patients.id, updated.patientId))
+      displayName = p?.name ?? null
+    }
+
+    // Busca transação existente vinculada a esse agendamento
+    const [existingTx] = await db.select().from(transactions).where(eq(transactions.appointmentId, updated.id))
+    
+    const txData = {
+      type: 'income' as const,
+      category: 'consultation_fee' as const,
+      amount: updated.consultationPrice || '0.00',
+      description: `Consulta: ${displayName || 'Paciente'}` + (updated.paymentStatus === 'paid' ? ' (Pago)' : ' (A receber)'),
+      date: new Date().toISOString().split('T')[0],
+      dueDate: updated.startAt.toISOString().split('T')[0],
+      isPaid: updated.paymentStatus === 'paid',
+      paidAt: updated.paymentStatus === 'paid' ? new Date() : null,
+      patientId: updated.patientId,
+      appointmentId: updated.id,
+      notes: updated.paymentReceiptUrl ? `Comprovante: ${updated.paymentReceiptUrl}` : null,
+      createdById: session.user.id,
+    }
+
+    if (existingTx) {
+      await db.update(transactions).set(txData).where(eq(transactions.id, existingTx.id))
+    } else {
+      await db.insert(transactions).values(txData)
+    }
+  } else {
+    // Se não for consulta paga, garante que qualquer transação anterior vinculada a este agendamento seja removida
+    await db.delete(transactions).where(eq(transactions.appointmentId, updated.id))
+  }
+
+  // Reflete na Google Agenda do médico (não-bloqueante)
+  if (updated.doctorId) {
+    if (updated.status === 'cancelled') {
+      if (updated.googleEventId) {
+        await removeAppointment(updated.doctorId, updated.googleEventId)
+        await db.update(appointments).set({ googleEventId: null }).where(eq(appointments.id, id))
+        updated.googleEventId = null
+      }
+    } else {
+      let displayName: string | null = null
+      if (updated.patientId) {
+        const [p] = await db.select({ name: patients.name }).from(patients).where(eq(patients.id, updated.patientId))
+        displayName = p?.name ?? null
+      } else if (updated.leadId) {
+        const [l] = await db.select({ name: leads.name }).from(leads).where(eq(leads.id, updated.leadId))
+        displayName = l?.name ?? null
+      }
+      const eventId = await syncAppointment(updated, displayName)
+      if (eventId && eventId !== updated.googleEventId) {
+        await db.update(appointments).set({ googleEventId: eventId }).where(eq(appointments.id, id))
+        updated.googleEventId = eventId
+      }
+    }
+  }
+
   return NextResponse.json({ data: updated })
 }
 
@@ -55,6 +131,13 @@ export async function DELETE(_: NextRequest, { params }: Params) {
     return NextResponse.json({ error: 'Acesso negado' }, { status: 403 })
   }
   const { id } = await params
+
+  // Remove o evento da Google Agenda antes de apagar (não-bloqueante)
+  const [existing] = await db.select({ doctorId: appointments.doctorId, googleEventId: appointments.googleEventId })
+    .from(appointments).where(eq(appointments.id, id))
+  if (existing?.googleEventId) {
+    await removeAppointment(existing.doctorId, existing.googleEventId)
+  }
 
   await db.delete(appointments).where(eq(appointments.id, id))
   return NextResponse.json({ success: true })

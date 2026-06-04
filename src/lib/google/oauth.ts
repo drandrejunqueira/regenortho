@@ -20,6 +20,8 @@ import { getConfig, setConfig } from '@/lib/db/queries/configuracoes'
 export const GOOGLE_SCOPES = [
   'https://www.googleapis.com/auth/webmasters.readonly',
   'https://www.googleapis.com/auth/analytics.readonly',
+  'https://www.googleapis.com/auth/calendar',
+  'https://www.googleapis.com/auth/calendar.events',
   'openid',
   'email',
 ]
@@ -31,35 +33,51 @@ export const GKEYS = {
   connectedAt: 'google_connected_at',
   gscSite: 'google_gsc_site',
   ga4Property: 'google_ga4_property',
+  clientId: 'google_client_id',
+  clientSecret: 'google_client_secret',
 } as const
 
-export function googleConfigurado(): boolean {
-  return Boolean(process.env.GOOGLE_CLIENT_ID && process.env.GOOGLE_CLIENT_SECRET)
+export async function obterGoogleCredentials(): Promise<{ clientId: string | null; clientSecret: string | null }> {
+  const envId = process.env.GOOGLE_CLIENT_ID || null
+  const envSecret = process.env.GOOGLE_CLIENT_SECRET || null
+  if (envId && envSecret) {
+    return { clientId: envId, clientSecret: envSecret }
+  }
+  const dbId = await getConfig(GKEYS.clientId)
+  const dbSecret = await getConfig(GKEYS.clientSecret)
+  return { clientId: dbId, clientSecret: dbSecret }
+}
+
+export async function googleConfigurado(): Promise<boolean> {
+  const creds = await obterGoogleCredentials()
+  return Boolean(creds.clientId && creds.clientSecret)
 }
 
 /** Cria um cliente OAuth2 com o redirect baseado na origem da requisição. */
-export function criarOAuthClient(origin: string): OAuth2Client {
+export async function criarOAuthClient(origin: string): Promise<OAuth2Client> {
+  const creds = await obterGoogleCredentials()
   return new google.auth.OAuth2(
-    process.env.GOOGLE_CLIENT_ID,
-    process.env.GOOGLE_CLIENT_SECRET,
+    creds.clientId || undefined,
+    creds.clientSecret || undefined,
     `${origin}/api/admin/google/callback`,
   )
 }
 
 /** Gera a URL de consentimento (offline = recebe refresh_token). */
-export function gerarUrlConsentimento(origin: string): string {
-  const client = criarOAuthClient(origin)
+export async function gerarUrlConsentimento(origin: string, state?: string): Promise<string> {
+  const client = await criarOAuthClient(origin)
   return client.generateAuthUrl({
     access_type: 'offline',
     prompt: 'consent',
     scope: GOOGLE_SCOPES,
+    state,
     include_granted_scopes: true,
   })
 }
 
 /** Troca o code pelo token e persiste o refresh_token + e-mail conectado. */
 export async function trocarCodePorToken(origin: string, code: string): Promise<void> {
-  const client = criarOAuthClient(origin)
+  const client = await criarOAuthClient(origin)
   const { tokens } = await client.getToken(code)
   if (!tokens.refresh_token) {
     throw new Error('Google não retornou refresh_token. Reconecte com "prompt=consent".')
@@ -83,13 +101,15 @@ export async function trocarCodePorToken(origin: string, code: string): Promise<
 
 /** Retorna um cliente autorizado a partir do refresh_token salvo, ou null. */
 export async function obterClienteAutorizado(): Promise<OAuth2Client | null> {
-  if (!googleConfigurado()) return null
+  const isConfigured = await googleConfigurado()
+  if (!isConfigured) return null
   const refreshToken = await getConfig(GKEYS.refreshToken)
   if (!refreshToken) return null
 
+  const creds = await obterGoogleCredentials()
   const client = new google.auth.OAuth2(
-    process.env.GOOGLE_CLIENT_ID,
-    process.env.GOOGLE_CLIENT_SECRET,
+    creds.clientId!,
+    creds.clientSecret!,
   )
   client.setCredentials({ refresh_token: refreshToken })
   return client

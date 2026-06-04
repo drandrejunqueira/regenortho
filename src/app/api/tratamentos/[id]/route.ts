@@ -15,6 +15,7 @@ const updateSchema = z.object({
   installments: z.number().int().min(1).optional(),
   notes: z.string().optional().nullable(),
   status: z.enum(['draft', 'approved', 'in_progress', 'completed', 'cancelled']).optional(),
+  paymentStatus: z.enum(['pending', 'first_paid', 'all_paid']).optional(),
 })
 
 export async function GET(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
@@ -83,16 +84,42 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
         }
       }
 
-      // Create income transaction for the treatment
-      await db.insert(transactions).values({
-        type: 'income',
-        category: 'consultation_fee',
-        amount: existing.totalSale,
-        description: `Tratamento: ${existing.name}`,
-        date: new Date().toISOString().split('T')[0],
-        isPaid: true,
-        patientId: existing.patientId,
+      // Lança o financeiro: divide o valor de venda em parcelas (recebimentos
+      // futuros), com vencimento mensal a partir da conclusão. Cada parcela fica
+      // como "a receber" (isPaid=false) para o financeiro baixar conforme entra.
+      const n = Math.max(1, d.installments !== undefined ? d.installments : existing.installments)
+      const totalSaleVal = d.discount !== undefined ? Math.max(0, Number(existing.subtotal) - d.discount) : Number(existing.totalSale)
+      const totalCents = Math.round(totalSaleVal * 100)
+      const baseCents = Math.floor(totalCents / n)
+      const today = new Date()
+      const fmt = (dt: Date) => dt.toISOString().split('T')[0]
+      const paymentStatus = d.paymentStatus ?? 'pending'
+
+      const rows = Array.from({ length: n }, (_, i) => {
+        // a última parcela absorve o arredondamento
+        const cents = i === n - 1 ? totalCents - baseCents * (n - 1) : baseCents
+        const due = new Date(today.getFullYear(), today.getMonth() + i, today.getDate())
+        const isPaid = paymentStatus === 'all_paid' || (paymentStatus === 'first_paid' && i === 0)
+        return {
+          type: 'income' as const,
+          category: existing.category,
+          amount: (cents / 100).toFixed(2),
+          description: n > 1
+            ? `Tratamento: ${existing.name} (${i + 1}/${n})`
+            : `Tratamento: ${existing.name}`,
+          date: fmt(today),
+          dueDate: fmt(due),
+          isPaid,
+          paidAt: isPaid ? today : null,
+          patientId: existing.patientId,
+          appointmentId: existing.appointmentId,
+          treatmentId: existing.id,
+          installmentNumber: i + 1,
+          installmentTotal: n,
+          createdById: session.user.id,
+        }
       })
+      await db.insert(transactions).values(rows)
 
       // Send WhatsApp summary if patient has phone
       try {

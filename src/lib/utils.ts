@@ -63,3 +63,11 @@ export function slugify(text: string): string {
     .replace(/--+/g, '-')
 }
 
+export function computeStockStatus(current: number, minimum: number): 'ok' | 'low' | 'critical' | 'out_of_stock' {
+  if (current === 0) return 'out_of_stock'
+  if (current <= minimum) return 'critical'
+  if (current <= minimum * 1.5) return 'low'
+  return 'ok'
+}
+
+

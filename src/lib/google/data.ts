@@ -24,7 +24,7 @@ export async function getGoogleStatus(): Promise<GoogleStatus> {
     getConfig(GKEYS.refreshToken),
   ])
   return {
-    configurado: googleConfigurado(),
+    configurado: await googleConfigurado(),
     conectado: Boolean(refresh),
     email: email || null,
     conectadoEm: conectadoEm || null,

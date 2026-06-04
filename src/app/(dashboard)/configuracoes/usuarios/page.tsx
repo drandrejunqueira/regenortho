@@ -25,6 +25,7 @@ interface User {
   lastLoginAt: string | null
   createdAt: string
   customPermissions: string[] | null
+  googleCalendarId: string | null
 }
 
 const inputCls =
@@ -84,6 +85,8 @@ function PermissionsSheet({
   const [perms, setPerms] = useState<Set<string>>(new Set())
   const [saving, setSaving] = useState(false)
   const [expandedMods, setExpandedMods] = useState<Set<string>>(new Set())
+  const [hasCalendar, setHasCalendar] = useState(false)
+  const [googleCalendarId, setGoogleCalendarId] = useState('')
 
   useEffect(() => {
     if (!user) return
@@ -97,12 +100,15 @@ function PermissionsSheet({
       if (m.permissions.some((p) => base.includes(p.id))) exp.add(m.id)
     })
     setExpandedMods(exp)
+    setHasCalendar(Boolean(user.googleCalendarId))
+    setGoogleCalendarId(user.googleCalendarId ?? '')
   }, [user])
 
   if (!user) return null
 
   const detectedRole = detectRole(perms)
   const isCustom = !detectedRole
+  const isDoctor = (detectedRole ?? user.role) === 'doctor'
 
   function applyPreset(role: UserRole) {
     setPerms(new Set(ROLE_PRESETS[role]))
@@ -148,6 +154,7 @@ function PermissionsSheet({
         body: JSON.stringify({
           role: inferredRole,
           customPermissions: isDefault ? null : permArray,
+          googleCalendarId: inferredRole === 'doctor' && hasCalendar ? googleCalendarId || null : null,
         }),
       })
       if (!res.ok) throw new Error()
@@ -246,6 +253,34 @@ function PermissionsSheet({
               </p>
             )}
           </div>
+
+          {/* Calendar settings for doctor */}
+          {isDoctor && (
+            <div className="space-y-3 p-4 rounded-xl border border-[rgba(2,21,65,0.08)] bg-[#f5f6f8]/30">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm font-semibold text-[#021541]">Vincular Google Agenda?</p>
+                  <p className="text-[11px] text-[#718096]">Sincronizar consultas deste médico com a agenda do Google.</p>
+                </div>
+                <Toggle checked={hasCalendar} onChange={() => setHasCalendar(!hasCalendar)} />
+              </div>
+              
+              {hasCalendar && (
+                <div className="space-y-1.5 pt-2 border-t border-[rgba(2,21,65,0.06)]">
+                  <label className={labelCls}>ID da Agenda / Sincronismo</label>
+                  <input
+                    value={googleCalendarId}
+                    onChange={(e) => setGoogleCalendarId(e.target.value)}
+                    placeholder="e9f58db2a...@group.calendar.google.com"
+                    className={inputCls}
+                  />
+                  <p className="text-[10px] text-[#718096]/60 leading-snug">
+                    Insira o ID da agenda única ou o endereço do calendário para sincronizar os eventos deste médico.
+                  </p>
+                </div>
+              )}
+            </div>
+          )}
 
           {/* Per-module permissions */}
           <div>
@@ -554,6 +589,16 @@ function NewUserDialog({
   const [loading, setLoading] = useState(false)
   const [form, setForm] = useState({ name: '', email: '', password: '', role: 'receptionist', phone: '' })
   const [errors, setErrors] = useState<Record<string, string>>({})
+  const [hasCalendar, setHasCalendar] = useState(false)
+  const [googleCalendarId, setGoogleCalendarId] = useState('')
+
+  useEffect(() => {
+    if (!open) {
+      setForm({ name: '', email: '', password: '', role: 'receptionist', phone: '' })
+      setHasCalendar(false)
+      setGoogleCalendarId('')
+    }
+  }, [open])
 
   async function submit() {
     const errs: Record<string, string> = {}
@@ -567,14 +612,16 @@ function NewUserDialog({
       const res = await fetch('/api/usuarios', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(form),
+        body: JSON.stringify({
+          ...form,
+          googleCalendarId: form.role === 'doctor' && hasCalendar ? googleCalendarId || null : null,
+        }),
       })
       const data = await res.json()
       if (!res.ok) { toast.error(data.error ?? 'Erro ao criar usuário'); return }
       toast.success('Usuário criado com sucesso!')
       onOpenChange(false)
       onCreated()
-      setForm({ name: '', email: '', password: '', role: 'receptionist', phone: '' })
     } catch {
       toast.error('Erro ao criar usuário')
     } finally {
@@ -621,6 +668,29 @@ function NewUserDialog({
             <label className={labelCls}>Telefone</label>
             <input value={form.phone} onChange={(e) => setForm({ ...form, phone: e.target.value })} className={inputCls} />
           </div>
+          {form.role === 'doctor' && (
+            <div className="space-y-3 p-3 rounded-xl border border-[rgba(2,21,65,0.08)] bg-[#f5f6f8]/30">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-xs font-semibold text-[#021541]">Vincular Google Agenda?</p>
+                  <p className="text-[10px] text-[#718096]">Sincronizar consultas com a agenda do Google.</p>
+                </div>
+                <Toggle checked={hasCalendar} onChange={() => setHasCalendar(!hasCalendar)} />
+              </div>
+              
+              {hasCalendar && (
+                <div className="space-y-1.5 pt-2 border-t border-[rgba(2,21,65,0.06)]">
+                  <label className={labelCls}>ID da Agenda / Sincronismo</label>
+                  <input
+                    value={googleCalendarId}
+                    onChange={(e) => setGoogleCalendarId(e.target.value)}
+                    placeholder="e9f58db2a...@group.calendar.google.com"
+                    className={inputCls}
+                  />
+                </div>
+              )}
+            </div>
+          )}
         </div>
         <DialogFooter className="gap-2">
           <button onClick={() => onOpenChange(false)} disabled={loading} className="px-4 py-2.5 rounded-xl text-sm font-medium text-[#718096] bg-[#f5f6f8] hover:bg-[#f5f6f8] transition-colors">

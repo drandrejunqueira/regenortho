@@ -5,10 +5,39 @@ import { patientAccessTokens } from '@/lib/db/schema'
 import { hasPermission } from '@/lib/permissions'
 import type { UserRole } from '@/types'
 import { z } from 'zod'
-import { eq, and } from 'drizzle-orm'
+import { eq, and, gt } from 'drizzle-orm'
 import crypto from 'crypto'
 
 const schema = z.object({ patientId: z.string().uuid() })
+
+export async function GET(req: NextRequest) {
+  const session = await auth()
+  if (!session) return NextResponse.json({ error: 'Não autenticado' }, { status: 401 })
+  if (!hasPermission(session.user.role as UserRole, 'portal:manage')) {
+    return NextResponse.json({ error: 'Acesso negado' }, { status: 403 })
+  }
+
+  const { searchParams } = new URL(req.url)
+  const patientId = searchParams.get('patientId')
+  if (!patientId) return NextResponse.json({ error: 'patientId requerido' }, { status: 400 })
+
+  const [activeToken] = await db.select().from(patientAccessTokens)
+    .where(and(
+      eq(patientAccessTokens.patientId, patientId),
+      eq(patientAccessTokens.isActive, true),
+      gt(patientAccessTokens.expiresAt, new Date())
+    ))
+
+  if (!activeToken) return NextResponse.json({ data: null })
+
+  return NextResponse.json({
+    data: {
+      token: activeToken.token,
+      code: activeToken.code,
+      expiresAt: activeToken.expiresAt,
+    }
+  })
+}
 
 export async function POST(req: NextRequest) {
   const session = await auth()
@@ -30,14 +59,16 @@ export async function POST(req: NextRequest) {
 
   // Create new token — 7 days expiry
   const token = crypto.randomBytes(32).toString('hex')
+  const code = Math.floor(100000 + Math.random() * 900000).toString() // 6 digits
   const expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000)
 
   const [row] = await db.insert(patientAccessTokens).values({
     patientId,
     token,
+    code,
     expiresAt,
     isActive: true,
   }).returning()
 
-  return NextResponse.json({ token: row.token, expiresAt: row.expiresAt })
+  return NextResponse.json({ token: row.token, code: row.code, expiresAt: row.expiresAt })
 }

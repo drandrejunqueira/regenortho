@@ -14,6 +14,7 @@ const createSchema = z.object({
   password: z.string().min(8, 'Senha deve ter ao menos 8 caracteres'),
   role: z.enum(['admin', 'receptionist', 'financial', 'doctor']),
   phone: z.string().nullable().optional(),
+  googleCalendarId: z.string().nullable().optional(),
 })
 
 export async function GET() {
@@ -56,7 +57,8 @@ export async function POST(req: NextRequest) {
     passwordHash,
     role: parsed.data.role,
     phone: parsed.data.phone ?? null,
-  }).returning({ id: users.id, name: users.name, email: users.email, role: users.role, createdAt: users.createdAt })
+    googleCalendarId: parsed.data.googleCalendarId ?? null,
+  }).returning({ id: users.id, name: users.name, email: users.email, role: users.role, googleCalendarId: users.googleCalendarId, createdAt: users.createdAt })
 
   return NextResponse.json({ data: user }, { status: 201 })
 }

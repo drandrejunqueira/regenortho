@@ -6,6 +6,8 @@ import { NextRequest, NextResponse } from 'next/server'
 import { eq } from 'drizzle-orm'
 import { z } from 'zod'
 import type { UserRole } from '@/types'
+import { getConfig } from '@/lib/db/queries/configuracoes'
+import { GKEYS } from '@/lib/google/oauth'
 
 const settingsSchema = z.object({
   name: z.string().min(1).optional(),
@@ -37,6 +39,8 @@ const settingsSchema = z.object({
   smtpUser: z.string().nullable().optional(),
   smtpPass: z.string().nullable().optional(),
   googleCalendarId: z.string().nullable().optional(),
+  googleClientId: z.string().nullable().optional(),
+  googleClientSecret: z.string().nullable().optional(),
   backupSchedule: z.string().nullable().optional(),
 })
 
@@ -54,7 +58,22 @@ export async function GET() {
     settings = created
   }
 
-  return NextResponse.json({ data: settings })
+  const googleConnected = Boolean(await getConfig(GKEYS.refreshToken))
+  const googleEmail = await getConfig(GKEYS.email)
+  const googleConnectedAt = await getConfig(GKEYS.connectedAt)
+  const googleClientId = await getConfig(GKEYS.clientId)
+  const googleClientSecret = await getConfig(GKEYS.clientSecret)
+
+  return NextResponse.json({
+    data: {
+      ...settings,
+      googleConnected,
+      googleEmail,
+      googleConnectedAt,
+      googleClientId,
+      googleClientSecret,
+    }
+  })
 }
 
 export async function PATCH(req: NextRequest) {
@@ -68,14 +87,35 @@ export async function PATCH(req: NextRequest) {
   const parsed = settingsSchema.safeParse(body)
   if (!parsed.success) return NextResponse.json({ error: 'Dados inválidos' }, { status: 400 })
 
+  const { googleClientId, googleClientSecret, ...clinicData } = parsed.data
+
+  // Save to configuracoes table if provided
+  if (googleClientId !== undefined) {
+    const { setConfig } = await import('@/lib/db/queries/configuracoes')
+    await setConfig(GKEYS.clientId, googleClientId || '')
+  }
+  if (googleClientSecret !== undefined) {
+    const { setConfig } = await import('@/lib/db/queries/configuracoes')
+    await setConfig(GKEYS.clientSecret, googleClientSecret || '')
+  }
+
   // Upsert
   const existing = await db.query.clinicSettings.findFirst({ where: eq(clinicSettings.id, 1) })
   if (!existing) {
-    await db.insert(clinicSettings).values({ id: 1, ...parsed.data, updatedAt: new Date() })
+    await db.insert(clinicSettings).values({ id: 1, ...clinicData, updatedAt: new Date() })
   } else {
-    await db.update(clinicSettings).set({ ...parsed.data, updatedAt: new Date() }).where(eq(clinicSettings.id, 1))
+    await db.update(clinicSettings).set({ ...clinicData, updatedAt: new Date() }).where(eq(clinicSettings.id, 1))
   }
 
   const updated = await db.query.clinicSettings.findFirst({ where: eq(clinicSettings.id, 1) })
-  return NextResponse.json({ data: updated })
+  const updatedClientId = await getConfig(GKEYS.clientId)
+  const updatedClientSecret = await getConfig(GKEYS.clientSecret)
+
+  return NextResponse.json({
+    data: {
+      ...updated,
+      googleClientId: updatedClientId,
+      googleClientSecret: updatedClientSecret,
+    }
+  })
 }

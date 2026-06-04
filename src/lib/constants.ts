@@ -27,6 +27,7 @@ export const APPOINTMENT_TYPE_LABELS: Record<string, string> = {
   surgery: 'Cirurgia',
   return: 'Retorno',
   block: 'Bloqueio',
+  google_event: 'Compromisso Google',
 }
 
 export const APPOINTMENT_STATUS_LABELS: Record<string, string> = {

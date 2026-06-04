@@ -1,7 +1,7 @@
 export type UserRole = 'admin' | 'receptionist' | 'financial' | 'doctor'
 export type LeadStatus = 'new' | 'contacted' | 'scheduled' | 'attended' | 'active_patient' | 'lost'
 export type LeadSource = 'google_ads' | 'meta_ads' | 'instagram_organic' | 'facebook_organic' | 'google_organic' | 'referral' | 'whatsapp' | 'other'
-export type AppointmentType = 'consultation' | 'prp' | 'bmac' | 'hyaluronic' | 'prolotherapy' | 'surgery' | 'return' | 'block'
+export type AppointmentType = 'consultation' | 'prp' | 'bmac' | 'hyaluronic' | 'prolotherapy' | 'surgery' | 'return' | 'block' | 'google_event'
 export type AppointmentStatus = 'scheduled' | 'confirmed' | 'attended' | 'no_show' | 'rescheduled' | 'cancelled'
 export type TransactionType = 'income' | 'expense'
 export type StockStatus = 'ok' | 'low' | 'critical' | 'out_of_stock'
@@ -33,6 +33,7 @@ export interface Lead {
   patientId: string | null
   utmSource: string | null
   utmCampaign: string | null
+  tags?: string[] | null
   createdAt: string
   updatedAt: string
   assignedTo?: Pick<User, 'id' | 'name'>
@@ -66,6 +67,15 @@ export interface Patient {
   createdAt: string
 }
 
+export interface Room {
+  id: string
+  name: string
+  color: string
+  isActive: boolean
+  createdAt: string
+  updatedAt: string
+}
+
 export interface Appointment {
   id: string
   patientId: string | null
@@ -78,12 +88,22 @@ export interface Appointment {
   title: string | null
   notes: string | null
   room: string | null
+  roomId: string | null
   confirmedAt: string | null
   reminderSent: boolean
+  returnDeadline?: string | null
+  returnEstimatedAt?: string | null
+  isPaidConsultation: boolean
+  consultationPrice?: string | null
+  paymentMethodId?: string | null
+  paymentTiming?: string | null
+  paymentStatus?: string | null
+  paymentReceiptUrl?: string | null
   createdAt: string
   patient?: Pick<Patient, 'id' | 'name' | 'phone'>
   lead?: Pick<Lead, 'id' | 'name' | 'phone'>
   doctor?: Pick<User, 'id' | 'name'>
+  roomObj?: Pick<Room, 'id' | 'name' | 'color'> | null
 }
 
 export interface Transaction {

@@ -17,11 +17,19 @@ const itemSchema = z.object({
   sortOrder: z.number().int().default(0),
 })
 
+const CATEGORIES = [
+  'consultation_fee', 'prp_procedure', 'bmac_procedure', 'hyaluronic_procedure',
+  'surgery_fee', 'other_income', 'rent', 'staff', 'marketing', 'materials',
+  'equipment', 'utilities', 'insurance', 'accounting', 'other_expense',
+] as const
+
 const createSchema = z.object({
   patientId: z.string().uuid(),
   appointmentId: z.string().uuid().optional().nullable(),
   doctorId: z.string().uuid().optional().nullable(),
   paymentMethodId: z.string().uuid().optional().nullable(),
+  templateId: z.string().uuid().optional().nullable(),
+  category: z.enum(CATEGORIES).default('consultation_fee'),
   name: z.string().min(1).max(255),
   discount: z.number().min(0).default(0),
   installments: z.number().int().min(1).default(1),
@@ -125,6 +133,8 @@ export async function POST(req: NextRequest) {
     appointmentId: d.appointmentId ?? null,
     doctorId: d.doctorId ?? null,
     paymentMethodId: d.paymentMethodId ?? null,
+    templateId: d.templateId ?? null,
+    category: d.category,
     name: d.name,
     status: 'draft',
     subtotal: String(subtotal),

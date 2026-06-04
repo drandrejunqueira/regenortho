@@ -15,6 +15,13 @@
       "when": 1775582224501,
       "tag": "0001_magenta_starjammers",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1780536575460,
+      "tag": "0002_overconfident_echo",
+      "breakpoints": true
     }
   ]
 }

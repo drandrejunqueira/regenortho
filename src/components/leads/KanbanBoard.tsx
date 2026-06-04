@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useCallback } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import {
   DndContext, DragEndEvent, DragOverlay, DragStartEvent,
   PointerSensor, useSensor, useSensors, closestCorners,
@@ -8,10 +8,11 @@ import {
 import { KanbanColumn } from './KanbanColumn'
 import { LeadCard } from './LeadCard'
 import { LeadDrawer } from './LeadDrawer'
+import { ScheduleLeadDialog } from './ScheduleLeadDialog'
 import { toast } from 'sonner'
 import type { Lead, LeadStatus, LeadInteraction } from '@/types'
 
-const STATUSES: LeadStatus[] = ['new', 'contacted', 'scheduled', 'attended', 'active_patient', 'lost']
+const STATUSES: LeadStatus[] = ['new', 'contacted', 'scheduled', 'lost']
 
 interface Props {
   initialLeads: Lead[]
@@ -24,6 +25,16 @@ export function KanbanBoard({ initialLeads, onRefresh }: Props) {
   const [selectedLead, setSelectedLead] = useState<Lead | null>(null)
   const [interactions, setInteractions] = useState<LeadInteraction[]>([])
   const [drawerOpen, setDrawerOpen] = useState(false)
+
+  // Estados para o diálogo de agendamento automático
+  const [scheduleDialogOpen, setScheduleDialogOpen] = useState(false)
+  const [leadToSchedule, setLeadToSchedule] = useState<Lead | null>(null)
+  const [previousStatus, setPreviousStatus] = useState<LeadStatus | null>(null)
+
+  // Sincronizar leads locais quando initialLeads mudar no pai
+  useEffect(() => {
+    setLeads(initialLeads)
+  }, [initialLeads])
 
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 8 } })
@@ -45,14 +56,34 @@ export function KanbanBoard({ initialLeads, onRefresh }: Props) {
     if (!over || active.id === over.id) return
 
     const leadId = active.id as string
-    const newStatus = over.id as LeadStatus
+    let newStatus = over.id as LeadStatus
+
+    // Se dropou sobre um card de lead, resolve o status correspondente àquela coluna
+    if (!STATUSES.includes(newStatus)) {
+      const overLead = leads.find((l) => l.id === over.id)
+      if (overLead) {
+        newStatus = overLead.status
+      }
+    }
 
     if (!STATUSES.includes(newStatus)) return
 
     const lead = leads.find((l) => l.id === leadId)
     if (!lead || lead.status === newStatus) return
 
-    // Optimistic update
+    // Se mover para 'scheduled' (Agendado), abre o formulário de agendamento
+    if (newStatus === 'scheduled') {
+      setLeadToSchedule(lead)
+      setPreviousStatus(lead.status)
+      setScheduleDialogOpen(true)
+      // Mover otimista
+      setLeads((prev) =>
+        prev.map((l) => l.id === leadId ? { ...l, status: 'scheduled', updatedAt: new Date().toISOString() } : l)
+      )
+      return
+    }
+
+    // Optimistic update para outros status (ex: contacted, lost, new)
     setLeads((prev) =>
       prev.map((l) => l.id === leadId ? { ...l, status: newStatus, updatedAt: new Date().toISOString() } : l)
     )
@@ -64,6 +95,7 @@ export function KanbanBoard({ initialLeads, onRefresh }: Props) {
         body: JSON.stringify({ status: newStatus }),
       })
       if (!res.ok) throw new Error()
+      toast.success('Etapa atualizada!')
     } catch {
       // Reverter
       setLeads((prev) =>
@@ -71,6 +103,25 @@ export function KanbanBoard({ initialLeads, onRefresh }: Props) {
       )
       toast.error('Erro ao mover lead')
     }
+  }
+
+  function handleCancelSchedule() {
+    if (leadToSchedule && previousStatus) {
+      // Reverter o card para o status anterior
+      setLeads((prev) =>
+        prev.map((l) => l.id === leadToSchedule.id ? { ...l, status: previousStatus } : l)
+      )
+    }
+    setScheduleDialogOpen(false)
+    setLeadToSchedule(null)
+    setPreviousStatus(null)
+  }
+
+  function handleScheduleSuccess() {
+    setScheduleDialogOpen(false)
+    setLeadToSchedule(null)
+    setPreviousStatus(null)
+    onRefresh()
   }
 
   async function handleLeadClick(lead: Lead) {
@@ -87,7 +138,7 @@ export function KanbanBoard({ initialLeads, onRefresh }: Props) {
 
   function handleDrawerUpdate() {
     onRefresh()
-    // Re-fetch interactions
+    // Atualizar interações no drawer se aberto
     if (selectedLead) handleLeadClick(selectedLead)
   }
 
@@ -99,7 +150,7 @@ export function KanbanBoard({ initialLeads, onRefresh }: Props) {
         onDragStart={handleDragStart}
         onDragEnd={handleDragEnd}
       >
-        <div className="flex gap-4 overflow-x-auto pb-4">
+        <div className="flex gap-4 overflow-x-auto pb-4 h-full items-start">
           {STATUSES.map((status) => (
             <KanbanColumn
               key={status}
@@ -125,6 +176,21 @@ export function KanbanBoard({ initialLeads, onRefresh }: Props) {
         open={drawerOpen}
         onOpenChange={setDrawerOpen}
         onUpdate={handleDrawerUpdate}
+        onScheduleLead={(lead) => {
+          setDrawerOpen(false)
+          setLeadToSchedule(lead)
+          setPreviousStatus(lead.status)
+          setScheduleDialogOpen(true)
+        }}
+      />
+
+      <ScheduleLeadDialog
+        open={scheduleDialogOpen}
+        onOpenChange={(open) => {
+          if (!open) handleCancelSchedule()
+        }}
+        lead={leadToSchedule}
+        onScheduled={handleScheduleSuccess}
       />
     </>
   )

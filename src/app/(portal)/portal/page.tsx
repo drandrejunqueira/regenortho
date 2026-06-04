@@ -3,12 +3,13 @@
 import { useState, useEffect, Suspense } from 'react'
 import { useSearchParams } from 'next/navigation'
 import { AuroraBackground } from '@/components/ui/aurora-background'
+import { toast } from 'sonner'
 
 interface Patient { id: string; name: string; email: string | null; phone: string; birthDate: string | null; insurance: string | null }
 interface Appointment { id: string; type: string; status: string; startAt: string; endAt: string; title: string | null; notes: string | null }
 interface Treatment { id: string; name: string; status: string; totalSale: string; installments: number; completedAt: string | null; createdAt: string }
 interface ExamOrder { id: string; exams: Array<{ name: string }>; urgency: string; status: string; resultUrl: string | null; resultDate: string | null; validUntil: string | null; createdAt: string }
-interface Transaction { id: string; description: string; amount: string; type: string; date: string; isPaid: boolean }
+interface Transaction { id: string; description: string; amount: string; type: string; date: string; dueDate: string | null; isPaid: boolean }
 
 const APPT_TYPE: Record<string, string> = {
   consultation: 'Consulta', prp: 'PRP', bmac: 'BMAC', hyaluronic: 'Hialurônico',
@@ -47,7 +48,12 @@ const TABS = [
 
 function PortalContent() {
   const params = useSearchParams()
-  const token = params.get('token')
+  const urlToken = params.get('token')
+
+  const [currentToken, setCurrentToken] = useState<string | null>(null)
+  const [inputCode, setInputCode] = useState('')
+  const [loginError, setLoginError] = useState<string | null>(null)
+  const [loginLoading, setLoginLoading] = useState(false)
 
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -58,9 +64,27 @@ function PortalContent() {
   const [transactions, setTransactions] = useState<Transaction[]>([])
   const [activeTab, setActiveTab] = useState('agenda')
 
+  // Resolve o token inicial
   useEffect(() => {
-    if (!token) { setError('Link de acesso inválido'); setLoading(false); return }
-    fetch(`/api/portal/me?token=${token}`)
+    if (urlToken) {
+      setCurrentToken(urlToken)
+      localStorage.setItem('portal_token', urlToken)
+    } else {
+      const stored = localStorage.getItem('portal_token')
+      if (stored) {
+        setCurrentToken(stored)
+      }
+    }
+  }, [urlToken])
+
+  // Busca dados do paciente quando o token muda
+  useEffect(() => {
+    if (!currentToken) {
+      setLoading(false)
+      return
+    }
+    setLoading(true)
+    fetch(`/api/portal/me?token=${currentToken}`)
       .then(r => r.json())
       .then(({ data, error: err }) => {
         if (err) throw new Error(err)
@@ -69,80 +93,175 @@ function PortalContent() {
         setTreatments(data.treatments)
         setExams(data.exams)
         setTransactions(data.transactions)
+        
+        // Sincroniza a URL com o token atual
+        if (typeof window !== 'undefined' && !window.location.search.includes('token=')) {
+          window.history.replaceState({}, '', `/portal?token=${currentToken}`)
+        }
       })
-      .catch(e => setError(e.message))
+      .catch(e => {
+        setError(e.message)
+        localStorage.removeItem('portal_token')
+        setCurrentToken(null)
+      })
       .finally(() => setLoading(false))
-  }, [token])
+  }, [currentToken])
 
-  if (!token) return (
+  async function handleCodeLogin(e: React.FormEvent) {
+    e.preventDefault()
+    if (inputCode.trim().length !== 6) {
+      setLoginError('Digite o código de 6 dígitos')
+      return
+    }
+    setLoginLoading(true)
+    setLoginError(null)
+    try {
+      const res = await fetch(`/api/portal/me?code=${inputCode.trim()}`)
+      const resJson = await res.json()
+      if (!res.ok) throw new Error(resJson.error || 'Erro ao validar código')
+      
+      const { data } = resJson
+      setPatient(data.patient)
+      setAppointments(data.appointments)
+      setTreatments(data.treatments)
+      setExams(data.exams)
+      setTransactions(data.transactions)
+      
+      setCurrentToken(data.token)
+      localStorage.setItem('portal_token', data.token)
+      
+      if (typeof window !== 'undefined') {
+        window.history.replaceState({}, '', `/portal?token=${data.token}`)
+      }
+      toast.success('Acesso autorizado!')
+    } catch (err: any) {
+      setLoginError(err.message || 'Código inválido ou expirado')
+    } finally {
+      setLoginLoading(false)
+    }
+  }
+
+  if (!currentToken) return (
     <AuroraBackground className="!h-screen">
-      <div className="relative z-10 text-center py-12 px-4 max-w-lg w-full">
-        <div className="w-24 h-24 rounded-3xl bg-white/10 backdrop-blur-xl border border-white/20 flex items-center justify-center mx-auto mb-8 shadow-2xl">
-          <span className="material-symbols-outlined text-[#61d8dd]" style={{ fontSize: '48px' }}>person_pin</span>
+      <div className="relative z-10 text-center py-12 px-4 max-w-md w-full">
+        <div className="w-20 h-20 rounded-3xl bg-white/10 backdrop-blur-xl border border-white/20 flex items-center justify-center mx-auto mb-6 shadow-2xl">
+          <span className="material-symbols-outlined text-[#61d8dd]" style={{ fontSize: '40px' }}>person_pin</span>
         </div>
-        <h1 className="text-4xl font-bold text-white mb-3 tracking-tight">Área do Paciente</h1>
-        <p className="text-white/70 text-sm mb-10 max-w-xs mx-auto leading-relaxed">
-          Para acessar sua área e consultar seus tratamentos e <span className="text-[#61d8dd] font-bold">cashback</span>, utilize o link enviado via WhatsApp.
+        <h1 className="text-3xl font-bold text-white mb-2 tracking-tight">Área do Paciente</h1>
+        <p className="text-white/70 text-xs mb-8 max-w-xs mx-auto leading-relaxed">
+          Digite o código de 6 dígitos recebido ou use o link de acesso direto para visualizar seus tratamentos e históricos.
         </p>
         
-        <div className="bg-black/40 backdrop-blur-2xl rounded-3xl p-8 shadow-2xl border border-white/10 space-y-6 text-left">
-          <p className="text-[10px] font-bold text-white/40 uppercase tracking-[0.2em]">Não recebeu seu link?</p>
-          <div className="space-y-4">
-            {[
-              { icon: 'chat', color: '#25d366', label: 'Solicitar via WhatsApp', desc: 'Receba seu link instantaneamente' },
-              { icon: 'phone', color: '#61d8dd', label: 'Central de Atendimento', desc: 'Ligue para (12) 98176-7896' },
-            ].map(item => (
-              <a key={item.label} href="https://wa.me/5512981767896" className="flex items-center gap-4 p-4 bg-white/5 rounded-2xl hover:bg-white/10 transition-all border border-white/5 group">
-                <div className="w-10 h-10 rounded-xl flex items-center justify-center bg-white/5 group-hover:scale-110 transition-transform">
-                  <span className="material-symbols-outlined" style={{ fontSize: '22px', color: item.color }}>{item.icon}</span>
-                </div>
-                <div>
-                  <p className="text-sm font-bold text-white">{item.label}</p>
-                  <p className="text-xs text-white/50">{item.desc}</p>
-                </div>
-              </a>
-            ))}
+        <div className="bg-black/40 backdrop-blur-2xl rounded-3xl p-6 shadow-2xl border border-white/10 space-y-5 text-left">
+          <form onSubmit={handleCodeLogin} className="space-y-4">
+            <div className="space-y-2">
+              <label className="text-[10px] font-bold text-white/40 uppercase tracking-[0.2em] block">Código de Acesso</label>
+              <input
+                type="text"
+                maxLength={6}
+                value={inputCode}
+                onChange={e => setInputCode(e.target.value.replace(/\D/g, ''))}
+                placeholder="000000"
+                className="w-full text-center text-3xl font-bold bg-white/5 border border-white/10 rounded-2xl py-3.5 text-[#61d8dd] placeholder:text-white/20 focus:outline-none focus:ring-2 focus:ring-[#61d8dd]/40 focus:border-[#61d8dd]/30 tracking-[0.3em] font-technical"
+              />
+            </div>
+
+            {loginError && (
+              <p className="text-xs text-rose-400 font-medium text-center">{loginError}</p>
+            )}
+
+            <button
+              type="submit"
+              disabled={loginLoading || inputCode.length !== 6}
+              className="w-full py-3.5 rounded-2xl bg-gradient-to-br from-[#006e72] to-[#61d8dd] text-[#003739] text-xs font-extrabold hover:opacity-95 transition-opacity flex items-center justify-center gap-1.5 shadow-lg border-0 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              {loginLoading ? (
+                <div className="w-4 h-4 rounded-full border-2 border-[#003739] border-t-transparent animate-spin" />
+              ) : (
+                <>
+                  <span className="material-symbols-outlined" style={{ fontSize: '16px' }}>login</span>
+                  Acessar Minha Área
+                </>
+              )}
+            </button>
+          </form>
+
+          <div className="border-t border-white/10 pt-4 text-center">
+            <p className="text-[10px] text-white/40 uppercase tracking-wider font-bold mb-3">Não possui um código?</p>
+            <a href="https://wa.me/5512981767896" className="flex items-center justify-center gap-2 p-3 bg-white/5 rounded-2xl hover:bg-white/10 transition-all border border-white/5 group text-xs text-white font-bold decoration-transparent">
+              <span className="material-symbols-outlined text-[#25d366]" style={{ fontSize: '18px' }}>chat</span>
+              Solicitar Código via WhatsApp
+            </a>
           </div>
         </div>
 
-        <div className="mt-12 flex flex-col items-center gap-6">
-          <a href="/site" className="inline-flex items-center gap-2 text-xs font-bold text-white/40 hover:text-white uppercase tracking-widest transition-colors">
-            <span className="material-symbols-outlined" style={{ fontSize: '16px' }}>arrow_back</span>
+        <div className="mt-8 flex flex-col items-center gap-4">
+          <a href="/site" className="inline-flex items-center gap-2 text-[10px] font-bold text-white/40 hover:text-white uppercase tracking-widest transition-colors decoration-transparent">
+            <span className="material-symbols-outlined" style={{ fontSize: '14px' }}>arrow_back</span>
             Voltar ao site institucional
           </a>
-          
-          <div className="flex items-center gap-4 text-[9px] uppercase tracking-[0.3em] text-white/20">
-             <span>São José dos Campos</span>
-          </div>
         </div>
       </div>
     </AuroraBackground>
   )
 
-  if (loading) return (
+  const renderLayout = (content: React.ReactNode) => (
+    <>
+      <header className="bg-[#1c2026] border-b border-[#3e4949]/20 px-4 py-3">
+        <div className="max-w-2xl mx-auto flex items-center justify-between">
+          <a href="/site" className="flex items-center gap-3 hover:opacity-80 transition-opacity no-underline">
+            <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-[#006e72] to-[#61d8dd] flex items-center justify-center text-[#003739] font-bold text-sm select-none">
+              RO
+            </div>
+            <div>
+              <p className="text-sm font-bold text-[#dfe2eb]">Regem Orto</p>
+              <p className="text-[10px] text-[#61d8dd]/70 uppercase tracking-widest font-bold">Portal do Paciente</p>
+            </div>
+          </a>
+          <a
+            href="/login"
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-[#3e4949]/30 text-[#bec9c9] text-xs font-medium hover:text-[#dfe2eb] hover:bg-[#262a31] transition-colors no-underline"
+          >
+            <span className="material-symbols-outlined" style={{ fontSize: '14px' }}>lock</span>
+            Login Clínica
+          </a>
+        </div>
+      </header>
+      <main className="max-w-2xl mx-auto px-4 py-6">
+        {content}
+      </main>
+    </>
+  )
+
+  if (loading) return renderLayout(
     <div className="text-center py-16">
       <div className="w-10 h-10 rounded-full border-2 border-[#61d8dd] border-t-transparent animate-spin mx-auto" />
       <p className="text-sm text-[#bec9c9] mt-4">Carregando seus dados...</p>
     </div>
   )
 
-  if (error || !patient) return (
+  if (error || !patient) return renderLayout(
     <div className="text-center py-16">
       <span className="material-symbols-outlined text-[#ffb4ab]" style={{ fontSize: '48px' }}>error</span>
       <p className="text-base font-bold text-[#dfe2eb] mt-4">Acesso inválido</p>
       <p className="text-sm text-[#bec9c9] mt-2">{error ?? 'Token não encontrado'}</p>
       <p className="text-xs text-[#bec9c9]/60 mt-4">Solicite um novo link de acesso na clínica.</p>
-      <a href="/site" className="inline-flex items-center gap-2 mt-6 text-sm text-[#bec9c9] hover:text-[#dfe2eb]">
-        <span className="material-symbols-outlined" style={{ fontSize: '16px' }}>arrow_back</span>
-        Voltar ao site
-      </a>
+      <div className="flex flex-col items-center gap-3 mt-6">
+        <button onClick={() => { localStorage.removeItem('portal_token'); setCurrentToken(null); setError(null); }} className="px-4 py-2 rounded-xl text-xs font-bold bg-white/5 text-[#bec9c9] hover:text-white border-0 cursor-pointer">
+          Digitar outro código
+        </button>
+        <a href="/site" className="inline-flex items-center gap-2 text-sm text-[#bec9c9] hover:text-[#dfe2eb] no-underline">
+          <span className="material-symbols-outlined" style={{ fontSize: '16px' }}>arrow_back</span>
+          Voltar ao site
+        </a>
+      </div>
     </div>
   )
 
   const upcoming = appointments.filter(a => new Date(a.startAt) >= new Date() && !['cancelled', 'no_show'].includes(a.status))
   const past = appointments.filter(a => new Date(a.startAt) < new Date() || ['attended', 'no_show'].includes(a.status))
 
-  return (
+  return renderLayout(
     <div className="space-y-5">
       {/* Patient header */}
       <div className="bg-[#1c2026] rounded-xl p-5">
@@ -150,23 +269,37 @@ function PortalContent() {
           <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-[#006e72] to-[#61d8dd] flex items-center justify-center text-[#003739] font-bold text-xl select-none shrink-0">
             {patient.name.charAt(0)}
           </div>
-          <div>
-            <p className="text-base font-bold text-[#dfe2eb]">{patient.name}</p>
-            <p className="text-sm text-[#bec9c9]">{patient.phone}{patient.email ? ` · ${patient.email}` : ''}</p>
+          <div className="flex-1 min-w-0">
+            <p className="text-base font-bold text-[#dfe2eb] truncate">{patient.name}</p>
+            <p className="text-sm text-[#bec9c9] truncate">{patient.phone}{patient.email ? ` · ${patient.email}` : ''}</p>
           </div>
+          <button
+            onClick={() => {
+              localStorage.removeItem('portal_token')
+              setCurrentToken(null)
+              setPatient(null)
+              if (typeof window !== 'undefined') {
+                window.history.replaceState({}, '', '/portal')
+              }
+            }}
+            className="text-xs text-[#bec9c9] hover:text-white flex items-center gap-1 bg-white/5 hover:bg-white/10 border border-white/10 px-2.5 py-1.5 rounded-lg transition-colors border-0 shrink-0 cursor-pointer"
+          >
+            <span className="material-symbols-outlined" style={{ fontSize: '14px' }}>logout</span>
+            Sair
+          </button>
         </div>
         <div className="grid grid-cols-3 gap-3 mt-4 pt-4 border-t border-[#3e4949]/20 text-center">
           <div>
             <p className="text-lg font-bold text-[#61d8dd]">{upcoming.length}</p>
-            <p className="text-[10px] text-[#bec9c9] uppercase tracking-wider">Próximas consultas</p>
+            <p className="text-[10px] text-[#bec9c9] uppercase tracking-wider font-bold">Próximas consultas</p>
           </div>
           <div>
             <p className="text-lg font-bold text-[#e6c364]">{treatments.length}</p>
-            <p className="text-[10px] text-[#bec9c9] uppercase tracking-wider">Tratamentos</p>
+            <p className="text-[10px] text-[#bec9c9] uppercase tracking-wider font-bold">Tratamentos</p>
           </div>
           <div>
             <p className="text-lg font-bold text-[#a8d5a2]">{exams.length}</p>
-            <p className="text-[10px] text-[#bec9c9] uppercase tracking-wider">Exames</p>
+            <p className="text-[10px] text-[#bec9c9] uppercase tracking-wider font-bold">Exames</p>
           </div>
         </div>
       </div>
@@ -177,7 +310,7 @@ function PortalContent() {
           <button
             key={tab.id}
             onClick={() => setActiveTab(tab.id)}
-            className={`flex-1 flex items-center justify-center gap-1.5 py-2 rounded-lg text-xs font-medium transition-all ${activeTab === tab.id ? 'bg-[#31353c] text-[#dfe2eb]' : 'text-[#bec9c9]/60 hover:text-[#dfe2eb]'}`}
+            className={`flex-1 flex items-center justify-center gap-1.5 py-2 rounded-lg text-xs font-medium transition-all cursor-pointer border-0 ${activeTab === tab.id ? 'bg-[#31353c] text-[#dfe2eb]' : 'text-[#bec9c9]/60 hover:text-[#dfe2eb]'}`}
           >
             <span className="material-symbols-outlined" style={{ fontSize: '14px' }}>{tab.icon}</span>
             <span className="hidden sm:inline">{tab.label}</span>
@@ -190,13 +323,13 @@ function PortalContent() {
         <div className="space-y-4">
           {upcoming.length > 0 && (
             <div>
-              <p className="text-[10px] font-bold text-[#bec9c9] uppercase tracking-wider mb-2">Próximas consultas</p>
+              <p className="text-[10px] font-bold text-[#bec9c9] uppercase tracking-wider mb-2 font-bold">Próximas consultas</p>
               <div className="space-y-2">
                 {upcoming.map(a => (
                   <div key={a.id} className="bg-[#1c2026] rounded-xl p-4 border-l-4" style={{ borderColor: APPT_STATUS_COLOR[a.status] ?? '#61d8dd' }}>
                     <div className="flex items-center justify-between">
                       <p className="text-sm font-bold text-[#dfe2eb]">{a.title ?? APPT_TYPE[a.type] ?? a.type}</p>
-                      <span className="text-[10px] font-bold px-2 py-0.5 rounded-full" style={{ color: APPT_STATUS_COLOR[a.status] ?? '#61d8dd', background: `${APPT_STATUS_COLOR[a.status] ?? '#61d8dd'}18` }}>
+                      <span className="text-[10px] font-bold px-2 py-0.5 rounded-full font-bold" style={{ color: APPT_STATUS_COLOR[a.status] ?? '#61d8dd', background: `${APPT_STATUS_COLOR[a.status] ?? '#61d8dd'}18` }}>
                         {APPT_STATUS_LABEL[a.status] ?? a.status}
                       </span>
                     </div>
@@ -209,7 +342,7 @@ function PortalContent() {
           )}
           {past.length > 0 && (
             <div>
-              <p className="text-[10px] font-bold text-[#bec9c9] uppercase tracking-wider mb-2">Histórico</p>
+              <p className="text-[10px] font-bold text-[#bec9c9] uppercase tracking-wider mb-2 font-bold">Histórico</p>
               <div className="space-y-2">
                 {past.slice(0, 10).map(a => (
                   <div key={a.id} className="bg-[#1c2026] rounded-xl p-3 flex items-center justify-between">
@@ -249,7 +382,7 @@ function PortalContent() {
                     <p className="text-sm font-bold text-[#dfe2eb]">{t.name}</p>
                     <p className="text-xs text-[#bec9c9] mt-0.5">{fDate(t.createdAt)}</p>
                   </div>
-                  <span className="text-[10px] font-bold px-2 py-0.5 rounded-full shrink-0" style={{ color: cfg.color, background: `${cfg.color}18` }}>
+                  <span className="text-[10px] font-bold px-2 py-0.5 rounded-full shrink-0 font-bold" style={{ color: cfg.color, background: `${cfg.color}18` }}>
                     {cfg.label}
                   </span>
                 </div>
@@ -279,7 +412,7 @@ function PortalContent() {
               </div>
               <p className="text-xs text-[#bec9c9] mt-1">{fDate(ex.createdAt)}</p>
               {ex.resultUrl && (
-                <a href={ex.resultUrl} target="_blank" rel="noopener noreferrer" className="mt-3 flex items-center gap-2 text-xs text-[#61d8dd] bg-[#61d8dd]/10 px-3 py-2 rounded-lg hover:bg-[#61d8dd]/20">
+                <a href={ex.resultUrl} target="_blank" rel="noopener noreferrer" className="mt-3 flex items-center gap-2 text-xs text-[#61d8dd] bg-[#61d8dd]/10 px-3 py-2 rounded-lg hover:bg-[#61d8dd]/20 no-underline">
                   <span className="material-symbols-outlined" style={{ fontSize: '14px' }}>open_in_new</span>
                   Ver resultado {ex.resultDate ? `— ${fDate(ex.resultDate)}` : ''}
                 </a>
@@ -304,7 +437,10 @@ function PortalContent() {
             <div key={tx.id} className="bg-[#1c2026] rounded-xl p-4 flex items-center justify-between gap-4">
               <div>
                 <p className="text-sm text-[#dfe2eb]">{tx.description}</p>
-                <p className="text-xs text-[#bec9c9] mt-0.5">{fDate(tx.date)}</p>
+                <p className="text-xs text-[#bec9c9] mt-0.5">
+                  Lançamento: {fDate(tx.date)}
+                  {tx.dueDate && ` · Vencimento: ${fDate(tx.dueDate)}`}
+                </p>
               </div>
               <div className="text-right shrink-0">
                 <p className={`text-sm font-bold ${tx.type === 'income' ? 'text-[#a8d5a2]' : 'text-[#ffb4ab]'}`}>{BRL(tx.amount)}</p>

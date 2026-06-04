@@ -18,6 +18,7 @@ const updateLeadSchema = z.object({
   notes: z.string().nullable().optional(),
   lostReason: z.string().nullable().optional(),
   assignedToId: z.string().uuid().nullable().optional(),
+  tags: z.array(z.string()).optional(),
 })
 
 const interactionSchema = z.object({

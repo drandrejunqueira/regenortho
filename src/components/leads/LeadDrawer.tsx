@@ -13,9 +13,10 @@ interface Props {
   open: boolean
   onOpenChange: (v: boolean) => void
   onUpdate: () => void
+  onScheduleLead?: (lead: Lead) => void
 }
 
-const STATUSES: LeadStatus[] = ['new', 'contacted', 'scheduled', 'attended', 'active_patient', 'lost']
+const STATUSES: LeadStatus[] = ['new', 'contacted', 'scheduled', 'lost']
 
 const STATUS_STYLES: Record<string, string> = {
   new:            'bg-cyan-50 border-cyan-200 text-cyan-700',
@@ -43,15 +44,26 @@ const INTERACTION_ICON: Record<string, string> = {
   appointment: 'calendar_today',
 }
 
-export function LeadDrawer({ lead, interactions, open, onOpenChange, onUpdate }: Props) {
+export function LeadDrawer({ lead, interactions, open, onOpenChange, onUpdate, onScheduleLead }: Props) {
   const [noteContent, setNoteContent] = useState('')
   const [savingNote, setSavingNote] = useState(false)
   const [updatingStatus, setUpdatingStatus] = useState(false)
+
+  // Estados para Tags
+  const [newTagInput, setNewTagInput] = useState('')
+  const [updatingTags, setUpdatingTags] = useState(false)
 
   if (!lead) return null
 
   async function updateStatus(status: string) {
     if (!lead) return
+    if (status === 'scheduled') {
+      if (onScheduleLead) {
+        onScheduleLead(lead)
+      }
+      return
+    }
+
     setUpdatingStatus(true)
     try {
       const res = await fetch(`/api/leads/${lead.id}`, {
@@ -89,17 +101,65 @@ export function LeadDrawer({ lead, interactions, open, onOpenChange, onUpdate }:
     }
   }
 
+  async function addTag(tagText: string) {
+    if (!lead || !tagText.trim()) return
+    const cleanedTag = tagText.trim()
+    const currentTags = lead.tags ?? []
+    if (currentTags.includes(cleanedTag)) {
+      toast.error('Esta tag já existe.')
+      return
+    }
+    const updatedTags = [...currentTags, cleanedTag]
+    setUpdatingTags(true)
+    try {
+      const res = await fetch(`/api/leads/${lead.id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ tags: updatedTags }),
+      })
+      if (!res.ok) throw new Error()
+      toast.success('Tag adicionada!')
+      setNewTagInput('')
+      onUpdate()
+    } catch {
+      toast.error('Erro ao adicionar tag.')
+    } finally {
+      setUpdatingTags(false)
+    }
+  }
+
+  async function removeTag(tagToRemove: string) {
+    if (!lead) return
+    const currentTags = lead.tags ?? []
+    const updatedTags = currentTags.filter(t => t !== tagToRemove)
+    setUpdatingTags(true)
+    try {
+      const res = await fetch(`/api/leads/${lead.id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ tags: updatedTags }),
+      })
+      if (!res.ok) throw new Error()
+      toast.success('Tag removida!')
+      onUpdate()
+    } catch {
+      toast.error('Erro ao remover tag.')
+    } finally {
+      setUpdatingTags(false)
+    }
+  }
+
   const phone = lead.phone.replace(/\D/g, '')
 
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
       <SheetContent
         showCloseButton={false}
-        className="w-full max-w-[440px] p-0 gap-0 overflow-hidden flex flex-col border-l border-[rgba(2,21,65,0.10)] shadow-2xl"
+        className="w-full max-w-[440px] p-0 gap-0 overflow-hidden flex flex-col border-l border-[rgba(2,21,65,0.10)] shadow-2xl bg-[#f5f6f8]"
         side="right"
       >
         {/* ── HEADER ───────────────────────────────────────────────────── */}
-        <div className="bg-gradient-to-br from-[#021541] via-[#032170] to-[#021541] text-white relative overflow-hidden">
+        <div className="bg-gradient-to-br from-[#021541] via-[#032170] to-[#021541] text-white relative overflow-hidden shrink-0">
           {/* Decorative glow */}
           <div className="absolute top-0 right-0 w-48 h-48 rounded-full bg-[#00BCE4]/10 blur-3xl pointer-events-none" />
 
@@ -118,7 +178,7 @@ export function LeadDrawer({ lead, interactions, open, onOpenChange, onUpdate }:
                 <div className="flex items-center gap-1.5 mt-2 flex-wrap">
                   {/* status badge */}
                   <span className={`text-[9px] font-bold px-2.5 py-0.5 rounded-full border ${STATUS_STYLES[lead.status]}`}>
-                    {LEAD_STATUS_LABELS[lead.status]}
+                    {LEAD_STATUS_LABELS[lead.status] || lead.status}
                   </span>
                   {/* source badge */}
                   <span className="text-[9px] font-bold px-2.5 py-0.5 rounded-full bg-white/10 border border-white/15 text-white/60">
@@ -129,7 +189,7 @@ export function LeadDrawer({ lead, interactions, open, onOpenChange, onUpdate }:
 
               <button
                 onClick={() => onOpenChange(false)}
-                className="w-8 h-8 rounded-full bg-white/10 hover:bg-white/20 border border-white/10 flex items-center justify-center shrink-0 transition-colors"
+                className="w-8 h-8 rounded-full bg-white/10 hover:bg-white/20 border border-white/10 flex items-center justify-center shrink-0 transition-colors cursor-pointer"
                 aria-label="Fechar"
               >
                 <span className="material-symbols-outlined" style={{ fontSize: '16px' }}>close</span>
@@ -142,7 +202,7 @@ export function LeadDrawer({ lead, interactions, open, onOpenChange, onUpdate }:
                 href={`https://wa.me/55${phone}`}
                 target="_blank"
                 rel="noreferrer"
-                className="flex-1 flex items-center justify-center gap-1.5 py-2 rounded-xl bg-green-500 hover:bg-green-400 text-white text-[11px] font-bold transition-colors"
+                className="flex-1 flex items-center justify-center gap-1.5 py-2 rounded-xl bg-green-500 hover:bg-green-400 text-white text-[11px] font-bold transition-colors cursor-pointer"
               >
                 <span className="material-symbols-outlined" style={{ fontSize: '14px' }}>chat</span>
                 WhatsApp
@@ -150,7 +210,7 @@ export function LeadDrawer({ lead, interactions, open, onOpenChange, onUpdate }:
               {lead.email && (
                 <a
                   href={`mailto:${lead.email}`}
-                  className="flex-1 flex items-center justify-center gap-1.5 py-2 rounded-xl bg-white/10 hover:bg-white/20 border border-white/15 text-white text-[11px] font-bold transition-colors"
+                  className="flex-1 flex items-center justify-center gap-1.5 py-2 rounded-xl bg-white/10 hover:bg-white/20 border border-white/15 text-white text-[11px] font-bold transition-colors cursor-pointer"
                 >
                   <span className="material-symbols-outlined" style={{ fontSize: '14px' }}>mail</span>
                   E-mail
@@ -158,7 +218,7 @@ export function LeadDrawer({ lead, interactions, open, onOpenChange, onUpdate }:
               )}
               <a
                 href={`tel:${lead.phone}`}
-                className="w-10 flex items-center justify-center rounded-xl bg-white/10 hover:bg-white/20 border border-white/15 text-white transition-colors"
+                className="w-10 flex items-center justify-center rounded-xl bg-white/10 hover:bg-white/20 border border-white/15 text-white transition-colors cursor-pointer"
                 aria-label="Ligar"
               >
                 <span className="material-symbols-outlined" style={{ fontSize: '16px' }}>phone</span>
@@ -179,15 +239,67 @@ export function LeadDrawer({ lead, interactions, open, onOpenChange, onUpdate }:
                   key={s}
                   disabled={updatingStatus}
                   onClick={() => updateStatus(s)}
-                  className={`text-[9px] font-bold px-3 py-1.5 rounded-full border tracking-wide transition-all disabled:opacity-50 ${
+                  className={`text-[9px] font-bold px-3 py-1.5 rounded-full border tracking-wide transition-all disabled:opacity-50 cursor-pointer ${
                     lead.status === s
                       ? `${STATUS_ACTIVE[s]} shadow-sm scale-105`
                       : 'border-[rgba(2,21,65,0.10)] bg-[#f5f6f8] text-[#718096] hover:border-[rgba(2,21,65,0.20)] hover:text-[#021541]'
                   }`}
                 >
-                  {LEAD_STATUS_LABELS[s]}
+                  {LEAD_STATUS_LABELS[s] || s}
                 </button>
               ))}
+            </div>
+          </div>
+
+          {/* Tags de Marcação */}
+          <div className="bg-white px-5 py-4 border-b border-[rgba(2,21,65,0.06)] mt-2">
+            <p className="text-[9px] font-bold text-[#718096] uppercase tracking-widest mb-2.5">Tags de Marcação</p>
+            
+            <div className="flex flex-wrap gap-1.5 mb-3">
+              {(lead.tags ?? []).length === 0 ? (
+                <p className="text-xs text-[#718096] italic">Nenhuma tag adicionada</p>
+              ) : (
+                (lead.tags ?? []).map((t) => (
+                  <span
+                    key={t}
+                    className="flex items-center gap-1.5 bg-[rgba(2,21,65,0.04)] text-[#021541]/75 text-[10px] px-2.5 py-1 rounded-full font-semibold border border-[rgba(2,21,65,0.06)]"
+                  >
+                    {t}
+                    <button
+                      disabled={updatingTags}
+                      onClick={() => removeTag(t)}
+                      className="text-[#718096] hover:text-[#dc2626] cursor-pointer disabled:opacity-50 flex items-center justify-center"
+                      aria-label={`Remover tag ${t}`}
+                    >
+                      <span className="material-symbols-outlined select-none" style={{ fontSize: '12px' }}>close</span>
+                    </button>
+                  </span>
+                ))
+              )}
+            </div>
+
+            <div className="flex gap-2">
+              <input
+                placeholder="Nova tag..."
+                value={newTagInput}
+                onChange={(e) => setNewTagInput(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') {
+                    e.preventDefault()
+                    addTag(newTagInput)
+                  }
+                }}
+                disabled={updatingTags}
+                className="flex-1 bg-[#f5f6f8] border border-[rgba(2,21,65,0.10)] rounded-xl px-3 py-1.5 text-xs text-[#021541] placeholder:text-[#CBD5E0] focus:outline-none focus:ring-2 focus:ring-[rgba(0,188,228,0.25)] focus:border-[#00BCE4] transition-all"
+              />
+              <button
+                type="button"
+                disabled={updatingTags || !newTagInput.trim()}
+                onClick={() => addTag(newTagInput)}
+                className="px-3 py-1.5 rounded-xl bg-[rgba(0,188,228,0.08)] text-[#00BCE4] hover:bg-[rgba(0,188,228,0.15)] text-xs font-bold transition-all disabled:opacity-50 cursor-pointer"
+              >
+                + Adicionar
+              </button>
             </div>
           </div>
 
@@ -312,7 +424,7 @@ export function LeadDrawer({ lead, interactions, open, onOpenChange, onUpdate }:
               <button
                 onClick={addNote}
                 disabled={savingNote || !noteContent.trim()}
-                className="absolute bottom-3 right-3 w-9 h-9 rounded-xl bg-gradient-to-br from-[#0097a7] to-[#00BCE4] text-white flex items-center justify-center disabled:opacity-30 disabled:cursor-not-allowed transition-opacity hover:opacity-90"
+                className="absolute bottom-3 right-3 w-9 h-9 rounded-xl bg-gradient-to-br from-[#0097a7] to-[#00BCE4] text-white flex items-center justify-center disabled:opacity-30 disabled:cursor-not-allowed transition-opacity hover:opacity-90 cursor-pointer"
                 aria-label="Enviar nota"
               >
                 <span className="material-symbols-outlined" style={{ fontSize: '16px' }}>send</span>
@@ -323,19 +435,23 @@ export function LeadDrawer({ lead, interactions, open, onOpenChange, onUpdate }:
         </div>
 
         {/* ── FOOTER ───────────────────────────────────────────────────── */}
-        <div className="bg-white border-t border-[rgba(2,21,65,0.08)] p-4 flex gap-3">
+        <div className="bg-white border-t border-[rgba(2,21,65,0.08)] p-4 flex gap-3 shrink-0">
           <button
-            onClick={() => updateStatus('active_patient')}
-            disabled={updatingStatus || lead.status === 'active_patient'}
-            className="flex-1 flex items-center justify-center gap-2 py-3 rounded-2xl bg-gradient-to-br from-[#021541] to-[#032170] text-white text-[11px] font-bold uppercase tracking-widest shadow-lg hover:opacity-90 transition-opacity disabled:opacity-40 disabled:cursor-not-allowed"
+            onClick={() => {
+              if (onScheduleLead) {
+                onScheduleLead(lead)
+              }
+            }}
+            disabled={updatingStatus || lead.status === 'scheduled'}
+            className="flex-1 flex items-center justify-center gap-2 py-3 rounded-2xl bg-gradient-to-br from-[#021541] to-[#032170] text-white text-[11px] font-bold uppercase tracking-widest shadow-lg hover:opacity-90 transition-opacity disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer"
           >
-            <span className="material-symbols-outlined" style={{ fontSize: '16px' }}>person_check</span>
-            Converter em Paciente
+            <span className="material-symbols-outlined" style={{ fontSize: '16px' }}>calendar_today</span>
+            Agendar Consulta
           </button>
           <button
             onClick={() => { updateStatus('lost'); onOpenChange(false) }}
             disabled={updatingStatus || lead.status === 'lost'}
-            className="w-12 flex items-center justify-center rounded-2xl bg-red-50 border border-red-100 text-red-400 hover:bg-red-500 hover:text-white hover:border-red-500 transition-all disabled:opacity-30 disabled:cursor-not-allowed"
+            className="w-12 flex items-center justify-center rounded-2xl bg-red-50 border border-red-100 text-red-400 hover:bg-red-500 hover:text-white hover:border-red-500 transition-all disabled:opacity-30 disabled:cursor-not-allowed cursor-pointer"
             aria-label="Marcar como perdido"
           >
             <span className="material-symbols-outlined" style={{ fontSize: '18px' }}>person_off</span>

@@ -133,7 +133,12 @@ export default function FinanceiroPage() {
             <tbody>
               {transactions.map((tx) => (
                 <tr key={tx.id} className="border-b border-[rgba(2,21,65,0.05)] hover:bg-[rgba(2,21,65,0.015)] transition-colors">
-                  <td className="px-5 py-3 font-technical text-xs text-[#718096] whitespace-nowrap">{formatDate(tx.date)}</td>
+                  <td className="px-5 py-3 font-technical text-xs text-[#718096] whitespace-nowrap">
+                    <div>{formatDate(tx.date)}</div>
+                    {tx.dueDate && tx.dueDate !== tx.date && (
+                      <div className="text-[10px] text-amber-600 font-medium mt-0.5">Venc: {formatDate(tx.dueDate)}</div>
+                    )}
+                  </td>
                   <td className="px-5 py-3">
                     <p className="font-medium text-[#021541]">{tx.description}</p>
                     {tx.patient && <p className="text-xs text-[#718096]">{tx.patient.name}</p>}

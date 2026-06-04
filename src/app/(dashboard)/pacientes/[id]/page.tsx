@@ -32,7 +32,7 @@ interface ExamOrder {
   doctor: { name: string } | null
 }
 interface ClinicalRecord { id: string; type: string; content: string; createdAt: string; doctor?: { name: string } | null }
-interface Transaction { id: string; description: string; amount: string; type: string; date: string; isPaid: boolean }
+interface Transaction { id: string; description: string; amount: string; type: string; date: string; dueDate?: string | null; isPaid: boolean }
 interface Doctor { id: string; name: string }
 
 // ── Constants ────────────────────────────────────────────
@@ -411,8 +411,25 @@ function NovoTratamentoDialog({ open, onOpenChange, patientId, doctors, onCreate
 // ── Portal Tab ───────────────────────────────────────────
 function PortalTab({ patientId }: { patientId: string }) {
   const [token, setToken] = useState<string | null>(null)
+  const [code, setCode] = useState<string | null>(null)
   const [expiresAt, setExpiresAt] = useState<string | null>(null)
   const [loading, setLoading] = useState(false)
+  const [fetching, setFetching] = useState(true)
+
+  useEffect(() => {
+    setFetching(true)
+    fetch(`/api/portal/token?patientId=${patientId}`)
+      .then(r => r.json())
+      .then(({ data }) => {
+        if (data) {
+          setToken(data.token)
+          setCode(data.code)
+          setExpiresAt(data.expiresAt)
+        }
+      })
+      .catch(() => {})
+      .finally(() => setFetching(false))
+  }, [patientId])
 
   async function generate() {
     setLoading(true)
@@ -425,9 +442,10 @@ function PortalTab({ patientId }: { patientId: string }) {
       const data = await res.json()
       if (!res.ok) throw new Error()
       setToken(data.token)
+      setCode(data.code)
       setExpiresAt(data.expiresAt)
-      toast.success('Link de acesso gerado!')
-    } catch { toast.error('Erro ao gerar link') } finally { setLoading(false) }
+      toast.success('Link e código de acesso gerados!')
+    } catch { toast.error('Erro ao gerar link de acesso') } finally { setLoading(false) }
   }
 
   const link = token ? `${typeof window !== 'undefined' ? window.location.origin : ''}/portal?token=${token}` : null
@@ -439,29 +457,50 @@ function PortalTab({ patientId }: { patientId: string }) {
           <span className="material-symbols-outlined text-[#00BCD4]" style={{ fontSize: '24px' }}>person_pin</span>
           <div>
             <p className="text-sm font-bold text-[#021541]">Portal do Paciente</p>
-            <p className="text-xs text-[#718096]">Gere um link de acesso para o paciente visualizar seus dados</p>
+            <p className="text-xs text-[#718096]">Gerencie o acesso do paciente para visualizar tratamentos e históricos</p>
           </div>
         </div>
-        {link ? (
+        
+        {fetching ? (
+          <p className="text-xs text-[#718096] italic">Carregando informações de acesso...</p>
+        ) : link ? (
           <div className="space-y-3">
-            <div className="bg-[#f5f6f8] rounded-xl p-3">
-              <p className="text-[10px] text-[#718096] uppercase tracking-wider font-bold mb-1">Link de acesso</p>
-              <p className="text-xs text-[#00BCD4] break-all font-mono">{link}</p>
+            <div className="bg-[#f5f6f8] rounded-xl p-3 space-y-3">
+              <div>
+                <p className="text-[10px] text-[#718096] uppercase tracking-wider font-bold mb-1">Link de acesso direto</p>
+                <p className="text-xs text-[#00BCD4] break-all font-mono">{link}</p>
+              </div>
+              
+              {code && (
+                <div className="pt-3 border-t border-[rgba(2,21,65,0.06)] flex items-center justify-between">
+                  <div>
+                    <p className="text-[10px] text-[#718096] uppercase tracking-wider font-bold">Código de Acesso</p>
+                    <p className="text-lg font-bold text-[#021541] tracking-widest font-mono mt-0.5">{code}</p>
+                  </div>
+                  <button 
+                    onClick={() => { navigator.clipboard.writeText(code); toast.success('Código copiado!') }} 
+                    className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-medium bg-white text-[#718096] border border-[rgba(2,21,65,0.08)] hover:bg-[#f5f6f8] transition-colors border-0"
+                  >
+                    <span className="material-symbols-outlined" style={{ fontSize: '14px' }}>content_copy</span>Copiar código
+                  </button>
+                </div>
+              )}
+              
               <p className="text-[11px] text-[#718096]/60 mt-1">Válido até: {expiresAt ? fDateTime(expiresAt) : '—'}</p>
             </div>
             <div className="flex gap-2">
-              <button onClick={() => { navigator.clipboard.writeText(link); toast.success('Link copiado!') }} className="flex items-center gap-2 px-3 py-2 rounded-lg text-xs font-medium bg-[#00BCD4]/10 text-[#00BCD4] hover:bg-[#00BCD4]/20">
+              <button onClick={() => { navigator.clipboard.writeText(link); toast.success('Link copiado!') }} className="flex items-center gap-2 px-3 py-2 rounded-lg text-xs font-medium bg-[#00BCD4]/10 text-[#00BCD4] hover:bg-[#00BCD4]/20 border-0">
                 <span className="material-symbols-outlined" style={{ fontSize: '14px' }}>content_copy</span>Copiar link
               </button>
-              <button onClick={generate} disabled={loading} className="flex items-center gap-2 px-3 py-2 rounded-lg text-xs font-medium bg-[#f5f6f8] text-[#718096] hover:bg-[#f5f6f8]">
+              <button onClick={generate} disabled={loading} className="flex items-center gap-2 px-3 py-2 rounded-lg text-xs font-medium bg-[#f5f6f8] text-[#718096] hover:bg-[#e2e8f0] transition-colors border-0">
                 <span className="material-symbols-outlined" style={{ fontSize: '14px' }}>refresh</span>Gerar novo
               </button>
             </div>
           </div>
         ) : (
-          <button onClick={generate} disabled={loading} className="flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-bold bg-gradient-to-br from-[#021541] to-[#032170] text-white hover:opacity-90 disabled:opacity-50">
+          <button onClick={generate} disabled={loading} className="flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-bold bg-gradient-to-br from-[#021541] to-[#032170] text-white hover:opacity-90 disabled:opacity-50 border-0">
             <span className="material-symbols-outlined" style={{ fontSize: '18px' }}>key</span>
-            {loading ? 'Gerando...' : 'Gerar Link de Acesso'}
+            {loading ? 'Gerando...' : 'Gerar Link & Código de Acesso'}
           </button>
         )}
       </div>
@@ -862,7 +901,10 @@ export default function PacienteDetailPage({ params }: { params: { id: string } 
                   <div key={tx.id} className="bg-white rounded-xl p-4 flex items-center justify-between gap-4">
                     <div>
                       <p className="text-sm text-[#021541]">{tx.description}</p>
-                      <p className="text-xs text-[#718096] mt-0.5">{fDate(tx.date)}</p>
+                      <p className="text-xs text-[#718096] mt-0.5">
+                        Lançamento: {fDate(tx.date)}
+                        {tx.dueDate && ` · Vencimento: ${fDate(tx.dueDate)}`}
+                      </p>
                     </div>
                     <div className="text-right">
                       <p className={`text-sm font-bold ${tx.type === 'income' ? 'text-[#a8d5a2]' : 'text-[#ffb4ab]'}`}>

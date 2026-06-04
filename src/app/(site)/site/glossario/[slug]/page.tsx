@@ -1,5 +1,5 @@
 import { getTermoBySlugPublicado, getTermosByLetraPublicados } from '@/lib/db/queries/glossario'
-import { getConfig } from '@/lib/db/queries/configuracoes'
+import { getConfig, getAllConfigs } from '@/lib/db/queries/configuracoes'
 import { GlossarioReader } from '@/components/site/GlossarioReader'
 import { GlossarioCta, dividirConteudo } from '@/components/site/GlossarioCta'
 import SiteNav from '@/components/site/SiteNav'
@@ -9,6 +9,10 @@ import { notFound } from 'next/navigation'
 import Link from 'next/link'
 import { ChevronRight, ArrowLeft, BookOpen, Star, Sparkles } from 'lucide-react'
 import type { Metadata } from 'next'
+import { db } from '@/lib/db'
+import { clinicSettings } from '@/lib/db/schema'
+import { eq } from 'drizzle-orm'
+import { getGlossarioTermoJsonLd } from '@/lib/seo/jsonld'
 
 interface Props {
   params: { slug: string }
@@ -42,12 +46,16 @@ export default async function VerbetePage({ params }: Props) {
     .slice(0, 5)
 
   // Flags de funcionalidade do glossário (liga/desliga no admin)
-  const [leituraFlag, adsFlag] = await Promise.all([
+  const [leituraFlag, adsFlag, configs, clinic] = await Promise.all([
     getConfig('glossario_leitura_ativo'),
     getConfig('glossario_ads_ativo'),
+    getAllConfigs(),
+    db.query.clinicSettings.findFirst({ where: eq(clinicSettings.id, 1) }),
   ])
   const leituraAtiva = leituraFlag !== 'false'
   const adsAtivo = adsFlag !== 'false'
+
+  const jsonLd = getGlossarioTermoJsonLd(termo, clinic ?? null, configs)
 
   // Conteúdo: com anúncio injetado no meio (se ativo)
   const conteudo = termo.conteudo ?? ''
@@ -55,6 +63,11 @@ export default async function VerbetePage({ params }: Props) {
 
   return (
     <div className="site-skin min-h-screen" style={{ background: '#f5f6f8' }}>
+      {/* Schema.org GEO Structured Data para este verbete */}
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
+      />
       <SiteNav />
       
       <main className="relative z-10 bg-[#f5f6f8] pt-24 pb-20">

@@ -49,6 +49,10 @@ export async function GET(_: NextRequest, { params }: Params) {
         orderBy: (r, { desc }) => [desc(r.createdAt)],
         limit: 20,
       },
+      leads: {
+        orderBy: (l, { desc }) => [desc(l.createdAt)],
+        limit: 5,
+      },
     },
   })
 
@@ -60,6 +64,7 @@ export async function GET(_: NextRequest, { params }: Params) {
     ...patient,
     clinicalRecords: hasPermission(role, 'patients:view_clinical') ? patient.clinicalRecords : [],
     transactions: hasPermission(role, 'financial:view') ? patient.transactions : [],
+    leads: patient.leads || [],
   }
 
   return NextResponse.json({ data: result })

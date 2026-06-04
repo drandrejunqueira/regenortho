@@ -3,7 +3,7 @@ import { db } from '@/lib/db'
 import { leads } from '@/lib/db/schema'
 import { hasPermission } from '@/lib/permissions'
 import { NextRequest, NextResponse } from 'next/server'
-import { and, gte, lte, eq, ilike, or, desc } from 'drizzle-orm'
+import { and, gte, lte, eq, ilike, or, desc, sql } from 'drizzle-orm'
 import { z } from 'zod'
 import type { UserRole } from '@/types'
 
@@ -17,6 +17,7 @@ const createLeadSchema = z.object({
   notes: z.string().optional(),
   utmSource: z.string().optional(),
   utmCampaign: z.string().optional(),
+  tags: z.array(z.string()).optional(),
 })
 
 export async function GET(req: NextRequest) {
@@ -40,6 +41,11 @@ export async function GET(req: NextRequest) {
   }
   if (status) conditions.push(eq(leads.status, status as 'new' | 'contacted' | 'scheduled' | 'attended' | 'active_patient' | 'lost'))
   if (source) conditions.push(eq(leads.source, source as 'google_ads' | 'meta_ads' | 'instagram_organic' | 'facebook_organic' | 'google_organic' | 'referral' | 'whatsapp' | 'other'))
+
+  const tag = searchParams.get('tag')
+  if (tag) {
+    conditions.push(sql`${leads.tags} @> ${JSON.stringify([tag])}::jsonb`)
+  }
 
   const data = await db.query.leads.findMany({
     where: conditions.length ? and(...conditions) : undefined,

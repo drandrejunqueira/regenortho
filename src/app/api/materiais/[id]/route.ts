@@ -6,7 +6,6 @@ import { NextRequest, NextResponse } from 'next/server'
 import { eq } from 'drizzle-orm'
 import { z } from 'zod'
 import type { UserRole } from '@/types'
-import { computeStockStatus } from '../route'
 
 const updateSchema = z.object({
   name: z.string().min(1).optional(),

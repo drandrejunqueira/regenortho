@@ -6,6 +6,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { and, eq, sql } from 'drizzle-orm'
 import { z } from 'zod'
 import type { UserRole } from '@/types'
+import { computeStockStatus } from '@/lib/utils'
 
 const createSchema = z.object({
   name: z.string().min(1, 'Nome obrigatório'),
@@ -63,9 +64,4 @@ export async function POST(req: NextRequest) {
   return NextResponse.json({ data: material }, { status: 201 })
 }
 
-export function computeStockStatus(current: number, minimum: number): 'ok' | 'low' | 'critical' | 'out_of_stock' {
-  if (current === 0) return 'out_of_stock'
-  if (current <= minimum) return 'critical'
-  if (current <= minimum * 1.5) return 'low'
-  return 'ok'
-}
+

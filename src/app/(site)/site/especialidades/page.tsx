@@ -4,6 +4,11 @@ import Image from 'next/image'
 import SiteNav from '@/components/site/SiteNav'
 import SiteFooter from '@/components/site/SiteFooter'
 import { GSAPAnimations } from '@/components/site/GSAPAnimations'
+import { db } from '@/lib/db'
+import { clinicSettings } from '@/lib/db/schema'
+import { eq } from 'drizzle-orm'
+import { getAllConfigs } from '@/lib/db/queries/configuracoes'
+import { getEspecialidadesJsonLd } from '@/lib/seo/jsonld'
 
 export const metadata: Metadata = {
   title: 'Especialidades — Joelho, Ombro, Coluna, Quadril | Dr. André Elias Junqueira',
@@ -47,9 +52,18 @@ const SPECIALTIES = [
   },
 ]
 
-export default function EspecialidadesPage() {
+export default async function EspecialidadesPage() {
+  const configs = await getAllConfigs()
+  const clinic = await db.query.clinicSettings.findFirst({ where: eq(clinicSettings.id, 1) })
+  const jsonLd = getEspecialidadesJsonLd(clinic ?? null, configs)
+
   return (
     <div className="site-skin min-h-screen" style={{ background: '#f5f6f8' }}>
+      {/* Schema.org GEO Structured Data */}
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
+      />
       <GSAPAnimations />
       <SiteNav />
 

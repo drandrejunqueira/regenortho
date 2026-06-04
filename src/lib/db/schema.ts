@@ -163,6 +163,9 @@ export const users = pgTable('users', {
   isActive:          boolean('is_active').notNull().default(true),
   customPermissions: jsonb('custom_permissions').$type<string[] | null>().default(null),
   googleCalendarId:  text('google_calendar_id'),
+  googleCalendarRefreshToken: text('google_calendar_refresh_token'),
+  googleCalendarEmail:        text('google_calendar_email'),
+  googleCalendarConnectedAt:  timestamp('google_calendar_connected_at'),
   lastLoginAt:       timestamp('last_login_at'),
   createdAt:         timestamp('created_at').defaultNow().notNull(),
   updatedAt:         timestamp('updated_at').defaultNow().notNull(),
@@ -290,6 +293,7 @@ export const leads = pgTable('leads', {
   lostReason:   text('lost_reason'),
   utmSource:    varchar('utm_source', { length: 100 }),
   utmCampaign:  varchar('utm_campaign', { length: 100 }),
+  tags:         jsonb('tags').$type<string[]>().default([]),
   createdAt:    timestamp('created_at').defaultNow().notNull(),
   updatedAt:    timestamp('updated_at').defaultNow().notNull(),
 })
@@ -301,6 +305,15 @@ export const leadInteractions = pgTable('lead_interactions', {
   type:      varchar('type', { length: 50 }).notNull(),
   content:   text('content').notNull(),
   createdAt: timestamp('created_at').defaultNow().notNull(),
+})
+
+export const rooms = pgTable('rooms', {
+  id:           uuid('id').defaultRandom().primaryKey(),
+  name:         varchar('name', { length: 100 }).notNull(),
+  color:        varchar('color', { length: 7 }).notNull().default('#00BCE4'),
+  isActive:     boolean('is_active').notNull().default(true),
+  createdAt:    timestamp('created_at').defaultNow().notNull(),
+  updatedAt:    timestamp('updated_at').defaultNow().notNull(),
 })
 
 export const appointments = pgTable('appointments', {
@@ -315,8 +328,18 @@ export const appointments = pgTable('appointments', {
   title:        varchar('title', { length: 255 }),
   notes:        text('notes'),
   room:         varchar('room', { length: 50 }),
+  roomId:       uuid('room_id').references(() => rooms.id, { onDelete: 'set null' }),
+  googleEventId: text('google_event_id'),
   confirmedAt:  timestamp('confirmed_at'),
   reminderSent: boolean('reminder_sent').notNull().default(false),
+  returnDeadline: timestamp('return_deadline'),
+  returnEstimatedAt: timestamp('return_estimated_at'),
+  isPaidConsultation: boolean('is_paid_consultation').notNull().default(false),
+  consultationPrice: numeric('consultation_price', { precision: 10, scale: 2 }),
+  paymentMethodId: uuid('payment_method_id').references(() => paymentMethods.id),
+  paymentTiming: varchar('payment_timing', { length: 50 }),
+  paymentStatus: varchar('payment_status', { length: 50 }),
+  paymentReceiptUrl: text('payment_receipt_url'),
   createdById:  uuid('created_by_id').references(() => users.id),
   createdAt:    timestamp('created_at').defaultNow().notNull(),
   updatedAt:    timestamp('updated_at').defaultNow().notNull(),
@@ -345,6 +368,9 @@ export const transactions = pgTable('transactions', {
   isPaid:        boolean('is_paid').notNull().default(false),
   patientId:     uuid('patient_id').references(() => patients.id),
   appointmentId: uuid('appointment_id').references(() => appointments.id),
+  treatmentId:   uuid('treatment_id'),
+  installmentNumber: integer('installment_number'),
+  installmentTotal:  integer('installment_total'),
   notes:         text('notes'),
   receipt:       text('receipt'),
   createdById:   uuid('created_by_id').references(() => users.id),
@@ -416,13 +442,41 @@ export const bankAccounts = pgTable('bank_accounts', {
   updatedAt:      timestamp('updated_at').defaultNow().notNull(),
 })
 
+// Catálogo de tratamentos (modelos reutilizáveis com seus materiais/custos)
+export const treatmentTemplates = pgTable('treatment_templates', {
+  id:          uuid('id').defaultRandom().primaryKey(),
+  name:        varchar('name', { length: 255 }).notNull(),
+  description: text('description'),
+  category:    transactionCategoryEnum('category').notNull().default('consultation_fee'),
+  defaultPrice: numeric('default_price', { precision: 10, scale: 2 }).notNull().default('0'),
+  estimatedCost: numeric('estimated_cost', { precision: 10, scale: 2 }).notNull().default('0'),
+  isActive:    boolean('is_active').notNull().default(true),
+  notes:       text('notes'),
+  createdById: uuid('created_by_id').references(() => users.id),
+  createdAt:   timestamp('created_at').defaultNow().notNull(),
+  updatedAt:   timestamp('updated_at').defaultNow().notNull(),
+})
+
+export const treatmentTemplateItems = pgTable('treatment_template_items', {
+  id:          uuid('id').defaultRandom().primaryKey(),
+  templateId:  uuid('template_id').notNull().references(() => treatmentTemplates.id, { onDelete: 'cascade' }),
+  type:        treatmentItemTypeEnum('type').notNull(),
+  materialId:  uuid('material_id').references(() => materials.id),
+  description: varchar('description', { length: 255 }).notNull(),
+  quantity:    numeric('quantity', { precision: 8, scale: 3 }).notNull().default('1'),
+  unitPrice:   numeric('unit_price', { precision: 10, scale: 2 }).notNull().default('0'),
+  sortOrder:   integer('sort_order').notNull().default(0),
+})
+
 export const treatments = pgTable('treatments', {
   id:              uuid('id').defaultRandom().primaryKey(),
   patientId:       uuid('patient_id').notNull().references(() => patients.id),
   appointmentId:   uuid('appointment_id').references(() => appointments.id),
   doctorId:        uuid('doctor_id').references(() => users.id),
   paymentMethodId: uuid('payment_method_id').references(() => paymentMethods.id),
+  templateId:      uuid('template_id').references(() => treatmentTemplates.id),
   name:            varchar('name', { length: 255 }).notNull(),
+  category:        transactionCategoryEnum('category').notNull().default('consultation_fee'),
   status:          treatmentStatusEnum('status').notNull().default('draft'),
   subtotal:        numeric('subtotal', { precision: 10, scale: 2 }).notNull().default('0'),
   discount:        numeric('discount', { precision: 10, scale: 2 }).notNull().default('0'),
@@ -470,6 +524,7 @@ export const patientAccessTokens = pgTable('patient_access_tokens', {
   id:         uuid('id').defaultRandom().primaryKey(),
   patientId:  uuid('patient_id').notNull().references(() => patients.id, { onDelete: 'cascade' }),
   token:      text('token').notNull().unique(),
+  code:       varchar('code', { length: 6 }),
   expiresAt:  timestamp('expires_at').notNull(),
   lastUsedAt: timestamp('last_used_at'),
   isActive:   boolean('is_active').notNull().default(true),
@@ -515,6 +570,11 @@ export const appointmentsRelations = relations(appointments, ({ one }) => ({
   patient: one(patients, { fields: [appointments.patientId], references: [patients.id] }),
   lead:    one(leads, { fields: [appointments.leadId], references: [leads.id] }),
   doctor:  one(users, { fields: [appointments.doctorId], references: [users.id] }),
+  roomObj: one(rooms, { fields: [appointments.roomId], references: [rooms.id] }),
+}))
+
+export const roomsRelations = relations(rooms, ({ many }) => ({
+  appointments: many(appointments),
 }))
 
 export const leadInteractionsRelations = relations(leadInteractions, ({ one }) => ({
@@ -548,12 +608,23 @@ export const treatmentsRelations = relations(treatments, ({ one, many }) => ({
   appointment:   one(appointments, { fields: [treatments.appointmentId], references: [appointments.id] }),
   doctor:        one(users, { fields: [treatments.doctorId], references: [users.id] }),
   paymentMethod: one(paymentMethods, { fields: [treatments.paymentMethodId], references: [paymentMethods.id] }),
+  template:      one(treatmentTemplates, { fields: [treatments.templateId], references: [treatmentTemplates.id] }),
   items:         many(treatmentItems),
 }))
 
 export const treatmentItemsRelations = relations(treatmentItems, ({ one }) => ({
   treatment: one(treatments, { fields: [treatmentItems.treatmentId], references: [treatments.id] }),
   material:  one(materials, { fields: [treatmentItems.materialId], references: [materials.id] }),
+}))
+
+export const treatmentTemplatesRelations = relations(treatmentTemplates, ({ many }) => ({
+  items:      many(treatmentTemplateItems),
+  treatments: many(treatments),
+}))
+
+export const treatmentTemplateItemsRelations = relations(treatmentTemplateItems, ({ one }) => ({
+  template: one(treatmentTemplates, { fields: [treatmentTemplateItems.templateId], references: [treatmentTemplates.id] }),
+  material: one(materials, { fields: [treatmentTemplateItems.materialId], references: [materials.id] }),
 }))
 
 export const examOrdersRelations = relations(examOrders, ({ one }) => ({

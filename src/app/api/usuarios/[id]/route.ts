@@ -32,7 +32,15 @@ export async function PATCH(req: NextRequest, { params }: Params) {
   const [updated] = await db.update(users)
     .set({ ...parsed.data, updatedAt: new Date() })
     .where(eq(users.id, id))
-    .returning({ id: users.id, name: users.name, email: users.email, role: users.role, isActive: users.isActive, customPermissions: users.customPermissions })
+    .returning({
+      id: users.id,
+      name: users.name,
+      email: users.email,
+      role: users.role,
+      isActive: users.isActive,
+      customPermissions: users.customPermissions,
+      googleCalendarId: users.googleCalendarId,
+    })
 
   if (!updated) return NextResponse.json({ error: 'Usuário não encontrado' }, { status: 404 })
   return NextResponse.json({ data: updated })

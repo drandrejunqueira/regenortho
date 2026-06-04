@@ -10,11 +10,13 @@ export async function GET(request: NextRequest) {
   if (!sessao?.user) {
     return NextResponse.redirect(new URL('/login', request.nextUrl.origin))
   }
-  if (!googleConfigurado()) {
+  const redirectParam = request.nextUrl.searchParams.get('redirect') || undefined
+  if (!(await googleConfigurado())) {
+    const errorRedirect = redirectParam || '/trafego'
     return NextResponse.redirect(
-      new URL('/trafego?google=sem_credenciais', request.nextUrl.origin),
+      new URL(`${errorRedirect}?google=sem_credenciais`, request.nextUrl.origin),
     )
   }
-  const url = gerarUrlConsentimento(request.nextUrl.origin)
+  const url = await gerarUrlConsentimento(request.nextUrl.origin, redirectParam)
   return NextResponse.redirect(url)
 }

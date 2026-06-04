@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback } from 'react'
 import { toast } from 'sonner'
+import { cn } from '@/lib/utils'
 
 // ── Types ────────────────────────────────────────────────
 interface TreatmentItem {
@@ -49,6 +50,35 @@ const STATUS_CONFIG: Record<string, { label: string; color: string; bg: string; 
 
 const ITEM_TYPE_LABELS = { procedure: 'Procedimento', material: 'Material', fee: 'Honorário' }
 
+const CATEGORY_OPTIONS: { value: string; label: string }[] = [
+  { value: 'consultation_fee', label: 'Consulta' },
+  { value: 'prp_procedure', label: 'PRP' },
+  { value: 'bmac_procedure', label: 'BMAC' },
+  { value: 'hyaluronic_procedure', label: 'Ácido Hialurônico' },
+  { value: 'surgery_fee', label: 'Cirurgia' },
+  { value: 'other_income', label: 'Outros' },
+]
+
+interface TemplateItem {
+  type: 'procedure' | 'material' | 'fee'
+  materialId: string | null
+  description: string
+  quantity: string
+  unitPrice: string
+  sortOrder: number
+}
+interface Template {
+  id: string
+  name: string
+  description: string | null
+  category: string
+  defaultPrice: string
+  estimatedCost: string
+  isActive: boolean
+  notes: string | null
+  items: TemplateItem[]
+}
+
 const BRL = (v: string | number) => new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(Number(v))
 
 const inputCls = 'w-full bg-[#f5f6f8] border border-[rgba(2,21,65,0.12)] rounded-xl px-3 py-2.5 text-sm text-[#021541] placeholder:text-[#718096]/60 focus:outline-none focus:border-[#00BCE4] focus:ring-2 focus:ring-[rgba(0,188,228,0.15)] transition-colors'
@@ -78,11 +108,14 @@ function DrawerCreateTreatment({
   const [patients, setPatients] = useState<Patient[]>([])
   const [paymentMethods, setPaymentMethods] = useState<PaymentMethod[]>([])
   const [materials, setMaterials] = useState<Material[]>([])
+  const [templates, setTemplates] = useState<Template[]>([])
   const [saving, setSaving] = useState(false)
 
   const [form, setForm] = useState({
     patientId: '',
     paymentMethodId: '',
+    templateId: '',
+    category: 'consultation_fee',
     name: '',
     discount: 0,
     installments: 1,
@@ -98,14 +131,40 @@ function DrawerCreateTreatment({
       fetch('/api/pacientes?limit=200').then(r => r.json()),
       fetch('/api/configuracoes/pagamentos').then(r => r.json()),
       fetch('/api/materiais').then(r => r.json()),
-    ]).then(([pRes, pmRes, mRes]) => {
+      fetch('/api/tratamentos/templates').then(r => r.json()),
+    ]).then(([pRes, pmRes, mRes, tRes]) => {
       if (pRes.data) setPatients(pRes.data)
       if (pmRes.data) setPaymentMethods(pmRes.data.filter((p: PaymentMethod & { isActive?: boolean }) => p.isActive !== false))
       if (mRes.data) setMaterials(mRes.data)
+      if (tRes.data) setTemplates(tRes.data)
     }).catch(() => {})
   }, [open])
 
   function setF(key: string, value: unknown) { setForm(p => ({ ...p, [key]: value })) }
+
+  /** Aplica um modelo do catálogo: preenche nome, categoria e itens. */
+  function applyTemplate(templateId: string) {
+    setF('templateId', templateId)
+    const tpl = templates.find(t => t.id === templateId)
+    if (!tpl) return
+    setForm(p => ({ ...p, templateId, name: tpl.name, category: tpl.category }))
+    setItems(tpl.items.map((it, i) => {
+      const mat = it.materialId ? materials.find(m => m.id === it.materialId) : null
+      const unitCost = mat ? Number(mat.unitCost ?? 0) : 0
+      const quantity = Number(it.quantity)
+      const unitPrice = Number(it.unitPrice)
+      return {
+        type: it.type,
+        materialId: it.materialId,
+        description: it.description,
+        quantity,
+        unitCost,
+        unitPrice,
+        total: quantity * unitPrice,
+        sortOrder: it.sortOrder ?? i,
+      }
+    }))
+  }
 
   function addItem() {
     setItems(p => [...p, { type: 'procedure', description: '', quantity: 1, unitCost: 0, unitPrice: 0, total: 0, sortOrder: p.length }])
@@ -155,7 +214,7 @@ function DrawerCreateTreatment({
       onCreated(data.data)
       toast.success('Tratamento criado!')
       onClose()
-      setForm({ patientId: '', paymentMethodId: '', name: '', discount: 0, installments: 1, notes: '' })
+      setForm({ patientId: '', paymentMethodId: '', templateId: '', category: 'consultation_fee', name: '', discount: 0, installments: 1, notes: '' })
       setItems([{ type: 'procedure', description: '', quantity: 1, unitCost: 0, unitPrice: 0, total: 0, sortOrder: 0 }])
     } catch { toast.error('Erro ao criar tratamento') } finally { setSaving(false) }
   }
@@ -191,9 +250,25 @@ function DrawerCreateTreatment({
                   {patients.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
                 </select>
               </div>
+              {templates.length > 0 && (
+                <div className="space-y-1.5 col-span-2">
+                  <label className={labelCls}>Modelo do Catálogo</label>
+                  <select value={form.templateId} onChange={e => applyTemplate(e.target.value)} className={drawerInputCls}>
+                    <option value="">Começar do zero...</option>
+                    {templates.map(t => <option key={t.id} value={t.id}>{t.name} — {BRL(t.defaultPrice)}</option>)}
+                  </select>
+                  <p className="text-[11px] text-[#718096]">Preenche itens e valores automaticamente. Você pode ajustar depois.</p>
+                </div>
+              )}
               <div className="space-y-1.5 col-span-2">
                 <label className={labelCls}>Nome do Tratamento *</label>
                 <input value={form.name} onChange={e => setF('name', e.target.value)} placeholder="Ex: PRP Joelho Bilateral" className={drawerInputCls} />
+              </div>
+              <div className="space-y-1.5 col-span-2">
+                <label className={labelCls}>Categoria (centro de custo)</label>
+                <select value={form.category} onChange={e => setF('category', e.target.value)} className={drawerInputCls}>
+                  {CATEGORY_OPTIONS.map(c => <option key={c.value} value={c.value}>{c.label}</option>)}
+                </select>
               </div>
               <div className="space-y-1.5">
                 <label className={labelCls}>Forma de Pagamento</label>
@@ -314,13 +389,504 @@ function DrawerCreateTreatment({
   )
 }
 
+// ── DrawerTemplate (catálogo) ────────────────────────────
+function DrawerTemplate({
+  open, editing, onClose, onSaved,
+}: {
+  open: boolean
+  editing: Template | null
+  onClose: () => void
+  onSaved: () => void
+}) {
+  const [materials, setMaterials] = useState<Material[]>([])
+  const [saving, setSaving] = useState(false)
+  const [form, setForm] = useState({ name: '', category: 'consultation_fee', description: '', notes: '' })
+  const [items, setItems] = useState<TreatmentItem[]>([
+    { type: 'procedure', description: '', quantity: 1, unitCost: 0, unitPrice: 0, total: 0, sortOrder: 0 },
+  ])
+
+  useEffect(() => {
+    if (!open) return
+    fetch('/api/materiais').then(r => r.json()).then(m => { if (m.data) setMaterials(m.data) }).catch(() => {})
+    if (editing) {
+      setForm({ name: editing.name, category: editing.category, description: editing.description ?? '', notes: editing.notes ?? '' })
+      setItems(editing.items.map((it, i) => ({
+        type: it.type, materialId: it.materialId, description: it.description,
+        quantity: Number(it.quantity), unitCost: 0, unitPrice: Number(it.unitPrice),
+        total: Number(it.quantity) * Number(it.unitPrice), sortOrder: it.sortOrder ?? i,
+      })))
+    } else {
+      setForm({ name: '', category: 'consultation_fee', description: '', notes: '' })
+      setItems([{ type: 'procedure', description: '', quantity: 1, unitCost: 0, unitPrice: 0, total: 0, sortOrder: 0 }])
+    }
+  }, [open, editing])
+
+  function updateItem(idx: number, key: string, value: unknown) {
+    setItems(p => {
+      const next = [...p]
+      next[idx] = { ...next[idx], [key]: value }
+      const item = next[idx]
+      if (['quantity', 'unitPrice'].includes(key)) next[idx].total = Number(item.quantity) * Number(item.unitPrice)
+      if (key === 'materialId') {
+        const mat = materials.find(m => m.id === value)
+        if (mat) next[idx].description = mat.name
+      }
+      return next
+    })
+  }
+
+  const price = items.reduce((s, i) => s + i.total, 0)
+
+  async function save() {
+    if (!form.name) { toast.error('Informe o nome do modelo'); return }
+    if (items.some(i => !i.description)) { toast.error('Preencha a descrição de todos os itens'); return }
+    setSaving(true)
+    try {
+      const payload = {
+        name: form.name, category: form.category, description: form.description, notes: form.notes,
+        items: items.map((it, i) => ({
+          type: it.type, materialId: it.materialId ?? null, description: it.description,
+          quantity: Number(it.quantity), unitPrice: Number(it.unitPrice), sortOrder: i,
+        })),
+      }
+      const res = await fetch(editing ? `/api/tratamentos/templates/${editing.id}` : '/api/tratamentos/templates', {
+        method: editing ? 'PATCH' : 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+      })
+      if (!res.ok) throw new Error()
+      toast.success(editing ? 'Modelo atualizado!' : 'Modelo criado!')
+      onSaved(); onClose()
+    } catch { toast.error('Erro ao salvar modelo') } finally { setSaving(false) }
+  }
+
+  if (!open) return null
+  const cls = 'w-full bg-[#f5f6f8] border border-[rgba(2,21,65,0.12)] rounded-xl px-3 py-2.5 text-sm text-[#021541] placeholder:text-[#718096]/60 focus:outline-none focus:border-[#00BCE4] focus:ring-2 focus:ring-[rgba(0,188,228,0.15)] transition-colors'
+
+  return (
+    <div className="fixed inset-0 z-50 flex">
+      <div className="flex-1 bg-black/30 backdrop-blur-sm" onClick={onClose} />
+      <div className="w-full max-w-[600px] bg-white h-full flex flex-col shadow-2xl overflow-hidden border-l border-[rgba(2,21,65,0.08)]">
+        <div className="flex items-center justify-between px-6 py-5 border-b border-[rgba(2,21,65,0.06)] shrink-0">
+          <div>
+            <h2 className="text-base font-bold text-[#021541]">{editing ? 'Editar Modelo' : 'Novo Modelo de Tratamento'}</h2>
+            <p className="text-xs text-[#718096] mt-0.5">Cadastre o tratamento e o que ele consome do estoque</p>
+          </div>
+          <button onClick={onClose} className="w-8 h-8 rounded-lg flex items-center justify-center text-[#718096] hover:bg-[#f5f6f8] hover:text-[#021541] transition-colors">
+            <span className="material-symbols-outlined" style={{ fontSize: '18px' }}>close</span>
+          </button>
+        </div>
+
+        <div className="flex-1 overflow-y-auto px-6 py-5 space-y-5">
+          <div className="grid grid-cols-2 gap-3">
+            <div className="space-y-1.5 col-span-2">
+              <label className={labelCls}>Nome do Modelo *</label>
+              <input value={form.name} onChange={e => setForm(p => ({ ...p, name: e.target.value }))} placeholder="Ex: PRP Joelho Bilateral" className={cls} />
+            </div>
+            <div className="space-y-1.5 col-span-2">
+              <label className={labelCls}>Categoria (centro de custo)</label>
+              <select value={form.category} onChange={e => setForm(p => ({ ...p, category: e.target.value }))} className={cls}>
+                {CATEGORY_OPTIONS.map(c => <option key={c.value} value={c.value}>{c.label}</option>)}
+              </select>
+            </div>
+            <div className="space-y-1.5 col-span-2">
+              <label className={labelCls}>Descrição</label>
+              <input value={form.description} onChange={e => setForm(p => ({ ...p, description: e.target.value }))} placeholder="Resumo do protocolo" className={cls} />
+            </div>
+          </div>
+
+          <div>
+            <div className="flex items-center justify-between mb-3">
+              <p className="text-[10px] font-bold text-[#718096] uppercase tracking-wider">Itens (procedimentos, materiais, honorários)</p>
+              <button onClick={() => setItems(p => [...p, { type: 'procedure', description: '', quantity: 1, unitCost: 0, unitPrice: 0, total: 0, sortOrder: p.length }])} className="flex items-center gap-1 text-xs text-[#00BCE4] hover:text-[#00BCE4]/80 font-medium">
+                <span className="material-symbols-outlined" style={{ fontSize: '14px' }}>add</span> Adicionar item
+              </button>
+            </div>
+            <div className="space-y-3">
+              {items.map((item, idx) => (
+                <div key={idx} className="bg-[#f5f6f8] rounded-xl p-3 space-y-2 border border-[rgba(2,21,65,0.06)]">
+                  <div className="flex items-center gap-2">
+                    <select value={item.type} onChange={e => updateItem(idx, 'type', e.target.value)} className="bg-white border border-[rgba(2,21,65,0.12)] rounded-lg px-2.5 py-1.5 text-xs text-[#021541] focus:outline-none focus:border-[#00BCE4]">
+                      {Object.entries(ITEM_TYPE_LABELS).map(([v, l]) => <option key={v} value={v}>{l}</option>)}
+                    </select>
+                    {item.type === 'material' && (
+                      <select value={item.materialId ?? ''} onChange={e => updateItem(idx, 'materialId', e.target.value || null)} className="flex-1 bg-white border border-[rgba(2,21,65,0.12)] rounded-lg px-2.5 py-1.5 text-xs text-[#021541] focus:outline-none focus:border-[#00BCE4]">
+                        <option value="">Selecione do estoque...</option>
+                        {materials.map(m => <option key={m.id} value={m.id}>{m.name} ({m.unit})</option>)}
+                      </select>
+                    )}
+                    <button onClick={() => setItems(p => p.filter((_, i) => i !== idx))} className="w-6 h-6 flex items-center justify-center text-[#718096]/50 hover:text-[#DC2626] ml-auto shrink-0 transition-colors">
+                      <span className="material-symbols-outlined" style={{ fontSize: '14px' }}>delete</span>
+                    </button>
+                  </div>
+                  <input value={item.description} onChange={e => updateItem(idx, 'description', e.target.value)} placeholder="Descrição do item..." className="w-full bg-white border border-[rgba(2,21,65,0.12)] rounded-lg px-2.5 py-1.5 text-xs text-[#021541] placeholder:text-[#718096]/50 focus:outline-none focus:border-[#00BCE4]" />
+                  <div className="grid grid-cols-3 gap-2">
+                    <div>
+                      <p className={`${labelCls} mb-1`}>Qtd</p>
+                      <input type="number" min="0.001" step="0.001" value={item.quantity} onChange={e => updateItem(idx, 'quantity', Number(e.target.value))} className="w-full bg-white border border-[rgba(2,21,65,0.12)] rounded-lg px-2 py-1.5 text-xs text-[#021541] focus:outline-none focus:border-[#00BCE4]" />
+                    </div>
+                    <div>
+                      <p className={`${labelCls} mb-1`}>Preço (R$)</p>
+                      <input type="number" min="0" step="0.01" value={item.unitPrice} onChange={e => updateItem(idx, 'unitPrice', Number(e.target.value))} className="w-full bg-white border border-[rgba(2,21,65,0.12)] rounded-lg px-2 py-1.5 text-xs text-[#021541] focus:outline-none focus:border-[#00BCE4]" />
+                    </div>
+                    <div>
+                      <p className={`${labelCls} mb-1`}>Total</p>
+                      <p className="text-xs font-bold text-[#00BCE4] py-1.5">{BRL(item.total)}</p>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          <div className="bg-[#f5f6f8] rounded-xl p-4 flex justify-between text-sm font-bold border border-[rgba(2,21,65,0.06)]">
+            <span className="text-[#021541]">Preço padrão do modelo</span>
+            <span className="text-[#00BCE4]">{BRL(price)}</span>
+          </div>
+          <p className="text-[11px] text-[#718096]">O custo de materiais é calculado automaticamente pelo custo atual do estoque ao salvar.</p>
+
+          <div className="space-y-1.5">
+            <label className={labelCls}>Observações padrão</label>
+            <textarea value={form.notes} onChange={e => setForm(p => ({ ...p, notes: e.target.value }))} rows={3} placeholder="Orientações pós-procedimento padrão..." className={`${cls} resize-none`} />
+          </div>
+        </div>
+
+        <div className="flex items-center justify-end gap-3 px-6 py-4 border-t border-[rgba(2,21,65,0.06)] shrink-0">
+          <button onClick={onClose} className="px-4 py-2.5 rounded-xl text-sm text-[#718096] bg-[#f5f6f8] hover:bg-[rgba(2,21,65,0.06)] border border-[rgba(2,21,65,0.08)] transition-colors">Cancelar</button>
+          <button onClick={save} disabled={saving} className="flex items-center gap-2 px-5 py-2.5 rounded-full text-sm font-bold bg-[#021541] text-white hover:bg-[#032170] disabled:opacity-50 transition-colors">
+            <span className="material-symbols-outlined" style={{ fontSize: '18px' }}>save</span>
+            {saving ? 'Salvando...' : editing ? 'Salvar Modelo' : 'Criar Modelo'}
+          </button>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+// ── CatalogoPanel ────────────────────────────────────────
+function CatalogoPanel() {
+  const [templates, setTemplates] = useState<Template[]>([])
+  const [loading, setLoading] = useState(true)
+  const [drawerOpen, setDrawerOpen] = useState(false)
+  const [editing, setEditing] = useState<Template | null>(null)
+
+  const load = useCallback(() => {
+    setLoading(true)
+    fetch('/api/tratamentos/templates?all=true').then(r => r.json())
+      .then(({ data }) => { if (data) setTemplates(data) })
+      .catch(() => {}).finally(() => setLoading(false))
+  }, [])
+  useEffect(() => { load() }, [load])
+
+  async function remove(id: string) {
+    if (!confirm('Inativar este modelo? Tratamentos já criados não são afetados.')) return
+    const res = await fetch(`/api/tratamentos/templates/${id}`, { method: 'DELETE' })
+    if (res.ok) { toast.success('Modelo inativado'); load() } else toast.error('Erro ao inativar')
+  }
+
+  return (
+    <div className="space-y-5">
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <div>
+          <h1 className="text-2xl font-bold text-[#021541]">Catálogo de Tratamentos</h1>
+          <p className="text-sm text-[#718096] mt-0.5">Modelos reutilizáveis com materiais e valores — base do centro de custo</p>
+        </div>
+        <button onClick={() => { setEditing(null); setDrawerOpen(true) }} className="flex items-center gap-2 px-4 py-2.5 rounded-full bg-[#021541] text-white text-sm font-bold hover:bg-[#032170] transition-colors shrink-0">
+          <span className="material-symbols-outlined" style={{ fontSize: '18px' }}>add</span> Novo Modelo
+        </button>
+      </div>
+
+      <div className="bg-white rounded-xl overflow-hidden border border-[rgba(2,21,65,0.06)] shadow-[0_2px_12px_rgba(2,21,65,0.04)]">
+        {loading ? (
+          <p className="text-center py-10 text-sm text-[#718096]">Carregando...</p>
+        ) : templates.length === 0 ? (
+          <div className="text-center py-16 bg-[#f5f6f8] rounded-xl">
+            <span className="material-symbols-outlined text-[#718096]/30" style={{ fontSize: '48px' }}>menu_book</span>
+            <p className="text-sm text-[#718096] mt-3">Nenhum modelo cadastrado</p>
+            <button onClick={() => { setEditing(null); setDrawerOpen(true) }} className="mt-4 text-xs text-[#00BCE4] hover:underline font-medium">Cadastrar o primeiro modelo</button>
+          </div>
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="w-full">
+              <thead>
+                <tr className="border-b border-[rgba(2,21,65,0.06)]">
+                  {['Modelo', 'Categoria', 'Itens', 'Custo estimado', 'Preço padrão', 'Margem', 'Status', ''].map(h => (
+                    <th key={h} className="text-left text-[10px] font-bold text-[#718096] uppercase tracking-wider px-4 py-3 whitespace-nowrap">{h}</th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-[rgba(2,21,65,0.04)]">
+                {templates.map(t => {
+                  const margin = Number(t.defaultPrice) - Number(t.estimatedCost)
+                  const cat = CATEGORY_OPTIONS.find(c => c.value === t.category)?.label ?? t.category
+                  return (
+                    <tr key={t.id} className={`hover:bg-[#f5f6f8] transition-colors ${!t.isActive ? 'opacity-50' : ''}`}>
+                      <td className="px-4 py-3"><p className="text-sm font-medium text-[#021541]">{t.name}</p>{t.description && <p className="text-xs text-[#718096] mt-0.5">{t.description}</p>}</td>
+                      <td className="px-4 py-3 text-sm text-[#718096] whitespace-nowrap">{cat}</td>
+                      <td className="px-4 py-3 text-sm text-[#718096] whitespace-nowrap">{t.items.length}</td>
+                      <td className="px-4 py-3 text-sm text-[#718096] whitespace-nowrap">{BRL(t.estimatedCost)}</td>
+                      <td className="px-4 py-3 text-sm font-medium text-[#021541] whitespace-nowrap">{BRL(t.defaultPrice)}</td>
+                      <td className={`px-4 py-3 text-sm font-medium whitespace-nowrap ${margin >= 0 ? 'text-[#059669]' : 'text-[#DC2626]'}`}>{BRL(margin)}</td>
+                      <td className="px-4 py-3">
+                        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-bold" style={t.isActive ? { color: '#059669', background: 'rgba(5,150,105,0.1)' } : { color: '#718096', background: 'rgba(113,128,150,0.1)' }}>
+                          {t.isActive ? 'Ativo' : 'Inativo'}
+                        </span>
+                      </td>
+                      <td className="px-4 py-3">
+                        <div className="flex gap-1">
+                          <button onClick={() => { setEditing(t); setDrawerOpen(true) }} title="Editar" className="w-7 h-7 rounded-lg flex items-center justify-center text-[#00BCE4] hover:bg-[rgba(0,188,228,0.1)] transition-colors">
+                            <span className="material-symbols-outlined" style={{ fontSize: '14px' }}>edit</span>
+                          </button>
+                          {t.isActive && (
+                            <button onClick={() => remove(t.id)} title="Inativar" className="w-7 h-7 rounded-lg flex items-center justify-center text-[#718096]/50 hover:text-[#DC2626] hover:bg-[rgba(239,68,68,0.1)] transition-colors">
+                              <span className="material-symbols-outlined" style={{ fontSize: '14px' }}>block</span>
+                            </button>
+                          )}
+                        </div>
+                      </td>
+                    </tr>
+                  )
+                })}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </div>
+
+      <DrawerTemplate open={drawerOpen} editing={editing} onClose={() => setDrawerOpen(false)} onSaved={load} />
+    </div>
+  )
+}
+
+// ── Dialog de Conclusão e Faturamento do Tratamento ───────────
+interface ConcluirTratamentoDialogProps {
+  open: boolean
+  treatment: Treatment | null
+  onClose: () => void
+  onCompleted: () => void
+}
+
+function ConcluirTratamentoDialog({ open, treatment, onClose, onCompleted }: ConcluirTratamentoDialogProps) {
+  const [paymentMethods, setPaymentMethods] = useState<PaymentMethod[]>([])
+  const [paymentMethodId, setPaymentMethodId] = useState('')
+  const [installments, setInstallments] = useState(1)
+  const [paymentStatus, setPaymentStatus] = useState<'pending' | 'first_paid' | 'all_paid'>('pending')
+  const [loading, setLoading] = useState(false)
+
+  useEffect(() => {
+    if (!open || !treatment) return
+    fetch('/api/configuracoes/pagamentos')
+      .then(r => r.json())
+      .then(({ data }) => {
+        if (data) {
+          setPaymentMethods(data.filter((p: PaymentMethod & { isActive?: boolean }) => p.isActive !== false))
+        }
+      })
+      .catch(() => {})
+
+    setPaymentMethodId(treatment.paymentMethod?.id || '')
+    setInstallments(treatment.installments || 1)
+    setPaymentStatus('pending')
+  }, [open, treatment])
+
+  async function handleConfirm() {
+    if (!treatment) return
+    if (!paymentMethodId) {
+      toast.error('Selecione uma forma de pagamento')
+      return
+    }
+    setLoading(true)
+    try {
+      const res = await fetch(`/api/tratamentos/${treatment.id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          status: 'completed',
+          paymentMethodId,
+          installments,
+          paymentStatus
+        })
+      })
+      if (!res.ok) throw new Error()
+      toast.success('Tratamento concluído e faturamento lançado com sucesso!')
+      onCompleted()
+      onClose()
+    } catch {
+      toast.error('Erro ao concluir tratamento')
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  if (!open || !treatment) return null
+
+  const totalSale = Number(treatment.totalSale)
+  const totalCents = Math.round(totalSale * 100)
+  const baseCents = Math.floor(totalCents / installments)
+  const today = new Date()
+
+  const previewInstallments = Array.from({ length: installments }, (_, i) => {
+    const cents = i === installments - 1 ? totalCents - baseCents * (installments - 1) : baseCents
+    const amount = cents / 100
+    const due = new Date(today.getFullYear(), today.getMonth() + i, today.getDate())
+    const isPaid = paymentStatus === 'all_paid' || (paymentStatus === 'first_paid' && i === 0)
+    return {
+      num: i + 1,
+      amount,
+      dueDate: due.toLocaleDateString('pt-BR'),
+      isPaid,
+    }
+  })
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm p-4">
+      <div className="w-full max-w-md bg-white rounded-2xl shadow-xl overflow-hidden border border-[rgba(2,21,65,0.08)] flex flex-col">
+        {/* Header */}
+        <div className="px-5 py-4 border-b border-[rgba(2,21,65,0.06)] flex items-center justify-between bg-[#f8fafc]">
+          <div>
+            <h3 className="text-sm font-bold text-[#021541]">Concluir e Faturar Tratamento</h3>
+            <p className="text-[11px] text-[#718096] mt-0.5">Defina a forma de pagamento e parcelamento para faturamento</p>
+          </div>
+          <button onClick={onClose} className="w-7 h-7 rounded-lg flex items-center justify-center text-[#718096] hover:bg-[#e2e8f0] transition-colors">
+            <span className="material-symbols-outlined" style={{ fontSize: '16px' }}>close</span>
+          </button>
+        </div>
+
+        {/* Content */}
+        <div className="p-5 space-y-4 text-xs">
+          <div className="bg-[#021541]/5 p-3.5 rounded-xl space-y-1.5 border border-[#021541]/10">
+            <p className="text-[10px] font-bold text-[#718096] uppercase tracking-wider">Tratamento</p>
+            <p className="font-bold text-[#021541] text-sm">{treatment.name}</p>
+            <div className="flex justify-between items-center pt-1 border-t border-[rgba(2,21,65,0.06)]">
+              <span className="text-[#718096]">Paciente: <strong>{treatment.patient?.name}</strong></span>
+              <span className="font-bold text-[#00BCE4] text-sm">{BRL(treatment.totalSale)}</span>
+            </div>
+          </div>
+
+          {/* Form */}
+          <div className="space-y-3">
+            <div className="space-y-1.5">
+              <label className={labelCls}>Forma de Pagamento *</label>
+              <select
+                value={paymentMethodId}
+                onChange={e => setPaymentMethodId(e.target.value)}
+                className={inputCls}
+              >
+                <option value="">Selecione...</option>
+                {paymentMethods.map(pm => (
+                  <option key={pm.id} value={pm.id}>{pm.name}</option>
+                ))}
+              </select>
+            </div>
+
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-1.5">
+                <label className={labelCls}>Parcelas</label>
+                <input
+                  type="number"
+                  min="1"
+                  max="24"
+                  value={installments}
+                  onChange={e => setInstallments(Math.max(1, Number(e.target.value)))}
+                  className={inputCls}
+                />
+              </div>
+
+              <div className="space-y-1.5">
+                <label className={labelCls}>Status do Pagamento</label>
+                <select
+                  value={paymentStatus}
+                  onChange={e => setPaymentStatus(e.target.value as any)}
+                  className={inputCls}
+                >
+                  <option value="pending">Todas Pendentes</option>
+                  <option value="first_paid">1ª Paga (restante pendente)</option>
+                  <option value="all_paid">Todas Pagas (À Vista)</option>
+                </select>
+              </div>
+            </div>
+
+            {/* Preview de Parcelas */}
+            <div className="space-y-1.5 border-t border-[rgba(2,21,65,0.06)] pt-3">
+              <p className={labelCls}>Pré-visualização das Parcelas (Contabilização)</p>
+              <div className="bg-[#f5f6f8] rounded-xl p-3 space-y-2 max-h-[140px] overflow-y-auto border border-[rgba(2,21,65,0.04)]">
+                {previewInstallments.map(inst => (
+                  <div key={inst.num} className="flex items-center justify-between py-1 border-b border-[rgba(2,21,65,0.04)] last:border-0 text-xs">
+                    <div className="flex items-center gap-2">
+                      <span className="font-bold text-[#021541]">#{inst.num}</span>
+                      <span className="text-[#718096]">Vencimento: <strong className="text-[#021541] font-medium">{inst.dueDate}</strong></span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <span className="font-bold text-[#021541]">{BRL(inst.amount)}</span>
+                      {inst.isPaid ? (
+                        <span className="px-1.5 py-0.5 rounded bg-emerald-50 text-emerald-600 font-bold text-[9px] uppercase tracking-wider">Pago</span>
+                      ) : (
+                        <span className="px-1.5 py-0.5 rounded bg-amber-50 text-amber-600 font-bold text-[9px] uppercase tracking-wider">Pendente</span>
+                      )}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+
+          <div className="bg-amber-50 border border-amber-200/60 p-3 rounded-xl text-[11px] text-amber-800 leading-relaxed flex gap-2">
+            <span className="material-symbols-outlined text-amber-600 shrink-0" style={{ fontSize: '16px' }}>info</span>
+            <div>
+              <p className="font-bold">Atenção:</p>
+              <p className="mt-0.5">Ao faturar, os lançamentos financeiros correspondentes serão gerados no contas a receber do paciente, e os insumos do estoque vinculados a este procedimento serão baixados automaticamente.</p>
+            </div>
+          </div>
+        </div>
+
+        {/* Footer */}
+        <div className="px-5 py-3.5 border-t border-[rgba(2,21,65,0.06)] flex items-center justify-end gap-2 bg-[#f8fafc]">
+          <button
+            onClick={onClose}
+            className="px-4 py-2 rounded-xl text-xs font-bold text-[#718096] hover:bg-[#e2e8f0] transition-colors"
+          >
+            Voltar
+          </button>
+          <button
+            onClick={handleConfirm}
+            disabled={loading}
+            className="px-4 py-2 rounded-xl text-xs font-bold bg-[#059669] text-white hover:bg-[#047857] transition-colors flex items-center gap-1.5 shadow-sm disabled:opacity-50"
+          >
+            <span className="material-symbols-outlined" style={{ fontSize: '16px' }}>payments</span>
+            {loading ? 'Processando...' : 'Concluir e Faturar'}
+          </button>
+        </div>
+      </div>
+    </div>
+  )
+}
+
 // ── Main page ────────────────────────────────────────────
 export default function TratamentosPage() {
+  const [tab, setTab] = useState<'tratamentos' | 'catalogo'>('tratamentos')
   const [treatments, setTreatments] = useState<Treatment[]>([])
   const [loading, setLoading] = useState(true)
   const [drawerOpen, setDrawerOpen] = useState(false)
   const [statusFilter, setStatusFilter] = useState('')
   const [search, setSearch] = useState('')
+  const [completingTreatment, setCompletingTreatment] = useState<Treatment | null>(null)
+  const [dragOverColumn, setDragOverColumn] = useState<string | null>(null)
+
+  async function handleDropTreatment(e: React.DragEvent, targetStatus: string) {
+    e.preventDefault()
+    const id = e.dataTransfer.getData('treatment-id')
+    if (!id) return
+    const treatment = treatments.find(t => t.id === id)
+    if (!treatment) return
+
+    if (treatment.status === targetStatus) return
+
+    if (targetStatus === 'completed') {
+      setCompletingTreatment(treatment)
+    } else {
+      await updateStatus(treatment.id, targetStatus)
+    }
+  }
 
   const load = useCallback(() => {
     setLoading(true)
@@ -367,6 +933,16 @@ export default function TratamentosPage() {
 
   return (
     <div className="space-y-5">
+      {/* Tabs */}
+      <div className="flex gap-1 bg-[#f5f6f8] p-1 rounded-xl w-fit border border-[rgba(2,21,65,0.06)]">
+        {([['tratamentos', 'Tratamentos', 'vaccines'], ['catalogo', 'Catálogo', 'menu_book']] as const).map(([id, label, icon]) => (
+          <button key={id} onClick={() => setTab(id)} className={`flex items-center gap-1.5 px-4 py-2 rounded-lg text-sm font-bold transition-colors ${tab === id ? 'bg-white text-[#021541] shadow-[0_1px_4px_rgba(2,21,65,0.08)]' : 'text-[#718096] hover:text-[#021541]'}`}>
+            <span className="material-symbols-outlined" style={{ fontSize: '16px' }}>{icon}</span>{label}
+          </button>
+        ))}
+      </div>
+
+      {tab === 'catalogo' ? <CatalogoPanel /> : <>
       {/* Header */}
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
@@ -418,79 +994,139 @@ export default function TratamentosPage() {
         </select>
       </div>
 
-      {/* Table */}
-      <div className="bg-white rounded-xl overflow-hidden border border-[rgba(2,21,65,0.06)] shadow-[0_2px_12px_rgba(2,21,65,0.04)]">
-        {loading ? (
-          <p className="text-center py-10 text-sm text-[#718096]">Carregando...</p>
-        ) : filtered.length === 0 ? (
-          <div className="text-center py-16 bg-[#f5f6f8] rounded-xl">
-            <span className="material-symbols-outlined text-[#718096]/30" style={{ fontSize: '48px' }}>vaccines</span>
-            <p className="text-sm text-[#718096] mt-3">Nenhum tratamento encontrado</p>
-            <button onClick={() => setDrawerOpen(true)} className="mt-4 text-xs text-[#00BCE4] hover:underline font-medium">Criar o primeiro tratamento</button>
-          </div>
-        ) : (
-          <div className="overflow-x-auto">
-            <table className="w-full">
-              <thead>
-                <tr className="border-b border-[rgba(2,21,65,0.06)]">
-                  {['Tratamento', 'Paciente', 'Itens', 'Custo', 'Venda', 'Margem', 'Status', ''].map(h => (
-                    <th key={h} className="text-left text-[10px] font-bold text-[#718096] uppercase tracking-wider px-4 py-3 whitespace-nowrap">{h}</th>
-                  ))}
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-[rgba(2,21,65,0.04)]">
-                {filtered.map(t => {
-                  const margin = Number(t.totalSale) - Number(t.totalCost)
-                  return (
-                    <tr key={t.id} className="hover:bg-[#f5f6f8] transition-colors">
-                      <td className="px-4 py-3">
-                        <p className="text-sm font-medium text-[#021541]">{t.name}</p>
-                        <p className="text-xs text-[#718096] mt-0.5">{new Date(t.createdAt).toLocaleDateString('pt-BR')}</p>
-                      </td>
-                      <td className="px-4 py-3 text-sm text-[#021541] whitespace-nowrap">{t.patient?.name ?? '—'}</td>
-                      <td className="px-4 py-3 text-sm text-[#718096] whitespace-nowrap">{t.items.length} {t.items.length === 1 ? 'item' : 'itens'}</td>
-                      <td className="px-4 py-3 text-sm text-[#718096] whitespace-nowrap">{BRL(t.totalCost)}</td>
-                      <td className="px-4 py-3 text-sm font-medium text-[#021541] whitespace-nowrap">{BRL(t.totalSale)}</td>
-                      <td className={`px-4 py-3 text-sm font-medium whitespace-nowrap ${margin >= 0 ? 'text-[#059669]' : 'text-[#DC2626]'}`}>{BRL(margin)}</td>
-                      <td className="px-4 py-3"><StatusBadge status={t.status} /></td>
-                      <td className="px-4 py-3">
-                        {t.status !== 'completed' && t.status !== 'cancelled' && (
-                          <div className="flex gap-1">
-                            {t.status === 'draft' && (
-                              <button onClick={() => updateStatus(t.id, 'approved')} title="Aprovar" className="w-7 h-7 rounded-lg flex items-center justify-center text-[#d97706] hover:bg-[rgba(217,119,6,0.1)] transition-colors">
-                                <span className="material-symbols-outlined" style={{ fontSize: '14px' }}>thumb_up</span>
-                              </button>
-                            )}
-                            {t.status === 'approved' && (
-                              <button onClick={() => updateStatus(t.id, 'in_progress')} title="Iniciar" className="w-7 h-7 rounded-lg flex items-center justify-center text-[#00BCE4] hover:bg-[rgba(0,188,228,0.1)] transition-colors">
-                                <span className="material-symbols-outlined" style={{ fontSize: '14px' }}>play_arrow</span>
-                              </button>
-                            )}
-                            {t.status === 'in_progress' && (
-                              <button onClick={() => updateStatus(t.id, 'completed')} title="Concluir" className="w-7 h-7 rounded-lg flex items-center justify-center text-[#059669] hover:bg-[rgba(5,150,105,0.1)] transition-colors">
-                                <span className="material-symbols-outlined" style={{ fontSize: '14px' }}>check_circle</span>
-                              </button>
-                            )}
-                            <button onClick={() => updateStatus(t.id, 'cancelled')} title="Cancelar" className="w-7 h-7 rounded-lg flex items-center justify-center text-[#718096]/50 hover:text-[#DC2626] hover:bg-[rgba(239,68,68,0.1)] transition-colors">
-                              <span className="material-symbols-outlined" style={{ fontSize: '14px' }}>cancel</span>
+      {/* Kanban Board */}
+      {loading ? (
+        <p className="text-center py-10 text-sm text-[#718096]">Carregando...</p>
+      ) : filtered.length === 0 ? (
+        <div className="text-center py-16 bg-[#f5f6f8] rounded-xl border border-[rgba(2,21,65,0.06)]">
+          <span className="material-symbols-outlined text-[#718096]/30" style={{ fontSize: '48px' }}>vaccines</span>
+          <p className="text-sm text-[#718096] mt-3">Nenhum tratamento encontrado</p>
+          <button onClick={() => setDrawerOpen(true)} className="mt-4 text-xs text-[#00BCE4] hover:underline font-medium">Criar o primeiro tratamento</button>
+        </div>
+      ) : (
+        <div className="flex gap-4 overflow-x-auto pb-4 select-none min-h-[500px]">
+          {(['draft', 'approved', 'in_progress', 'completed', 'cancelled'] as const).map(status => {
+            const cfg = STATUS_CONFIG[status]
+            const colTreats = filtered.filter(t => t.status === status)
+            const isOver = dragOverColumn === status
+
+            return (
+              <div
+                key={status}
+                onDragOver={(e) => {
+                  e.preventDefault()
+                  setDragOverColumn(status)
+                }}
+                onDragLeave={() => setDragOverColumn(null)}
+                onDrop={async (e) => {
+                  setDragOverColumn(null)
+                  await handleDropTreatment(e, status)
+                }}
+                className={cn(
+                  'flex-1 min-w-[250px] max-w-[320px] rounded-2xl p-3 flex flex-col transition-all border',
+                  isOver 
+                    ? 'bg-slate-100 border-[#00BCE4] shadow-md ring-2 ring-[#00BCE4]/20' 
+                    : 'bg-[#f8fafc] border-[rgba(2,21,65,0.05)] shadow-sm'
+                )}
+              >
+                {/* Col Header */}
+                <div className="flex items-center justify-between mb-3 px-1">
+                  <div className="flex items-center gap-1.5">
+                    <span className="material-symbols-outlined" style={{ fontSize: '16px', color: cfg.color }}>{cfg.icon}</span>
+                    <h3 className="text-xs font-bold text-[#021541] tracking-wide">{cfg.label}</h3>
+                  </div>
+                  <span className="px-1.5 py-0.5 text-[9px] font-bold rounded-md bg-[#e2e8f0] text-[#718096]">
+                    {colTreats.length}
+                  </span>
+                </div>
+
+                {/* Col Body (Cards) */}
+                <div className="flex-1 space-y-2 overflow-y-auto max-h-[60vh] min-h-[350px] pr-1">
+                  {colTreats.map(t => {
+                    const margin = Number(t.totalSale) - Number(t.totalCost)
+                    const canDrag = t.status !== 'completed' && t.status !== 'cancelled'
+                    return (
+                      <div
+                        key={t.id}
+                        draggable={canDrag}
+                        onDragStart={(e) => {
+                          e.dataTransfer.setData('treatment-id', t.id)
+                        }}
+                        className={cn(
+                          'bg-white p-3 rounded-xl border border-[rgba(2,21,65,0.06)] shadow-sm hover:shadow-md hover:border-[#00BCE4]/40 transition-all group relative text-xs',
+                          canDrag ? 'cursor-grab active:cursor-grabbing' : 'cursor-default opacity-85'
+                        )}
+                      >
+                        <p className="font-bold text-[#021541] line-clamp-2 leading-snug">{t.name}</p>
+                        
+                        <div className="flex items-center gap-1.5 mt-2">
+                          <div className="w-5 h-5 rounded-full bg-gradient-to-br from-[#021541]/10 to-[#021541]/20 flex items-center justify-center text-[#021541] text-[9px] font-bold shrink-0">
+                            {t.patient?.name ? t.patient.name.charAt(0) : 'P'}
+                          </div>
+                          <p className="text-[10px] font-medium text-[#718096] truncate flex-1">{t.patient?.name ?? '—'}</p>
+                        </div>
+
+                        <div className="grid grid-cols-2 gap-1.5 mt-3 pt-2.5 border-t border-[rgba(2,21,65,0.04)]">
+                          <div>
+                            <p className="text-[8px] text-[#718096] uppercase tracking-wider">Venda</p>
+                            <p className="text-xs font-bold text-[#021541] font-technical">{BRL(t.totalSale)}</p>
+                          </div>
+                          <div className="text-right">
+                            <p className="text-[8px] text-[#718096] uppercase tracking-wider">Margem</p>
+                            <p className={cn(
+                              'text-xs font-bold font-technical',
+                              margin >= 0 ? 'text-[#059669]' : 'text-[#DC2626]'
+                            )}>{BRL(margin)}</p>
+                          </div>
+                        </div>
+
+                        <div className="flex items-center justify-between mt-2 text-[9px] text-[#718096] font-medium">
+                          <span>{new Date(t.createdAt).toLocaleDateString('pt-BR')}</span>
+                          <span className="bg-[#f1f5f9] text-[#718096] px-1 py-0.5 rounded font-mono">
+                            {t.items.length} {t.items.length === 1 ? 'item' : 'itens'}
+                          </span>
+                        </div>
+                        
+                        {/* Action hover buttons */}
+                        {canDrag && (
+                          <div className="absolute right-2 top-2 opacity-0 group-hover:opacity-100 transition-opacity flex gap-0.5 bg-white pl-1.5 rounded-bl">
+                            <button
+                              onClick={() => updateStatus(t.id, 'cancelled')}
+                              title="Cancelar"
+                              className="w-5 h-5 rounded hover:bg-rose-50 text-[#718096] hover:text-[#DC2626] flex items-center justify-center transition-all cursor-pointer border-0 bg-transparent"
+                            >
+                              <span className="material-symbols-outlined" style={{ fontSize: '12px' }}>cancel</span>
                             </button>
                           </div>
                         )}
-                      </td>
-                    </tr>
-                  )
-                })}
-              </tbody>
-            </table>
-          </div>
-        )}
-      </div>
+                      </div>
+                    )
+                  })}
+                  {colTreats.length === 0 && (
+                    <div className="h-24 rounded-xl border border-dashed border-slate-200 flex items-center justify-center text-[10px] text-[#718096]/50 italic">
+                      Arraste um item aqui
+                    </div>
+                  )}
+                </div>
+              </div>
+            )
+          })}
+        </div>
+      )}
 
       <DrawerCreateTreatment
         open={drawerOpen}
         onClose={() => setDrawerOpen(false)}
         onCreated={t => setTreatments(p => [t, ...p])}
       />
+
+      <ConcluirTratamentoDialog
+        open={completingTreatment !== null}
+        treatment={completingTreatment}
+        onClose={() => setCompletingTreatment(null)}
+        onCompleted={load}
+      />
+      </>}
     </div>
   )
 }

@@ -8,7 +8,7 @@ import type { Lead, LeadStatus } from '@/types'
 
 const COLUMN_CONFIG: Record<LeadStatus, { label: string; color: string }> = {
   new: { label: 'Novo', color: '#00BCD4' },
-  contacted: { label: 'Em Contato', color: '#d97706' },
+  contacted: { label: 'Em Atendimento', color: '#d97706' },
   scheduled: { label: 'Agendado', color: '#7c3aed' },
   attended: { label: 'Compareceu', color: '#0097a7' },
   active_patient: { label: 'Paciente Ativo', color: '#16a34a' },

@@ -5,17 +5,24 @@ import { eq, and, gt } from 'drizzle-orm'
 
 export async function GET(req: NextRequest) {
   const token = req.nextUrl.searchParams.get('token')
-  if (!token) return NextResponse.json({ error: 'Token requerido' }, { status: 401 })
+  const code = req.nextUrl.searchParams.get('code')
+  if (!token && !code) return NextResponse.json({ error: 'Token ou código requerido' }, { status: 401 })
 
-  // Validate token
+  const conditions = [
+    eq(patientAccessTokens.isActive, true),
+    gt(patientAccessTokens.expiresAt, new Date()),
+  ]
+  if (token) {
+    conditions.push(eq(patientAccessTokens.token, token))
+  } else if (code) {
+    conditions.push(eq(patientAccessTokens.code, code))
+  }
+
+  // Validate token/code
   const [tokenRow] = await db.select().from(patientAccessTokens)
-    .where(and(
-      eq(patientAccessTokens.token, token),
-      eq(patientAccessTokens.isActive, true),
-      gt(patientAccessTokens.expiresAt, new Date()),
-    ))
+    .where(and(...conditions))
 
-  if (!tokenRow) return NextResponse.json({ error: 'Token inválido ou expirado' }, { status: 401 })
+  if (!tokenRow) return NextResponse.json({ error: 'Acesso inválido ou expirado' }, { status: 401 })
 
   // Update last used
   await db.update(patientAccessTokens).set({ lastUsedAt: new Date() }).where(eq(patientAccessTokens.id, tokenRow.id))
@@ -72,9 +79,10 @@ export async function GET(req: NextRequest) {
       amount: transactions.amount,
       type: transactions.type,
       date: transactions.date,
+      dueDate: transactions.dueDate,
       isPaid: transactions.isPaid,
     }).from(transactions).where(eq(transactions.patientId, patientId)).orderBy(transactions.date).limit(50),
   ])
 
-  return NextResponse.json({ data: { patient, appointments: appts, treatments: treats, exams, transactions: txs } })
+  return NextResponse.json({ data: { patient, appointments: appts, treatments: treats, exams, transactions: txs, token: tokenRow.token } })
 }

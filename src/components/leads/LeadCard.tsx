@@ -83,6 +83,20 @@ export function LeadCard({ lead, onClick }: Props) {
         )}
       </div>
 
+      {/* Tags */}
+      {lead.tags && lead.tags.length > 0 && (
+        <div className="flex flex-wrap gap-1 mb-3">
+          {lead.tags.map((tag) => (
+            <span
+              key={tag}
+              className="bg-[rgba(2,21,65,0.04)] text-[#021541]/75 text-[9px] px-2 py-0.5 rounded-full font-semibold border border-[rgba(2,21,65,0.06)]"
+            >
+              {tag}
+            </span>
+          ))}
+        </div>
+      )}
+
       {/* Actions */}
       <div className="flex items-center gap-2">
         <button
