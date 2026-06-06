@@ -14,6 +14,18 @@ export function formatCurrency(value: number | string): string {
 }
 
 export function formatDate(date: string | Date): string {
+  // Strings no formato "YYYY-MM-DD" são datas-calendário (sem horário). new Date()
+  // as interpreta como UTC meia-noite, deslocando -1 dia em fusos negativos (GMT-3).
+  // Parseamos manualmente como data local para exibir o dia correto.
+  if (typeof date === 'string') {
+    const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(date)
+    if (m) {
+      const [, y, mo, d] = m
+      return new Date(Number(y), Number(mo) - 1, Number(d)).toLocaleDateString('pt-BR', {
+        day: '2-digit', month: '2-digit', year: 'numeric',
+      })
+    }
+  }
   const d = typeof date === 'string' ? new Date(date) : date
   return d.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric' })
 }

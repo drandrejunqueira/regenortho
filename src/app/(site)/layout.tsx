@@ -39,8 +39,9 @@ export async function generateMetadata(): Promise<Metadata> {
       type: 'website',
       locale: 'pt_BR',
       siteName: clinic?.name || 'REGENORTHO Clinical Atelier',
-      images: [{ url: ogImage }],
+      images: [{ url: '/api/og-image', width: 1200, height: 630 }],
     },
+    icons: { icon: '/api/favicon' },
     verification: {
       google: 'o-YuvObMWgLt9q4nWBsCntEtTkgSaPJfzlIJg77Sp30',
     },

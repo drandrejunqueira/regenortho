@@ -142,6 +142,12 @@ export function KanbanBoard({ initialLeads, onRefresh }: Props) {
     if (selectedLead) handleLeadClick(selectedLead)
   }
 
+  function handleScheduleClick(lead: Lead) {
+    setLeadToSchedule(lead)
+    setPreviousStatus(lead.status)
+    setScheduleDialogOpen(true)
+  }
+
   return (
     <>
       <DndContext
@@ -157,6 +163,7 @@ export function KanbanBoard({ initialLeads, onRefresh }: Props) {
               status={status}
               leads={getLeadsByStatus(status)}
               onLeadClick={handleLeadClick}
+              onSchedule={handleScheduleClick}
             />
           ))}
         </div>
@@ -164,7 +171,7 @@ export function KanbanBoard({ initialLeads, onRefresh }: Props) {
         <DragOverlay>
           {activeLead ? (
             <div className="rotate-2 shadow-xl">
-              <LeadCard lead={activeLead} onClick={() => {}} />
+              <LeadCard lead={activeLead} onClick={() => {}} onSchedule={() => {}} />
             </div>
           ) : null}
         </DragOverlay>

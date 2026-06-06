@@ -20,6 +20,7 @@ interface TreatmentItem {
 interface Treatment {
   id: string
   name: string
+  category: string
   status: string
   subtotal: string
   discount: string
@@ -27,6 +28,7 @@ interface Treatment {
   totalCost: string
   installments: number
   notes: string | null
+  cancelReason: string | null
   completedAt: string | null
   createdAt: string
   patient: { id: string; name: string } | null
@@ -383,6 +385,345 @@ function DrawerCreateTreatment({
             <span className="material-symbols-outlined" style={{ fontSize: '18px' }}>vaccines</span>
             {saving ? 'Criando...' : 'Criar Tratamento'}
           </button>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+// ── DrawerEditTreatment ──────────────────────────────────
+function DrawerEditTreatment({
+  treatmentId,
+  onClose,
+  onUpdated,
+}: {
+  treatmentId: string | null
+  onClose: () => void
+  onUpdated: () => void
+}) {
+  const open = !!treatmentId
+  const [paymentMethods, setPaymentMethods] = useState<PaymentMethod[]>([])
+  const [materials, setMaterials] = useState<Material[]>([])
+  const [saving, setSaving] = useState(false)
+  const [cancelling, setCancelling] = useState(false)
+  const [showCancelSection, setShowCancelSection] = useState(false)
+  const [loadedTreatment, setLoadedTreatment] = useState<Treatment | null>(null)
+
+  const [form, setForm] = useState({
+    name: '',
+    category: 'consultation_fee',
+    paymentMethodId: '',
+    discount: 0,
+    installments: 1,
+    notes: '',
+  })
+  const [items, setItems] = useState<TreatmentItem[]>([])
+  const [cancelReason, setCancelReason] = useState('')
+
+  useEffect(() => {
+    if (!open || !treatmentId) return
+    setShowCancelSection(false)
+    setCancelReason('')
+    Promise.all([
+      fetch(`/api/tratamentos/${treatmentId}`).then(r => r.json()),
+      fetch('/api/configuracoes/pagamentos').then(r => r.json()),
+      fetch('/api/materiais').then(r => r.json()),
+    ]).then(([tRes, pmRes, mRes]) => {
+      if (pmRes.data) setPaymentMethods(pmRes.data.filter((p: PaymentMethod & { isActive?: boolean }) => p.isActive !== false))
+      if (mRes.data) setMaterials(mRes.data)
+      if (tRes.data) {
+        const t: Treatment = tRes.data
+        setLoadedTreatment(t)
+        setForm({
+          name: t.name,
+          category: t.category ?? 'consultation_fee',
+          paymentMethodId: t.paymentMethod?.id ?? '',
+          discount: Number(t.discount),
+          installments: t.installments,
+          notes: t.notes ?? '',
+        })
+        setItems(t.items.map((it, i) => ({
+          ...it,
+          quantity: Number(it.quantity),
+          unitCost: Number(it.unitCost),
+          unitPrice: Number(it.unitPrice),
+          total: Number(it.quantity) * Number(it.unitPrice),
+          sortOrder: it.sortOrder ?? i,
+        })))
+      }
+    }).catch(() => {})
+  }, [open, treatmentId])
+
+  function setF(key: string, value: unknown) { setForm(p => ({ ...p, [key]: value })) }
+
+  function addItem() {
+    setItems(p => [...p, { type: 'procedure', description: '', quantity: 1, unitCost: 0, unitPrice: 0, total: 0, sortOrder: p.length }])
+  }
+
+  function updateItem(idx: number, key: string, value: unknown) {
+    setItems(p => {
+      const next = [...p]
+      next[idx] = { ...next[idx], [key]: value }
+      if (['quantity', 'unitPrice'].includes(key)) {
+        next[idx].total = Number(next[idx].quantity) * Number(next[idx].unitPrice)
+      }
+      if (key === 'materialId') {
+        const mat = materials.find(m => m.id === value)
+        if (mat) {
+          next[idx].description = mat.name
+          next[idx].unitCost = Number(mat.unitCost ?? 0)
+        }
+      }
+      return next
+    })
+  }
+
+  const subtotal = items.reduce((s, i) => s + i.total, 0)
+  const totalSale = Math.max(0, subtotal - form.discount)
+  const margin = totalSale - items.reduce((s, i) => s + i.quantity * i.unitCost, 0)
+  const isLocked = loadedTreatment?.status === 'completed' || loadedTreatment?.status === 'cancelled'
+
+  async function save() {
+    if (!form.name) { toast.error('Informe o nome'); return }
+    if (items.some(i => !i.description)) { toast.error('Preencha a descrição de todos os itens'); return }
+    setSaving(true)
+    try {
+      const res = await fetch(`/api/tratamentos/${treatmentId}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          name: form.name,
+          category: form.category,
+          paymentMethodId: form.paymentMethodId || null,
+          discount: form.discount,
+          installments: form.installments,
+          notes: form.notes || null,
+          items: items.map((it, i) => ({
+            type: it.type,
+            materialId: it.materialId ?? null,
+            description: it.description,
+            quantity: Number(it.quantity),
+            unitCost: Number(it.unitCost),
+            unitPrice: Number(it.unitPrice),
+            sortOrder: i,
+          })),
+        }),
+      })
+      if (!res.ok) throw new Error()
+      toast.success('Tratamento atualizado!')
+      onUpdated()
+      onClose()
+    } catch { toast.error('Erro ao salvar') } finally { setSaving(false) }
+  }
+
+  async function confirmCancel() {
+    if (!cancelReason.trim()) { toast.error('Informe o motivo do cancelamento'); return }
+    setCancelling(true)
+    try {
+      const res = await fetch(`/api/tratamentos/${treatmentId}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ status: 'cancelled', cancelReason: cancelReason.trim() }),
+      })
+      if (!res.ok) throw new Error()
+      toast.success('Tratamento cancelado')
+      onUpdated()
+      onClose()
+    } catch { toast.error('Erro ao cancelar') } finally { setCancelling(false) }
+  }
+
+  if (!open) return null
+
+  const cls = 'w-full bg-[#f5f6f8] border border-[rgba(2,21,65,0.12)] rounded-xl px-3 py-2.5 text-sm text-[#021541] placeholder:text-[#718096]/60 focus:outline-none focus:border-[#00BCE4] focus:ring-2 focus:ring-[rgba(0,188,228,0.15)] transition-colors disabled:opacity-50 disabled:cursor-not-allowed'
+
+  return (
+    <div className="fixed inset-0 z-50 flex">
+      <div className="flex-1 bg-black/30 backdrop-blur-sm" onClick={onClose} />
+      <div className="w-full max-w-[620px] bg-white h-full flex flex-col shadow-2xl overflow-hidden border-l border-[rgba(2,21,65,0.08)]">
+
+        {/* Header */}
+        <div className="flex items-center justify-between px-6 py-5 border-b border-[rgba(2,21,65,0.06)] shrink-0">
+          <div>
+            <h2 className="text-base font-bold text-[#021541]">{loadedTreatment?.name || 'Editar Tratamento'}</h2>
+            <div className="flex items-center gap-2 mt-1">
+              {loadedTreatment && <StatusBadge status={loadedTreatment.status} />}
+              {loadedTreatment?.patient && (
+                <span className="text-xs text-[#718096]">· {loadedTreatment.patient.name}</span>
+              )}
+            </div>
+          </div>
+          <button onClick={onClose} className="w-8 h-8 rounded-lg flex items-center justify-center text-[#718096] hover:bg-[#f5f6f8] hover:text-[#021541] transition-colors">
+            <span className="material-symbols-outlined" style={{ fontSize: '18px' }}>close</span>
+          </button>
+        </div>
+
+        {/* Body */}
+        <div className="flex-1 overflow-y-auto px-6 py-5 space-y-5">
+
+          {/* Campos principais */}
+          <div className="grid grid-cols-2 gap-3">
+            <div className="space-y-1.5 col-span-2">
+              <label className={labelCls}>Nome do Tratamento *</label>
+              <input value={form.name} onChange={e => setF('name', e.target.value)} disabled={isLocked} className={cls} />
+            </div>
+            <div className="space-y-1.5 col-span-2">
+              <label className={labelCls}>Categoria</label>
+              <select value={form.category} onChange={e => setF('category', e.target.value)} disabled={isLocked} className={cls}>
+                {CATEGORY_OPTIONS.map(c => <option key={c.value} value={c.value}>{c.label}</option>)}
+              </select>
+            </div>
+            <div className="space-y-1.5">
+              <label className={labelCls}>Forma de Pagamento</label>
+              <select value={form.paymentMethodId} onChange={e => setF('paymentMethodId', e.target.value)} disabled={isLocked} className={cls}>
+                <option value="">Selecione...</option>
+                {paymentMethods.map(pm => <option key={pm.id} value={pm.id}>{pm.name}</option>)}
+              </select>
+            </div>
+            <div className="space-y-1.5">
+              <label className={labelCls}>Parcelas</label>
+              <input type="number" min="1" max="24" value={form.installments} onChange={e => setF('installments', Number(e.target.value))} disabled={isLocked} className={cls} />
+            </div>
+          </div>
+
+          {/* Itens */}
+          <div>
+            <div className="flex items-center justify-between mb-3">
+              <p className="text-[10px] font-bold text-[#718096] uppercase tracking-wider">Itens do Tratamento</p>
+              {!isLocked && (
+                <button onClick={addItem} className="flex items-center gap-1 text-xs text-[#00BCE4] hover:text-[#00BCE4]/80 font-medium">
+                  <span className="material-symbols-outlined" style={{ fontSize: '14px' }}>add</span>Adicionar item
+                </button>
+              )}
+            </div>
+            <div className="space-y-3">
+              {items.map((item, idx) => (
+                <div key={idx} className="bg-[#f5f6f8] rounded-xl p-3 space-y-2 border border-[rgba(2,21,65,0.06)]">
+                  <div className="flex items-center gap-2">
+                    <select value={item.type} onChange={e => updateItem(idx, 'type', e.target.value)} disabled={isLocked} className="bg-white border border-[rgba(2,21,65,0.12)] rounded-lg px-2.5 py-1.5 text-xs text-[#021541] focus:outline-none focus:border-[#00BCE4] disabled:opacity-50">
+                      {Object.entries(ITEM_TYPE_LABELS).map(([v, l]) => <option key={v} value={v}>{l}</option>)}
+                    </select>
+                    {item.type === 'material' && (
+                      <select value={item.materialId ?? ''} onChange={e => updateItem(idx, 'materialId', e.target.value || null)} disabled={isLocked} className="flex-1 bg-white border border-[rgba(2,21,65,0.12)] rounded-lg px-2.5 py-1.5 text-xs text-[#021541] focus:outline-none focus:border-[#00BCE4] disabled:opacity-50">
+                        <option value="">Selecione do estoque...</option>
+                        {materials.map(m => <option key={m.id} value={m.id}>{m.name} ({m.unit})</option>)}
+                      </select>
+                    )}
+                    {!isLocked && (
+                      <button onClick={() => setItems(p => p.filter((_, i) => i !== idx))} className="w-6 h-6 flex items-center justify-center text-[#718096]/50 hover:text-[#DC2626] ml-auto shrink-0 transition-colors">
+                        <span className="material-symbols-outlined" style={{ fontSize: '14px' }}>delete</span>
+                      </button>
+                    )}
+                  </div>
+                  <input value={item.description} onChange={e => updateItem(idx, 'description', e.target.value)} disabled={isLocked} placeholder="Descrição..." className="w-full bg-white border border-[rgba(2,21,65,0.12)] rounded-lg px-2.5 py-1.5 text-xs text-[#021541] placeholder:text-[#718096]/50 focus:outline-none focus:border-[#00BCE4] disabled:opacity-50" />
+                  <div className="grid grid-cols-4 gap-2">
+                    <div>
+                      <p className={`${labelCls} mb-1`}>Qtd</p>
+                      <input type="number" min="0.001" step="0.001" value={item.quantity} onChange={e => updateItem(idx, 'quantity', Number(e.target.value))} disabled={isLocked} className="w-full bg-white border border-[rgba(2,21,65,0.12)] rounded-lg px-2 py-1.5 text-xs text-[#021541] focus:outline-none focus:border-[#00BCE4] disabled:opacity-50" />
+                    </div>
+                    <div>
+                      <p className={`${labelCls} mb-1`}>Custo (R$)</p>
+                      <input type="number" min="0" step="0.01" value={item.unitCost} onChange={e => updateItem(idx, 'unitCost', Number(e.target.value))} disabled={isLocked} className="w-full bg-white border border-[rgba(2,21,65,0.12)] rounded-lg px-2 py-1.5 text-xs text-[#021541] focus:outline-none focus:border-[#00BCE4] disabled:opacity-50" />
+                    </div>
+                    <div>
+                      <p className={`${labelCls} mb-1`}>Preço (R$)</p>
+                      <input type="number" min="0" step="0.01" value={item.unitPrice} onChange={e => updateItem(idx, 'unitPrice', Number(e.target.value))} disabled={isLocked} className="w-full bg-white border border-[rgba(2,21,65,0.12)] rounded-lg px-2 py-1.5 text-xs text-[#021541] focus:outline-none focus:border-[#00BCE4] disabled:opacity-50" />
+                    </div>
+                    <div>
+                      <p className={`${labelCls} mb-1`}>Total</p>
+                      <p className="text-xs font-bold text-[#00BCE4] py-1.5">{BRL(item.total)}</p>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {/* Resumo financeiro */}
+          <div className="bg-[#f5f6f8] rounded-xl p-4 space-y-2 border border-[rgba(2,21,65,0.06)]">
+            <div className="flex justify-between text-sm">
+              <span className="text-[#718096]">Subtotal</span>
+              <span className="text-[#021541]">{BRL(subtotal)}</span>
+            </div>
+            <div className="flex items-center justify-between text-sm">
+              <span className="text-[#718096]">Desconto (R$)</span>
+              <input type="number" min="0" step="0.01" value={form.discount} onChange={e => setF('discount', Number(e.target.value))} disabled={isLocked} className="w-24 bg-white border border-[rgba(2,21,65,0.12)] rounded-lg px-2 py-1 text-xs text-right text-[#021541] focus:outline-none focus:border-[#00BCE4] disabled:opacity-50" />
+            </div>
+            <div className="border-t border-[rgba(2,21,65,0.08)] pt-2 flex justify-between text-sm font-bold">
+              <span className="text-[#021541]">Total de Venda</span>
+              <span className="text-[#00BCE4]">{BRL(totalSale)}</span>
+            </div>
+            <div className="flex justify-between text-xs">
+              <span className="text-[#718096]">Margem estimada</span>
+              <span className={margin >= 0 ? 'text-[#059669]' : 'text-[#DC2626]'}>{BRL(margin)}</span>
+            </div>
+          </div>
+
+          {/* Observações */}
+          <div className="space-y-1.5">
+            <label className={labelCls}>Observações</label>
+            <textarea value={form.notes} onChange={e => setF('notes', e.target.value)} disabled={isLocked} rows={3} placeholder="Orientações pós-procedimento, condições especiais..." className={`${cls} resize-none`} />
+          </div>
+
+          {/* Cancelar tratamento */}
+          {loadedTreatment?.status !== 'cancelled' && loadedTreatment?.status !== 'completed' && (
+            <div className="border border-[rgba(239,68,68,0.2)] rounded-xl overflow-hidden">
+              <button
+                onClick={() => setShowCancelSection(s => !s)}
+                className="w-full flex items-center justify-between px-4 py-3 text-sm font-medium text-[#DC2626] hover:bg-[rgba(239,68,68,0.04)] transition-colors"
+              >
+                <span className="flex items-center gap-2">
+                  <span className="material-symbols-outlined" style={{ fontSize: '16px' }}>cancel</span>
+                  Cancelar este tratamento
+                </span>
+                <span className="material-symbols-outlined" style={{ fontSize: '16px', transform: showCancelSection ? 'rotate(180deg)' : 'none', transition: 'transform 0.2s' }}>
+                  expand_more
+                </span>
+              </button>
+              {showCancelSection && (
+                <div className="px-4 pb-4 space-y-3 bg-[rgba(239,68,68,0.02)]">
+                  <div className="space-y-1.5">
+                    <label className={labelCls}>Motivo do cancelamento *</label>
+                    <textarea
+                      value={cancelReason}
+                      onChange={e => setCancelReason(e.target.value)}
+                      rows={3}
+                      placeholder="Descreva o motivo do cancelamento..."
+                      className="w-full bg-white border border-[rgba(239,68,68,0.3)] rounded-xl px-3 py-2.5 text-sm text-[#021541] placeholder:text-[#718096]/60 focus:outline-none focus:border-[#DC2626] focus:ring-2 focus:ring-[rgba(239,68,68,0.15)] resize-none transition-colors"
+                    />
+                  </div>
+                  <button
+                    onClick={confirmCancel}
+                    disabled={cancelling || !cancelReason.trim()}
+                    className="flex items-center gap-2 px-4 py-2.5 rounded-full text-sm font-bold bg-[#DC2626] text-white hover:bg-[#b91c1c] disabled:opacity-40 transition-colors"
+                  >
+                    <span className="material-symbols-outlined" style={{ fontSize: '16px' }}>cancel</span>
+                    {cancelling ? 'Cancelando...' : 'Confirmar Cancelamento'}
+                  </button>
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* Motivo exibido se já cancelado */}
+          {loadedTreatment?.status === 'cancelled' && loadedTreatment.cancelReason && (
+            <div className="bg-[rgba(239,68,68,0.05)] border border-[rgba(239,68,68,0.15)] rounded-xl px-4 py-3">
+              <p className="text-[10px] font-bold text-[#DC2626] uppercase tracking-wider mb-1">Motivo do cancelamento</p>
+              <p className="text-sm text-[#718096]">{loadedTreatment.cancelReason}</p>
+            </div>
+          )}
+        </div>
+
+        {/* Footer */}
+        <div className="flex items-center justify-end gap-3 px-6 py-4 border-t border-[rgba(2,21,65,0.06)] shrink-0">
+          <button onClick={onClose} className="px-4 py-2.5 rounded-xl text-sm text-[#718096] bg-[#f5f6f8] hover:bg-[rgba(2,21,65,0.06)] border border-[rgba(2,21,65,0.08)] transition-colors">
+            Fechar
+          </button>
+          {!isLocked && (
+            <button onClick={save} disabled={saving} className="flex items-center gap-2 px-5 py-2.5 rounded-full text-sm font-bold bg-[#021541] text-white hover:bg-[#032170] disabled:opacity-50 transition-colors">
+              <span className="material-symbols-outlined" style={{ fontSize: '16px' }}>save</span>
+              {saving ? 'Salvando...' : 'Salvar Alterações'}
+            </button>
+          )}
         </div>
       </div>
     </div>
@@ -862,6 +1203,8 @@ function ConcluirTratamentoDialog({ open, treatment, onClose, onCompleted }: Con
 }
 
 // ── Main page ────────────────────────────────────────────
+const MASK = '•••••'
+
 export default function TratamentosPage() {
   const [tab, setTab] = useState<'tratamentos' | 'catalogo'>('tratamentos')
   const [treatments, setTreatments] = useState<Treatment[]>([])
@@ -871,6 +1214,18 @@ export default function TratamentosPage() {
   const [search, setSearch] = useState('')
   const [completingTreatment, setCompletingTreatment] = useState<Treatment | null>(null)
   const [dragOverColumn, setDragOverColumn] = useState<string | null>(null)
+  const [hideValues, setHideValues] = useState(false)
+  const [editingTreatmentId, setEditingTreatmentId] = useState<string | null>(null)
+
+  useEffect(() => {
+    setHideValues(localStorage.getItem('tratamentos_privacy') === 'on')
+  }, [])
+
+  function toggleHideValues() {
+    const next = !hideValues
+    setHideValues(next)
+    localStorage.setItem('tratamentos_privacy', next ? 'on' : 'off')
+  }
 
   async function handleDropTreatment(e: React.DragEvent, targetStatus: string) {
     e.preventDefault()
@@ -928,7 +1283,7 @@ export default function TratamentosPage() {
     { label: 'Total', value: stats.total, icon: 'vaccines', iconBg: 'bg-[rgba(2,21,65,0.06)]', iconColor: '#021541' },
     { label: 'Em andamento', value: stats.active, icon: 'autorenew', iconBg: 'bg-[rgba(0,188,228,0.1)]', iconColor: '#00BCE4' },
     { label: 'Concluídos', value: stats.completed, icon: 'check_circle', iconBg: 'bg-[rgba(5,150,105,0.1)]', iconColor: '#059669' },
-    { label: 'Receita total', value: BRL(stats.revenue), icon: 'payments', iconBg: 'bg-[rgba(5,150,105,0.08)]', iconColor: '#059669' },
+    { label: 'Receita total', value: hideValues ? MASK : BRL(stats.revenue), icon: 'payments', iconBg: 'bg-[rgba(5,150,105,0.08)]', iconColor: '#059669' },
   ]
 
   return (
@@ -949,13 +1304,24 @@ export default function TratamentosPage() {
           <h1 className="text-2xl font-bold text-[#021541]">Tratamentos</h1>
           <p className="text-sm text-[#718096] mt-0.5">Planos de tratamento, materiais e controle financeiro</p>
         </div>
-        <button
-          onClick={() => setDrawerOpen(true)}
-          className="flex items-center gap-2 px-4 py-2.5 rounded-full bg-[#021541] text-white text-sm font-bold hover:bg-[#032170] transition-colors shrink-0"
-        >
-          <span className="material-symbols-outlined" style={{ fontSize: '18px' }}>add</span>
-          Novo Tratamento
-        </button>
+        <div className="flex items-center gap-2">
+          <button
+            onClick={toggleHideValues}
+            title={hideValues ? 'Mostrar valores' : 'Ocultar valores'}
+            className="flex items-center gap-1.5 px-3 py-2.5 rounded-full border border-[rgba(2,21,65,0.12)] text-sm font-medium text-[#718096] hover:text-[#021541] hover:bg-[rgba(2,21,65,0.04)] transition-colors"
+          >
+            <span className="material-symbols-outlined" style={{ fontSize: '18px' }}>
+              {hideValues ? 'visibility_off' : 'visibility'}
+            </span>
+          </button>
+          <button
+            onClick={() => setDrawerOpen(true)}
+            className="flex items-center gap-2 px-4 py-2.5 rounded-full bg-[#021541] text-white text-sm font-bold hover:bg-[#032170] transition-colors shrink-0"
+          >
+            <span className="material-symbols-outlined" style={{ fontSize: '18px' }}>add</span>
+            Novo Tratamento
+          </button>
+        </div>
       </div>
 
       {/* KPIs */}
@@ -1051,10 +1417,12 @@ export default function TratamentosPage() {
                         draggable={canDrag}
                         onDragStart={(e) => {
                           e.dataTransfer.setData('treatment-id', t.id)
+                          e.stopPropagation()
                         }}
+                        onClick={() => setEditingTreatmentId(t.id)}
                         className={cn(
-                          'bg-white p-3 rounded-xl border border-[rgba(2,21,65,0.06)] shadow-sm hover:shadow-md hover:border-[#00BCE4]/40 transition-all group relative text-xs',
-                          canDrag ? 'cursor-grab active:cursor-grabbing' : 'cursor-default opacity-85'
+                          'bg-white p-3 rounded-xl border border-[rgba(2,21,65,0.06)] shadow-sm hover:shadow-md hover:border-[#00BCE4]/40 transition-all group relative text-xs cursor-pointer',
+                          !canDrag && 'opacity-85'
                         )}
                       >
                         <p className="font-bold text-[#021541] line-clamp-2 leading-snug">{t.name}</p>
@@ -1069,14 +1437,18 @@ export default function TratamentosPage() {
                         <div className="grid grid-cols-2 gap-1.5 mt-3 pt-2.5 border-t border-[rgba(2,21,65,0.04)]">
                           <div>
                             <p className="text-[8px] text-[#718096] uppercase tracking-wider">Venda</p>
-                            <p className="text-xs font-bold text-[#021541] font-technical">{BRL(t.totalSale)}</p>
+                            <p className="text-xs font-bold text-[#021541] font-technical">
+                              {hideValues ? MASK : BRL(t.totalSale)}
+                            </p>
                           </div>
                           <div className="text-right">
                             <p className="text-[8px] text-[#718096] uppercase tracking-wider">Margem</p>
                             <p className={cn(
                               'text-xs font-bold font-technical',
                               margin >= 0 ? 'text-[#059669]' : 'text-[#DC2626]'
-                            )}>{BRL(margin)}</p>
+                            )}>
+                              {hideValues ? MASK : BRL(margin)}
+                            </p>
                           </div>
                         </div>
 
@@ -1118,6 +1490,12 @@ export default function TratamentosPage() {
         open={drawerOpen}
         onClose={() => setDrawerOpen(false)}
         onCreated={t => setTreatments(p => [t, ...p])}
+      />
+
+      <DrawerEditTreatment
+        treatmentId={editingTreatmentId}
+        onClose={() => setEditingTreatmentId(null)}
+        onUpdated={load}
       />
 
       <ConcluirTratamentoDialog

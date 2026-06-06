@@ -8,14 +8,27 @@ import { z } from 'zod'
 import { eq, and, sql } from 'drizzle-orm'
 import { sendAndLog, tplTreatmentSummary } from '@/lib/whatsapp'
 
+const itemSchema = z.object({
+  type: z.enum(['procedure', 'material', 'fee']),
+  materialId: z.string().uuid().optional().nullable(),
+  description: z.string().min(1).max(255),
+  quantity: z.number().min(0.001),
+  unitCost: z.number().min(0),
+  unitPrice: z.number().min(0),
+  sortOrder: z.number().int().min(0),
+})
+
 const updateSchema = z.object({
   name: z.string().min(1).max(255).optional(),
+  category: z.enum(['consultation_fee','prp_procedure','bmac_procedure','hyaluronic_procedure','surgery_fee','other_income']).optional(),
   paymentMethodId: z.string().uuid().optional().nullable(),
   discount: z.number().min(0).optional(),
   installments: z.number().int().min(1).optional(),
   notes: z.string().optional().nullable(),
+  cancelReason: z.string().optional().nullable(),
   status: z.enum(['draft', 'approved', 'in_progress', 'completed', 'cancelled']).optional(),
   paymentStatus: z.enum(['pending', 'first_paid', 'all_paid']).optional(),
+  items: z.array(itemSchema).min(1).optional(),
 })
 
 export async function GET(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
@@ -52,13 +65,44 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
   const updates: Record<string, unknown> = { updatedAt: new Date() }
   const d = parsed.data
   if (d.name !== undefined) updates.name = d.name
+  if (d.category !== undefined) updates.category = d.category
   if (d.paymentMethodId !== undefined) updates.paymentMethodId = d.paymentMethodId
-  if (d.discount !== undefined) {
-    updates.discount = String(d.discount)
-    updates.totalSale = String(Math.max(0, Number(existing.subtotal) - d.discount))
-  }
-  if (d.installments !== undefined) updates.installments = d.installments
   if (d.notes !== undefined) updates.notes = d.notes
+  if (d.cancelReason !== undefined) updates.cancelReason = d.cancelReason
+
+  // Recalculate when items are replaced
+  let newSubtotal = Number(existing.subtotal)
+  let newTotalCost = Number(existing.totalCost)
+  if (d.items !== undefined) {
+    await db.delete(treatmentItems).where(eq(treatmentItems.treatmentId, id))
+    if (d.items.length > 0) {
+      await db.insert(treatmentItems).values(
+        d.items.map((it, i) => ({
+          treatmentId: id,
+          type: it.type,
+          materialId: it.materialId ?? null,
+          description: it.description,
+          quantity: String(it.quantity),
+          unitCost: String(it.unitCost),
+          unitPrice: String(it.unitPrice),
+          sortOrder: it.sortOrder ?? i,
+        }))
+      )
+    }
+    newSubtotal = d.items.reduce((s, it) => s + it.quantity * it.unitPrice, 0)
+    newTotalCost = d.items.reduce((s, it) => s + it.quantity * it.unitCost, 0)
+    updates.subtotal = String(newSubtotal)
+    updates.totalCost = String(newTotalCost)
+  }
+
+  const effectiveSubtotal = d.items !== undefined ? newSubtotal : Number(existing.subtotal)
+  const effectiveDiscount = d.discount !== undefined ? d.discount : Number(existing.discount)
+  if (d.discount !== undefined || d.items !== undefined) {
+    updates.discount = String(effectiveDiscount)
+    updates.totalSale = String(Math.max(0, effectiveSubtotal - effectiveDiscount))
+  }
+
+  if (d.installments !== undefined) updates.installments = d.installments
   if (d.status !== undefined) {
     updates.status = d.status
     if (d.status === 'completed' && existing.status !== 'completed') {

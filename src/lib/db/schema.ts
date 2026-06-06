@@ -486,6 +486,7 @@ export const treatments = pgTable('treatments', {
   totalCost:       numeric('total_cost', { precision: 10, scale: 2 }).notNull().default('0'),
   installments:    integer('installments').notNull().default(1),
   notes:           text('notes'),
+  cancelReason:    text('cancel_reason'),
   completedAt:     timestamp('completed_at'),
   createdById:     uuid('created_by_id').references(() => users.id),
   createdAt:       timestamp('created_at').defaultNow().notNull(),

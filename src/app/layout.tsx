@@ -19,6 +19,7 @@ export default function RootLayout({
   return (
     <html lang="pt-BR" className="dark h-full antialiased">
       <head>
+        <link rel="icon" href="/api/favicon" />
         <link rel="preconnect" href="https://fonts.googleapis.com" />
         <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
         <link href="https://fonts.googleapis.com/css2?family=Noto+Serif:ital,wght@0,400;0,600;0,700;1,400&family=Manrope:wght@400;500;600;700;800&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet" />

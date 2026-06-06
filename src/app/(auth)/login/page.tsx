@@ -332,7 +332,8 @@ export default function LoginPage() {
                 disabled={loading}
                 className="w-full py-3.5 rounded-xl text-white font-bold text-sm flex items-center justify-center gap-2 mt-2 site-transition disabled:opacity-50"
                 style={{
-                  background: loading ? '#021541' : 'linear-gradient(135deg, #021541 0%, #0a2050 60%, #021541 100%)',
+                  backgroundColor: '#021541',
+                  backgroundImage: loading ? 'none' : 'linear-gradient(135deg, #021541 0%, #0a2050 60%, #021541 100%)',
                   backgroundSize: '200% 200%',
                   boxShadow: '0 4px 20px rgba(2,21,65,0.20)',
                 }}

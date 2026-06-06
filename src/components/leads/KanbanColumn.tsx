@@ -19,9 +19,10 @@ interface Props {
   status: LeadStatus
   leads: Lead[]
   onLeadClick: (lead: Lead) => void
+  onSchedule: (lead: Lead) => void
 }
 
-export function KanbanColumn({ status, leads, onLeadClick }: Props) {
+export function KanbanColumn({ status, leads, onLeadClick, onSchedule }: Props) {
   const config = COLUMN_CONFIG[status]
   const { setNodeRef, isOver } = useDroppable({ id: status })
 
@@ -57,7 +58,7 @@ export function KanbanColumn({ status, leads, onLeadClick }: Props) {
       >
         <SortableContext items={leads.map((l) => l.id)} strategy={verticalListSortingStrategy}>
           {leads.map((lead) => (
-            <LeadCard key={lead.id} lead={lead} onClick={() => onLeadClick(lead)} />
+            <LeadCard key={lead.id} lead={lead} onClick={() => onLeadClick(lead)} onSchedule={onSchedule} />
           ))}
         </SortableContext>
       </div>

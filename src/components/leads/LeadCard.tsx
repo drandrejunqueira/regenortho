@@ -19,9 +19,10 @@ const STATUS_COLORS: Record<string, string> = {
 interface Props {
   lead: Lead
   onClick: () => void
+  onSchedule: (lead: Lead) => void
 }
 
-export function LeadCard({ lead, onClick }: Props) {
+export function LeadCard({ lead, onClick, onSchedule }: Props) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
     id: lead.id,
     data: { lead },
@@ -43,6 +44,7 @@ export function LeadCard({ lead, onClick }: Props) {
 
   function openSchedule(e: React.MouseEvent) {
     e.stopPropagation()
+    onSchedule(lead)
   }
 
   return (
