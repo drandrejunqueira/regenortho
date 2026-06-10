@@ -93,6 +93,13 @@ export const stockStatusEnum = pgEnum('stock_status', [
   'out_of_stock',
 ])
 
+export const purchaseOrderStatusEnum = pgEnum('purchase_order_status', [
+  'draft',
+  'ordered',
+  'received',
+  'cancelled',
+])
+
 export const genderEnum = pgEnum('gender', ['male', 'female', 'other'])
 
 export const treatmentStatusEnum = pgEnum('treatment_status', [
@@ -408,6 +415,31 @@ export const stockMovements = pgTable('stock_movements', {
   createdAt:  timestamp('created_at').defaultNow().notNull(),
 })
 
+export const purchaseOrders = pgTable('purchase_orders', {
+  id:            uuid('id').defaultRandom().primaryKey(),
+  supplier:      varchar('supplier', { length: 255 }).notNull(),
+  status:        purchaseOrderStatusEnum('status').notNull().default('draft'),
+  orderDate:     date('order_date').notNull(),
+  expectedDate:  date('expected_date'),
+  receivedDate:  date('received_date'),
+  totalAmount:   numeric('total_amount', { precision: 10, scale: 2 }).notNull().default('0'),
+  notes:         text('notes'),
+  transactionId: uuid('transaction_id').references(() => transactions.id, { onDelete: 'set null' }),
+  createdById:   uuid('created_by_id').references(() => users.id, { onDelete: 'set null' }),
+  createdAt:     timestamp('created_at').defaultNow().notNull(),
+  updatedAt:     timestamp('updated_at').defaultNow().notNull(),
+})
+
+export const purchaseOrderItems = pgTable('purchase_order_items', {
+  id:              uuid('id').defaultRandom().primaryKey(),
+  purchaseOrderId: uuid('purchase_order_id').notNull().references(() => purchaseOrders.id, { onDelete: 'cascade' }),
+  materialId:      uuid('material_id').notNull().references(() => materials.id, { onDelete: 'restrict' }),
+  quantity:        integer('quantity').notNull(),
+  unitCost:        numeric('unit_cost', { precision: 10, scale: 2 }).notNull(),
+  total:           numeric('total', { precision: 10, scale: 2 }).notNull(),
+  notes:           text('notes'),
+})
+
 export const monthlyGoals = pgTable('monthly_goals', {
   id:                  uuid('id').defaultRandom().primaryKey(),
   month:               integer('month').notNull(),
@@ -644,6 +676,17 @@ export const patientAccessTokensRelations = relations(patientAccessTokens, ({ on
 export const whatsappMessagesRelations = relations(whatsappMessages, ({ one }) => ({
   patient:     one(patients, { fields: [whatsappMessages.patientId], references: [patients.id] }),
   appointment: one(appointments, { fields: [whatsappMessages.appointmentId], references: [appointments.id] }),
+}))
+
+export const purchaseOrdersRelations = relations(purchaseOrders, ({ one, many }) => ({
+  createdBy:   one(users, { fields: [purchaseOrders.createdById], references: [users.id] }),
+  transaction: one(transactions, { fields: [purchaseOrders.transactionId], references: [transactions.id] }),
+  items:       many(purchaseOrderItems),
+}))
+
+export const purchaseOrderItemsRelations = relations(purchaseOrderItems, ({ one }) => ({
+  purchaseOrder: one(purchaseOrders, { fields: [purchaseOrderItems.purchaseOrderId], references: [purchaseOrders.id] }),
+  material:      one(materials, { fields: [purchaseOrderItems.materialId], references: [materials.id] }),
 }))
 
 // ── NOVAS TABELAS: GLOSSÁRIO + SEO + ANALYTICS + CONFIGURAÇÕES ──

@@ -152,6 +152,36 @@ export interface StockMovement {
   user?: Pick<User, 'id' | 'name'>
 }
 
+export type PurchaseOrderStatus = 'draft' | 'ordered' | 'received' | 'cancelled'
+
+export interface PurchaseOrderItem {
+  id: string
+  purchaseOrderId: string
+  materialId: string
+  quantity: number
+  unitCost: string
+  total: string
+  notes: string | null
+  material?: Pick<Material, 'id' | 'name' | 'unit' | 'unitCost'>
+}
+
+export interface PurchaseOrder {
+  id: string
+  supplier: string
+  status: PurchaseOrderStatus
+  orderDate: string
+  expectedDate: string | null
+  receivedDate: string | null
+  totalAmount: string
+  notes: string | null
+  transactionId: string | null
+  createdById: string | null
+  createdAt: string
+  updatedAt: string
+  items: PurchaseOrderItem[]
+  createdBy?: Pick<User, 'id' | 'name'>
+}
+
 export interface DashboardData {
   kpis: {
     leadsThisMonth: number

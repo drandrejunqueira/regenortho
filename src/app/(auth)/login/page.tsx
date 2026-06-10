@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
@@ -34,6 +34,15 @@ export default function LoginPage() {
   const router = useRouter()
   const [loading, setLoading] = useState(false)
   const [showPassword, setShowPassword] = useState(false)
+  const [isDev, setIsDev] = useState(false)
+
+  useEffect(() => {
+    setIsDev(
+      window.location.hostname === 'localhost' ||
+      window.location.hostname === '127.0.0.1' ||
+      process.env.NODE_ENV === 'development'
+    )
+  }, [])
 
   const {
     register,
@@ -361,38 +370,40 @@ export default function LoginPage() {
           </div>
 
           {/* ── Dev quick-login ── */}
-          <div className="mt-6">
-            <div className="flex items-center gap-3 mb-4">
-              <div className="flex-1 h-px" style={{ background: 'rgba(2,21,65,0.08)' }} />
-              <span
-                className="text-[10px] font-bold text-[#021541]/30 uppercase tracking-widest"
-                style={{ fontFamily: 'Plus Jakarta Sans, sans-serif' }}
-              >
-                Acesso rápido · dev
-              </span>
-              <div className="flex-1 h-px" style={{ background: 'rgba(2,21,65,0.08)' }} />
-            </div>
-            <div className="grid grid-cols-2 gap-2">
-              {QUICK_LOGINS.map(acc => (
-                <button
-                  key={acc.label}
-                  type="button"
-                  disabled={loading}
-                  onClick={() => quickLogin(acc.email, acc.password, acc.label)}
-                  className="flex items-center gap-2 px-3 py-2.5 rounded-xl text-xs font-bold transition-all hover:scale-[1.02] disabled:opacity-40"
-                  style={{
-                    background: '#ffffff',
-                    color: '#021541',
-                    border: '1.5px solid rgba(2,21,65,0.10)',
-                    boxShadow: '0 1px 4px rgba(2,21,65,0.04)',
-                  }}
+          {isDev && (
+            <div className="mt-6">
+              <div className="flex items-center gap-3 mb-4">
+                <div className="flex-1 h-px" style={{ background: 'rgba(2,21,65,0.08)' }} />
+                <span
+                  className="text-[10px] font-bold text-[#021541]/30 uppercase tracking-widest"
+                  style={{ fontFamily: 'Plus Jakarta Sans, sans-serif' }}
                 >
-                  <span className="material-symbols-outlined text-[#00BCE4]" style={{ fontSize: '14px' }}>{acc.icon}</span>
-                  {acc.label}
-                </button>
-              ))}
+                  Acesso rápido · dev
+                </span>
+                <div className="flex-1 h-px" style={{ background: 'rgba(2,21,65,0.08)' }} />
+              </div>
+              <div className="grid grid-cols-2 gap-2">
+                {QUICK_LOGINS.map(acc => (
+                  <button
+                    key={acc.label}
+                    type="button"
+                    disabled={loading}
+                    onClick={() => quickLogin(acc.email, acc.password, acc.label)}
+                    className="flex items-center gap-2 px-3 py-2.5 rounded-xl text-xs font-bold transition-all hover:scale-[1.02] disabled:opacity-40"
+                    style={{
+                      background: '#ffffff',
+                      color: '#021541',
+                      border: '1.5px solid rgba(2,21,65,0.10)',
+                      boxShadow: '0 1px 4px rgba(2,21,65,0.04)',
+                    }}
+                  >
+                    <span className="material-symbols-outlined text-[#00BCE4]" style={{ fontSize: '14px' }}>{acc.icon}</span>
+                    {acc.label}
+                  </button>
+                ))}
+              </div>
             </div>
-          </div>
+          )}
         </div>
       </div>
     </div>
