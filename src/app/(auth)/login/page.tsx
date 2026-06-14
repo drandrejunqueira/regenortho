@@ -34,13 +34,14 @@ export default function LoginPage() {
   const router = useRouter()
   const [loading, setLoading] = useState(false)
   const [showPassword, setShowPassword] = useState(false)
-  const [isDev, setIsDev] = useState(false)
+  const [isLocalhost, setIsLocalhost] = useState(false)
 
   useEffect(() => {
-    setIsDev(
+    // Quick-login buttons are dev-only: shown solely when running locally
+    // (offline), never on the live/online site.
+    setIsLocalhost(
       window.location.hostname === 'localhost' ||
-      window.location.hostname === '127.0.0.1' ||
-      process.env.NODE_ENV === 'development'
+      window.location.hostname === '127.0.0.1'
     )
   }, [])
 
@@ -369,8 +370,8 @@ export default function LoginPage() {
             </p>
           </div>
 
-          {/* ── Dev quick-login ── */}
-          {isDev && (
+          {/* ── Dev quick-login (somente em localhost/offline) ── */}
+          {isLocalhost && (
             <div className="mt-6">
               <div className="flex items-center gap-3 mb-4">
                 <div className="flex-1 h-px" style={{ background: 'rgba(2,21,65,0.08)' }} />

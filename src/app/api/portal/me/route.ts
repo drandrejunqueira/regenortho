@@ -2,8 +2,20 @@ import { NextRequest, NextResponse } from 'next/server'
 import { db } from '@/lib/db'
 import { patientAccessTokens, patients, appointments, treatments, examOrders, transactions } from '@/lib/db/schema'
 import { eq, and, gt } from 'drizzle-orm'
+import { rateLimit, getClientIp } from '@/lib/rate-limit'
 
 export async function GET(req: NextRequest) {
+  // Brute-force guard: the 6-digit code has only 1M combinations, so cap
+  // attempts per IP. 12 / 5min makes full enumeration take ~1 year.
+  const ip = getClientIp(req)
+  const rl = rateLimit(`portal:${ip}`, 12, 5 * 60 * 1000)
+  if (!rl.ok) {
+    return NextResponse.json(
+      { error: 'Muitas tentativas. Aguarde alguns minutos e tente novamente.' },
+      { status: 429, headers: { 'Retry-After': String(rl.retryAfterSec) } },
+    )
+  }
+
   const token = req.nextUrl.searchParams.get('token')
   const code = req.nextUrl.searchParams.get('code')
   if (!token && !code) return NextResponse.json({ error: 'Token ou código requerido' }, { status: 401 })
