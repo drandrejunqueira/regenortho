@@ -378,6 +378,8 @@ export const transactions = pgTable('transactions', {
   patientId:     uuid('patient_id').references(() => patients.id),
   appointmentId: uuid('appointment_id').references(() => appointments.id),
   treatmentId:   uuid('treatment_id'),
+  paymentMethodId: uuid('payment_method_id').references(() => paymentMethods.id),
+  bankAccountId:   uuid('bank_account_id').references(() => bankAccounts.id),
   installmentNumber: integer('installment_number'),
   installmentTotal:  integer('installment_total'),
   notes:         text('notes'),

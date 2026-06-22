@@ -120,6 +120,11 @@ export interface Transaction {
   paidAt: string | null
   patientId: string | null
   appointmentId: string | null
+  treatmentId: string | null
+  paymentMethodId: string | null
+  bankAccountId: string | null
+  installmentNumber: number | null
+  installmentTotal: number | null
   notes: string | null
   createdAt: string
   patient?: Pick<Patient, 'id' | 'name'>

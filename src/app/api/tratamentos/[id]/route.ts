@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { auth } from '@/lib/auth/config'
 import { db } from '@/lib/db'
-import { treatments, treatmentItems, materials, stockMovements, patients, transactions } from '@/lib/db/schema'
+import { treatments, treatmentItems, materials, stockMovements, patients, transactions, bankAccounts } from '@/lib/db/schema'
 import { hasPermission } from '@/lib/permissions'
 import type { UserRole } from '@/types'
 import { z } from 'zod'
@@ -22,6 +22,7 @@ const updateSchema = z.object({
   name: z.string().min(1).max(255).optional(),
   category: z.enum(['consultation_fee','prp_procedure','bmac_procedure','hyaluronic_procedure','surgery_fee','other_income']).optional(),
   paymentMethodId: z.string().uuid().optional().nullable(),
+  bankAccountId: z.string().uuid().optional().nullable(),
   discount: z.number().min(0).optional(),
   installments: z.number().int().min(1).optional(),
   notes: z.string().optional().nullable(),
@@ -139,11 +140,17 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
       const fmt = (dt: Date) => dt.toISOString().split('T')[0]
       const paymentStatus = d.paymentStatus ?? 'pending'
 
+      // Forma de pagamento (intenção) e conta de recebimento das parcelas pagas
+      const paymentMethodId = d.paymentMethodId ?? existing.paymentMethodId ?? null
+      const bankAccountId = d.bankAccountId ?? null
+
+      let paidCents = 0
       const rows = Array.from({ length: n }, (_, i) => {
         // a última parcela absorve o arredondamento
         const cents = i === n - 1 ? totalCents - baseCents * (n - 1) : baseCents
         const due = new Date(today.getFullYear(), today.getMonth() + i, today.getDate())
         const isPaid = paymentStatus === 'all_paid' || (paymentStatus === 'first_paid' && i === 0)
+        if (isPaid) paidCents += cents
         return {
           type: 'income' as const,
           category: existing.category,
@@ -158,12 +165,23 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
           patientId: existing.patientId,
           appointmentId: existing.appointmentId,
           treatmentId: existing.id,
+          paymentMethodId,
+          // conta só é vinculada quando a parcela já entrou (foi recebida)
+          bankAccountId: isPaid ? bankAccountId : null,
           installmentNumber: i + 1,
           installmentTotal: n,
           createdById: session.user.id,
         }
       })
       await db.insert(transactions).values(rows)
+
+      // Credita o saldo da conta de recebimento com o total já pago
+      if (bankAccountId && paidCents > 0) {
+        const paidValue = (paidCents / 100).toFixed(2)
+        await db.update(bankAccounts)
+          .set({ currentBalance: sql`current_balance + ${paidValue}`, updatedAt: new Date() })
+          .where(eq(bankAccounts.id, bankAccountId))
+      }
 
       // Send WhatsApp summary if patient has phone
       try {

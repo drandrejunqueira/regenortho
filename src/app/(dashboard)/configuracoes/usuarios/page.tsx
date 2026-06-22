@@ -87,6 +87,8 @@ function PermissionsSheet({
   const [expandedMods, setExpandedMods] = useState<Set<string>>(new Set())
   const [hasCalendar, setHasCalendar] = useState(false)
   const [googleCalendarId, setGoogleCalendarId] = useState('')
+  const [email, setEmail] = useState('')
+  const [newPassword, setNewPassword] = useState('')
 
   useEffect(() => {
     if (!user) return
@@ -102,6 +104,8 @@ function PermissionsSheet({
     setExpandedMods(exp)
     setHasCalendar(Boolean(user.googleCalendarId))
     setGoogleCalendarId(user.googleCalendarId ?? '')
+    setEmail(user.email)
+    setNewPassword('')
   }, [user])
 
   if (!user) return null
@@ -143,26 +147,44 @@ function PermissionsSheet({
 
   async function save() {
     if (!user) return
+
+    const trimmedEmail = email.trim()
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(trimmedEmail)) {
+      toast.error('E-mail inválido')
+      return
+    }
+    if (newPassword && newPassword.length < 8) {
+      toast.error('A nova senha deve ter ao menos 8 caracteres')
+      return
+    }
+
     setSaving(true)
     try {
       const permArray = Array.from(perms)
       const inferredRole = detectRole(perms) ?? (user.role as UserRole)
       const isDefault = matchesPreset(inferredRole, perms)
+      const body: Record<string, unknown> = {
+        role: inferredRole,
+        customPermissions: isDefault ? null : permArray,
+        googleCalendarId: inferredRole === 'doctor' && hasCalendar ? googleCalendarId || null : null,
+      }
+      if (trimmedEmail !== user.email) body.email = trimmedEmail
+      if (newPassword) body.password = newPassword
+
       const res = await fetch(`/api/usuarios/${user.id}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          role: inferredRole,
-          customPermissions: isDefault ? null : permArray,
-          googleCalendarId: inferredRole === 'doctor' && hasCalendar ? googleCalendarId || null : null,
-        }),
+        body: JSON.stringify(body),
       })
-      if (!res.ok) throw new Error()
-      toast.success('Permissões salvas com sucesso!')
+      if (!res.ok) {
+        const data = await res.json().catch(() => null)
+        throw new Error(data?.error ?? 'Erro ao salvar')
+      }
+      toast.success('Usuário atualizado com sucesso!')
       onOpenChange(false)
       onSaved()
-    } catch {
-      toast.error('Erro ao salvar permissões')
+    } catch (e: unknown) {
+      toast.error((e as Error).message || 'Erro ao salvar')
     } finally {
       setSaving(false)
     }
@@ -204,6 +226,37 @@ function PermissionsSheet({
 
         {/* Scrollable body */}
         <div className="flex-1 overflow-y-auto px-6 py-5 space-y-6">
+
+          {/* Dados de acesso */}
+          <div>
+            <p className={labelCls + ' mb-3'}>Dados de Acesso</p>
+            <div className="space-y-3 p-4 rounded-xl border border-[rgba(2,21,65,0.08)] bg-[#f5f6f8]/30">
+              <div className="space-y-1.5">
+                <label className={labelCls}>E-mail de login</label>
+                <input
+                  type="email"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  placeholder="email@exemplo.com"
+                  className={inputCls}
+                />
+              </div>
+              <div className="space-y-1.5">
+                <label className={labelCls}>Nova senha</label>
+                <input
+                  type="password"
+                  value={newPassword}
+                  onChange={(e) => setNewPassword(e.target.value)}
+                  placeholder="Deixe em branco para manter a atual"
+                  autoComplete="new-password"
+                  className={inputCls}
+                />
+                <p className="text-[10px] text-[#718096]/60 leading-snug">
+                  Preencha apenas para redefinir a senha — mínimo de 8 caracteres.
+                </p>
+              </div>
+            </div>
+          </div>
 
           {/* Role presets */}
           <div>
@@ -387,7 +440,7 @@ function PermissionsSheet({
               disabled={saving}
               className="px-4 py-2 rounded-xl text-sm font-bold bg-gradient-to-br from-[#021541] to-[#032170] text-white hover:opacity-90 transition-opacity disabled:opacity-50"
             >
-              {saving ? 'Salvando...' : 'Salvar permissões'}
+              {saving ? 'Salvando...' : 'Salvar alterações'}
             </button>
           </div>
         </div>

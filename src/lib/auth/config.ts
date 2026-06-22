@@ -38,21 +38,28 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
           .set({ lastLoginAt: new Date() })
           .where(eq(users.id, user.id))
 
+        // NÃO incluir avatar aqui: a foto é base64 e estouraria o cookie do JWT.
+        // O avatar é lido do banco via /api/perfil (hook useProfile).
         return {
           id: user.id,
           name: user.name,
           email: user.email,
           role: user.role,
-          image: user.avatar,
         }
       },
     }),
   ],
   callbacks: {
-    async jwt({ token, user }) {
+    async jwt({ token, user, trigger, session }) {
       if (user) {
         token.id = user.id
         token.role = (user as { role: string }).role
+      }
+      // Reflete edições leves do próprio perfil (apenas nome/email) na sessão
+      if (trigger === 'update' && session) {
+        const s = session as Record<string, unknown>
+        if (s.name !== undefined) token.name = s.name as string
+        if (s.email !== undefined) token.email = s.email as string
       }
       return token
     },

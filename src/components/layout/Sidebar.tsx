@@ -8,9 +8,11 @@ import { hasPermission } from '@/lib/permissions'
 import type { UserRole } from '@/types'
 import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet'
 import { ROLE_LABELS } from '@/lib/constants'
-import { useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { toast } from 'sonner'
 import { useClinicSettings } from '@/hooks/useClinicSettings'
+import { useProfile, type Profile } from '@/hooks/useProfile'
+import { processImageToDataUrl } from '@/lib/upload'
 
 interface NavItem {
   href: string
@@ -94,21 +96,52 @@ function PasswordStrength({ password }: { password: string }) {
   )
 }
 
-function ProfileSheet({ open, onClose }: { open: boolean; onClose: () => void }) {
+function ProfileSheet({ open, onClose, profile, onSaved }: {
+  open: boolean
+  onClose: () => void
+  profile: Profile | null
+  onSaved: () => void
+}) {
   const { data: session, update } = useSession()
   const [tab, setTab] = useState<'info' | 'senha'>('info')
   const [saving, setSaving] = useState(false)
+  const [uploadingPhoto, setUploadingPhoto] = useState(false)
+  const fileInputRef = useRef<HTMLInputElement>(null)
   const [form, setForm] = useState({
-    name:            session?.user?.name ?? '',
-    email:           session?.user?.email ?? '',
-    phone:           (session?.user as unknown as Record<string, string>)?.phone ?? '',
-    avatar:          (session?.user as unknown as Record<string, string>)?.avatar ?? '',
-    currentPassword: '',
-    newPassword:     '',
-    confirmPassword: '',
+    name: '', email: '', phone: '', avatar: '',
+    currentPassword: '', newPassword: '', confirmPassword: '',
   })
 
+  // Popula o formulário com os dados do banco quando o painel abre
+  useEffect(() => {
+    if (!open || !profile) return
+    setForm({
+      name:            profile.name ?? '',
+      email:           profile.email ?? '',
+      phone:           profile.phone ?? '',
+      avatar:          profile.avatar ?? '',
+      currentPassword: '', newPassword: '', confirmPassword: '',
+    })
+    setTab('info')
+  }, [open, profile])
+
   function set(key: string, val: string) { setForm(p => ({ ...p, [key]: val })) }
+
+  async function handlePhotoSelect(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0]
+    e.target.value = '' // permite reenviar o mesmo arquivo
+    if (!file) return
+    if (!file.type.startsWith('image/')) { toast.error('Selecione um arquivo de imagem'); return }
+    setUploadingPhoto(true)
+    try {
+      const dataUrl = await processImageToDataUrl(file, 512)
+      set('avatar', dataUrl)
+    } catch {
+      toast.error('Não foi possível processar a imagem')
+    } finally {
+      setUploadingPhoto(false)
+    }
+  }
 
   const initials = getInitials(session?.user?.name ?? 'U')
   const role = (session?.user?.role ?? 'receptionist') as UserRole
@@ -126,7 +159,10 @@ function ProfileSheet({ open, onClose }: { open: boolean; onClose: () => void })
       })
       const data = await res.json()
       if (!res.ok) throw new Error(data.error ?? 'Erro')
+      // Só nome/email vão para a sessão (leves). A foto fica no banco e é lida
+      // via useProfile — evita estourar o cookie do JWT com base64.
       await update({ name: data.data.name, email: data.data.email })
+      onSaved()
       toast.success('Perfil atualizado!')
       onClose()
     } catch (e: unknown) {
@@ -278,30 +314,53 @@ function ProfileSheet({ open, onClose }: { open: boolean; onClose: () => void })
                 </div>
               </div>
 
-              {/* Avatar URL */}
+              {/* Foto de perfil */}
               <div className="space-y-1.5">
-                <label className="text-[10px] font-bold text-[#021541]/40 uppercase tracking-wider">URL da foto de perfil</label>
-                <div className="relative">
-                  <span className="material-symbols-outlined absolute left-3.5 top-1/2 -translate-y-1/2 text-[#021541]/25" style={{ fontSize: '16px' }}>image</span>
-                  <input
-                    type="text"
-                    value={form.avatar}
-                    onChange={e => set('avatar', e.target.value)}
-                    placeholder="https://..."
-                    className="w-full bg-white border border-[rgba(2,21,65,0.10)] rounded-xl pl-10 pr-4 py-2.5 text-sm text-[#021541] placeholder:text-[#021541]/20 focus:outline-none focus:border-[#00BCE4] focus:ring-2 focus:ring-[#00BCE4]/15 transition-all"
-                  />
-                </div>
-                {form.avatar && (
-                  <div className="flex items-center gap-2 pl-1">
+                <label className="text-[10px] font-bold text-[#021541]/40 uppercase tracking-wider">Foto de perfil</label>
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  accept="image/*"
+                  onChange={handlePhotoSelect}
+                  className="hidden"
+                />
+                <div className="flex items-center gap-3">
+                  {form.avatar ? (
                     <img
                       src={form.avatar}
                       alt=""
-                      className="w-7 h-7 rounded-full object-cover border border-[rgba(0,188,228,0.30)]"
+                      className="w-14 h-14 rounded-2xl object-cover border border-[rgba(0,188,228,0.30)] shrink-0"
                       onError={e => { (e.target as HTMLImageElement).style.display = 'none' }}
                     />
-                    <span className="text-[10px] text-[#021541]/35">Preview da foto</span>
+                  ) : (
+                    <div className="w-14 h-14 rounded-2xl bg-[#f5f6f8] border border-[rgba(2,21,65,0.10)] flex items-center justify-center text-[#021541]/25 shrink-0">
+                      <span className="material-symbols-outlined" style={{ fontSize: '22px' }}>person</span>
+                    </div>
+                  )}
+                  <div className="flex flex-col gap-1.5">
+                    <button
+                      type="button"
+                      onClick={() => fileInputRef.current?.click()}
+                      disabled={uploadingPhoto}
+                      className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-bold text-[#021541] bg-white border border-[rgba(2,21,65,0.10)] hover:border-[#00BCE4] hover:text-[#00BCE4] disabled:opacity-50 transition-colors w-fit"
+                    >
+                      <span className="material-symbols-outlined" style={{ fontSize: '15px' }}>
+                        {uploadingPhoto ? 'hourglass_empty' : 'upload'}
+                      </span>
+                      {uploadingPhoto ? 'Processando...' : form.avatar ? 'Trocar foto' : 'Enviar foto'}
+                    </button>
+                    {form.avatar && (
+                      <button
+                        type="button"
+                        onClick={() => set('avatar', '')}
+                        className="text-[10px] text-red-500/70 hover:text-red-500 transition-colors w-fit"
+                      >
+                        Remover foto
+                      </button>
+                    )}
                   </div>
-                )}
+                </div>
+                <p className="text-[10px] text-[#021541]/30 pl-0.5">JPG, PNG ou WebP — redimensionada automaticamente.</p>
               </div>
 
               <button
@@ -401,16 +460,17 @@ function ProfileSheet({ open, onClose }: { open: boolean; onClose: () => void })
 function SidebarContent({ onNavigate }: { onNavigate?: () => void }) {
   const pathname = usePathname()
   const { data: session } = useSession()
+  const { profile, refresh } = useProfile()
   const [profileOpen, setProfileOpen] = useState(false)
   const role = (session?.user?.role ?? 'receptionist') as UserRole
   const clinic = useClinicSettings(true)
 
   const visibleItems = NAV_ITEMS.filter((item) => hasPermission(role, item.permission))
-  const initials = getInitials(session?.user?.name ?? 'U')
-  const userName = session?.user?.name ?? ''
-  const userEmail = session?.user?.email ?? ''
+  const userName = profile?.name ?? session?.user?.name ?? ''
+  const initials = getInitials(userName || 'U')
+  const userEmail = profile?.email ?? session?.user?.email ?? ''
   const roleLabel = ROLE_LABELS[role] ?? role
-  const avatar = (session?.user as unknown as Record<string, string>)?.avatar
+  const avatar = profile?.avatar ?? undefined
 
   return (
     <>
@@ -537,7 +597,12 @@ function SidebarContent({ onNavigate }: { onNavigate?: () => void }) {
         </div>
       </div>
 
-      <ProfileSheet open={profileOpen} onClose={() => setProfileOpen(false)} />
+      <ProfileSheet
+        open={profileOpen}
+        onClose={() => setProfileOpen(false)}
+        profile={profile}
+        onSaved={refresh}
+      />
     </>
   )
 }

@@ -5,9 +5,12 @@ import { hasPermission } from '@/lib/permissions'
 import { NextRequest, NextResponse } from 'next/server'
 import { eq } from 'drizzle-orm'
 import { z } from 'zod'
+import bcrypt from 'bcryptjs'
 import type { UserRole } from '@/types'
 
 const updateSchema = z.object({
+  email: z.string().email('E-mail inválido').optional(),
+  password: z.string().min(8, 'Senha deve ter ao menos 8 caracteres').optional(),
   role: z.enum(['admin', 'receptionist', 'financial', 'doctor']).optional(),
   isActive: z.boolean().optional(),
   phone: z.string().nullable().optional(),
@@ -29,8 +32,25 @@ export async function PATCH(req: NextRequest, { params }: Params) {
   const parsed = updateSchema.safeParse(body)
   if (!parsed.success) return NextResponse.json({ error: 'Dados inválidos' }, { status: 400 })
 
+  const { email, password, ...rest } = parsed.data
+  const updates: Record<string, unknown> = { ...rest, updatedAt: new Date() }
+
+  // E-mail: validar unicidade antes de alterar
+  if (email !== undefined) {
+    const existing = await db.query.users.findFirst({ where: eq(users.email, email) })
+    if (existing && existing.id !== id) {
+      return NextResponse.json({ error: 'E-mail já cadastrado' }, { status: 409 })
+    }
+    updates.email = email
+  }
+
+  // Senha: re-hash quando informada
+  if (password !== undefined) {
+    updates.passwordHash = await bcrypt.hash(password, 12)
+  }
+
   const [updated] = await db.update(users)
-    .set({ ...parsed.data, updatedAt: new Date() })
+    .set(updates)
     .where(eq(users.id, id))
     .returning({
       id: users.id,

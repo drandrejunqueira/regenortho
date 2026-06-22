@@ -10,10 +10,34 @@ const updateSchema = z.object({
   name: z.string().min(2).max(255).optional(),
   email: z.string().email().optional(),
   phone: z.string().max(30).nullable().optional(),
-  avatar: z.string().url().nullable().optional(),
+  // Aceita URL http(s) OU data URL base64 (foto enviada e gravada inline no banco)
+  avatar: z.string().refine(
+    (v) => v.startsWith('data:image/') || /^https?:\/\//.test(v),
+    'Imagem inválida',
+  ).nullable().optional(),
   currentPassword: z.string().optional(),
   newPassword: z.string().min(6).optional(),
 })
+
+export async function GET() {
+  const session = await auth()
+  if (!session) return NextResponse.json({ error: 'Não autenticado' }, { status: 401 })
+
+  const [user] = await db
+    .select({
+      id: users.id,
+      name: users.name,
+      email: users.email,
+      phone: users.phone,
+      avatar: users.avatar,
+      role: users.role,
+    })
+    .from(users)
+    .where(eq(users.id, session.user.id))
+
+  if (!user) return NextResponse.json({ error: 'Usuário não encontrado' }, { status: 404 })
+  return NextResponse.json({ data: user })
+}
 
 export async function PATCH(req: NextRequest) {
   const session = await auth()

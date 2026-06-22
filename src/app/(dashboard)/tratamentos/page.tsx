@@ -1010,6 +1010,8 @@ interface ConcluirTratamentoDialogProps {
 function ConcluirTratamentoDialog({ open, treatment, onClose, onCompleted }: ConcluirTratamentoDialogProps) {
   const [paymentMethods, setPaymentMethods] = useState<PaymentMethod[]>([])
   const [paymentMethodId, setPaymentMethodId] = useState('')
+  const [bankAccounts, setBankAccounts] = useState<{ id: string; name: string; bank: string | null; isDefault: boolean }[]>([])
+  const [bankAccountId, setBankAccountId] = useState('')
   const [installments, setInstallments] = useState(1)
   const [paymentStatus, setPaymentStatus] = useState<'pending' | 'first_paid' | 'all_paid'>('pending')
   const [loading, setLoading] = useState(false)
@@ -1025,6 +1027,17 @@ function ConcluirTratamentoDialog({ open, treatment, onClose, onCompleted }: Con
       })
       .catch(() => {})
 
+    fetch('/api/configuracoes/contas')
+      .then(r => r.json())
+      .then(({ data }) => {
+        if (data) {
+          setBankAccounts(data)
+          const def = data.find((a: { isDefault: boolean }) => a.isDefault) ?? data[0]
+          setBankAccountId(def?.id ?? '')
+        }
+      })
+      .catch(() => {})
+
     setPaymentMethodId(treatment.paymentMethod?.id || '')
     setInstallments(treatment.installments || 1)
     setPaymentStatus('pending')
@@ -1036,6 +1049,11 @@ function ConcluirTratamentoDialog({ open, treatment, onClose, onCompleted }: Con
       toast.error('Selecione uma forma de pagamento')
       return
     }
+    // Quando há parcela a receber agora, a conta de destino é obrigatória
+    if (paymentStatus !== 'pending' && !bankAccountId) {
+      toast.error('Selecione a conta de recebimento')
+      return
+    }
     setLoading(true)
     try {
       const res = await fetch(`/api/tratamentos/${treatment.id}`, {
@@ -1044,6 +1062,7 @@ function ConcluirTratamentoDialog({ open, treatment, onClose, onCompleted }: Con
         body: JSON.stringify({
           status: 'completed',
           paymentMethodId,
+          bankAccountId: paymentStatus !== 'pending' ? bankAccountId || null : null,
           installments,
           paymentStatus
         })
@@ -1119,6 +1138,27 @@ function ConcluirTratamentoDialog({ open, treatment, onClose, onCompleted }: Con
                 ))}
               </select>
             </div>
+
+            {paymentStatus !== 'pending' && (
+              <div className="space-y-1.5">
+                <label className={labelCls}>Conta de Recebimento *</label>
+                <select
+                  value={bankAccountId}
+                  onChange={e => setBankAccountId(e.target.value)}
+                  className={inputCls}
+                >
+                  <option value="">Selecione...</option>
+                  {bankAccounts.map(acc => (
+                    <option key={acc.id} value={acc.id}>
+                      {acc.name}{acc.bank ? ` · ${acc.bank}` : ''}{acc.isDefault ? ' (padrão)' : ''}
+                    </option>
+                  ))}
+                </select>
+                <p className="text-[10px] text-[#718096] leading-snug">
+                  O valor das parcelas pagas será creditado nesta conta.
+                </p>
+              </div>
+            )}
 
             <div className="grid grid-cols-2 gap-3">
               <div className="space-y-1.5">

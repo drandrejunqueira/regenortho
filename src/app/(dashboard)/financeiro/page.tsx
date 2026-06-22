@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect, useCallback } from 'react'
+import { useSession } from 'next-auth/react'
 import { PageHeader } from '@/components/shared/PageHeader'
 import { KpiCard } from '@/components/dashboard/KpiCard'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog'
@@ -18,11 +19,40 @@ const EXPENSE_CATEGORIES = ['rent', 'staff', 'marketing', 'materials', 'equipmen
 const inputCls = 'w-full bg-[#f5f6f8] border border-[rgba(2,21,65,0.12)] rounded-xl px-3 py-2.5 text-sm text-[#021541] placeholder:text-[#718096]/60 focus:outline-none focus:ring-2 focus:ring-[#00BCE4]/30'
 const labelCls = 'text-[10px] font-bold text-[#718096] uppercase tracking-wider'
 
+interface PaymentMethodOpt { id: string; name: string }
+interface BankAccountOpt { id: string; name: string; bank: string | null; isDefault: boolean }
+
 export default function FinanceiroPage() {
+  const { data: session } = useSession()
+  const isAdmin = session?.user?.role === 'admin'
   const [transactions, setTransactions] = useState<Transaction[]>([])
   const [loading, setLoading] = useState(true)
   const [typeFilter, setTypeFilter] = useState<string>('all')
   const [newDialog, setNewDialog] = useState(false)
+  const [editing, setEditing] = useState<Transaction | null>(null)
+  const [paymentMethods, setPaymentMethods] = useState<PaymentMethodOpt[]>([])
+  const [bankAccounts, setBankAccounts] = useState<BankAccountOpt[]>([])
+
+  useEffect(() => {
+    if (!isAdmin) return
+    fetch('/api/configuracoes/pagamentos').then(r => r.json()).then(({ data }) => { if (data) setPaymentMethods(data) }).catch(() => {})
+    fetch('/api/configuracoes/contas').then(r => r.json()).then(({ data }) => { if (data) setBankAccounts(data) }).catch(() => {})
+  }, [isAdmin])
+
+  async function deleteTransaction(tx: Transaction) {
+    if (!confirm(`Excluir o lançamento "${tx.description}" (${formatCurrency(tx.amount)})? Esta ação não pode ser desfeita.`)) return
+    try {
+      const res = await fetch(`/api/financeiro/${tx.id}`, { method: 'DELETE' })
+      if (!res.ok) {
+        const d = await res.json().catch(() => null)
+        throw new Error(d?.error ?? 'Erro ao excluir')
+      }
+      toast.success('Lançamento excluído')
+      fetchTransactions()
+    } catch (e: unknown) {
+      toast.error((e as Error).message)
+    }
+  }
 
   const fetchTransactions = useCallback(async () => {
     setLoading(true)
@@ -159,14 +189,34 @@ export default function FinanceiroPage() {
                     </span>
                   </td>
                   <td className="px-5 py-3">
-                    {!tx.isPaid && (
-                      <button
-                        onClick={() => markPaid(tx.id)}
-                        className="bg-[rgba(0,188,228,0.08)] text-[#00BCE4] hover:bg-[rgba(0,188,228,0.15)] rounded-full px-3 py-1 text-xs font-medium transition-colors whitespace-nowrap"
-                      >
-                        Pagar
-                      </button>
-                    )}
+                    <div className="flex items-center gap-1.5 justify-end">
+                      {!tx.isPaid && (
+                        <button
+                          onClick={() => markPaid(tx.id)}
+                          className="bg-[rgba(0,188,228,0.08)] text-[#00BCE4] hover:bg-[rgba(0,188,228,0.15)] rounded-full px-3 py-1 text-xs font-medium transition-colors whitespace-nowrap"
+                        >
+                          Pagar
+                        </button>
+                      )}
+                      {isAdmin && tx.treatmentId && (
+                        <>
+                          <button
+                            onClick={() => setEditing(tx)}
+                            title="Editar recebimento"
+                            className="w-7 h-7 rounded-lg flex items-center justify-center text-[#718096] hover:text-[#021541] hover:bg-[rgba(2,21,65,0.06)] transition-colors"
+                          >
+                            <span className="material-symbols-outlined" style={{ fontSize: '16px' }}>edit</span>
+                          </button>
+                          <button
+                            onClick={() => deleteTransaction(tx)}
+                            title="Excluir recebimento"
+                            className="w-7 h-7 rounded-lg flex items-center justify-center text-[#DC2626] hover:bg-[rgba(220,38,38,0.08)] transition-colors"
+                          >
+                            <span className="material-symbols-outlined" style={{ fontSize: '16px' }}>delete</span>
+                          </button>
+                        </>
+                      )}
+                    </div>
                   </td>
                 </tr>
               ))}
@@ -176,7 +226,145 @@ export default function FinanceiroPage() {
       )}
 
       <NewTransactionDialog open={newDialog} onOpenChange={setNewDialog} onCreated={fetchTransactions} />
+      <EditTransactionDialog
+        transaction={editing}
+        paymentMethods={paymentMethods}
+        bankAccounts={bankAccounts}
+        onClose={() => setEditing(null)}
+        onSaved={() => { setEditing(null); fetchTransactions() }}
+      />
     </div>
+  )
+}
+
+function EditTransactionDialog({
+  transaction, paymentMethods, bankAccounts, onClose, onSaved,
+}: {
+  transaction: Transaction | null
+  paymentMethods: PaymentMethodOpt[]
+  bankAccounts: BankAccountOpt[]
+  onClose: () => void
+  onSaved: () => void
+}) {
+  const [loading, setLoading] = useState(false)
+  const [form, setForm] = useState({
+    description: '', amount: '', date: '', dueDate: '', isPaid: false,
+    paymentMethodId: '', bankAccountId: '',
+  })
+
+  useEffect(() => {
+    if (!transaction) return
+    setForm({
+      description: transaction.description,
+      amount: transaction.amount,
+      date: transaction.date?.slice(0, 10) ?? '',
+      dueDate: transaction.dueDate?.slice(0, 10) ?? '',
+      isPaid: transaction.isPaid,
+      paymentMethodId: transaction.paymentMethodId ?? '',
+      bankAccountId: transaction.bankAccountId ?? '',
+    })
+  }, [transaction])
+
+  if (!transaction) return null
+
+  async function save() {
+    if (!transaction) return
+    if (!form.description || !form.amount || !form.date) {
+      toast.error('Preencha descrição, valor e data')
+      return
+    }
+    setLoading(true)
+    try {
+      const res = await fetch(`/api/financeiro/${transaction.id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          description: form.description,
+          amount: form.amount,
+          date: form.date,
+          dueDate: form.dueDate || null,
+          isPaid: form.isPaid,
+          paymentMethodId: form.paymentMethodId || null,
+          bankAccountId: form.bankAccountId || null,
+        }),
+      })
+      if (!res.ok) {
+        const d = await res.json().catch(() => null)
+        throw new Error(d?.error ?? 'Erro ao salvar')
+      }
+      toast.success('Recebimento atualizado')
+      onSaved()
+    } catch (e: unknown) {
+      toast.error((e as Error).message)
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  return (
+    <Dialog open={!!transaction} onOpenChange={(v) => { if (!v) onClose() }}>
+      <DialogContent className="max-w-md bg-white border border-[rgba(2,21,65,0.08)]">
+        <DialogHeader>
+          <DialogTitle className="text-[#021541] font-bold">Editar Recebimento</DialogTitle>
+        </DialogHeader>
+        <div className="space-y-3">
+          <div className="space-y-1.5">
+            <label className={labelCls}>Descrição *</label>
+            <input value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })} className={inputCls} />
+          </div>
+          <div className="grid grid-cols-2 gap-2">
+            <div className="space-y-1.5">
+              <label className={labelCls}>Valor (R$) *</label>
+              <input type="number" step="0.01" value={form.amount} onChange={(e) => setForm({ ...form, amount: e.target.value })} className={inputCls} />
+            </div>
+            <div className="space-y-1.5">
+              <label className={labelCls}>Data *</label>
+              <input type="date" value={form.date} onChange={(e) => setForm({ ...form, date: e.target.value })} className={inputCls} />
+            </div>
+          </div>
+          <div className="grid grid-cols-2 gap-2">
+            <div className="space-y-1.5">
+              <label className={labelCls}>Vencimento</label>
+              <input type="date" value={form.dueDate} onChange={(e) => setForm({ ...form, dueDate: e.target.value })} className={inputCls} />
+            </div>
+            <div className="space-y-1.5">
+              <label className={labelCls}>Forma de pagamento</label>
+              <select value={form.paymentMethodId} onChange={(e) => setForm({ ...form, paymentMethodId: e.target.value })} className={inputCls}>
+                <option value="">—</option>
+                {paymentMethods.map(pm => <option key={pm.id} value={pm.id}>{pm.name}</option>)}
+              </select>
+            </div>
+          </div>
+          <div className="space-y-1.5">
+            <label className={labelCls}>Conta de recebimento</label>
+            <select value={form.bankAccountId} onChange={(e) => setForm({ ...form, bankAccountId: e.target.value })} className={inputCls}>
+              <option value="">—</option>
+              {bankAccounts.map(acc => (
+                <option key={acc.id} value={acc.id}>{acc.name}{acc.bank ? ` · ${acc.bank}` : ''}</option>
+              ))}
+            </select>
+          </div>
+          <div className="flex items-center gap-2">
+            <Checkbox id="editIsPaid" checked={form.isPaid} onCheckedChange={(v) => setForm({ ...form, isPaid: Boolean(v) })} />
+            <Label htmlFor="editIsPaid" className="text-sm text-[#718096]">Recebido (pago)</Label>
+          </div>
+          <div className="bg-[rgba(0,188,228,0.06)] border border-[rgba(0,188,228,0.15)] rounded-xl p-3 flex gap-2">
+            <span className="material-symbols-outlined text-[#00BCE4] shrink-0" style={{ fontSize: '14px' }}>info</span>
+            <p className="text-[11px] text-[#021541]/55 leading-relaxed">
+              Alterar o valor, a conta ou o status de pagamento ajusta automaticamente o saldo da conta bancária vinculada.
+            </p>
+          </div>
+        </div>
+        <DialogFooter className="gap-2">
+          <button onClick={onClose} disabled={loading} className="px-4 py-2.5 rounded-xl text-sm font-medium text-[#718096] bg-[#f5f6f8] hover:bg-[rgba(2,21,65,0.06)] transition-colors">
+            Cancelar
+          </button>
+          <button onClick={save} disabled={loading} className="px-4 py-2.5 rounded-xl text-sm font-bold bg-[#021541] text-white hover:opacity-90 transition-opacity disabled:opacity-50">
+            {loading ? 'Salvando...' : 'Salvar'}
+          </button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
   )
 }
 
