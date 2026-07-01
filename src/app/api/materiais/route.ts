@@ -1,16 +1,18 @@
 import { auth } from '@/lib/auth/config'
 import { db } from '@/lib/db'
-import { materials } from '@/lib/db/schema'
+import { materials, materialCategories } from '@/lib/db/schema'
 import { hasPermission } from '@/lib/permissions'
 import { NextRequest, NextResponse } from 'next/server'
-import { and, eq, sql } from 'drizzle-orm'
+import { and, eq } from 'drizzle-orm'
 import { z } from 'zod'
 import type { UserRole } from '@/types'
 import { computeStockStatus } from '@/lib/utils'
 
 const createSchema = z.object({
   name: z.string().min(1, 'Nome obrigatório'),
-  category: z.string().min(1),
+  category: z.string().optional(),
+  categoryId: z.string().uuid().nullable().optional(),
+  subcategoryId: z.string().uuid().nullable().optional(),
   unit: z.string().min(1),
   currentStock: z.number().int().min(0).default(0),
   minimumStock: z.number().int().min(0).default(5),
@@ -19,6 +21,7 @@ const createSchema = z.object({
   supplierContact: z.string().nullable().optional(),
   batchNumber: z.string().nullable().optional(),
   expiresAt: z.string().nullable().optional(),
+  isActive: z.boolean().optional(),
   notes: z.string().nullable().optional(),
 })
 
@@ -35,10 +38,21 @@ export async function GET(req: NextRequest) {
   const conditions = []
   if (status) conditions.push(eq(materials.status, status as 'ok' | 'low' | 'critical' | 'out_of_stock'))
 
-  const data = await db.query.materials.findMany({
+  const rows = await db.query.materials.findMany({
     where: conditions.length ? and(...conditions) : undefined,
     orderBy: (m, { asc }) => [asc(m.name)],
+    with: {
+      batches: true,
+      categoryRef: { columns: { name: true } },
+      subcategoryRef: { columns: { name: true } },
+    },
   })
+
+  const data = rows.map(({ categoryRef, subcategoryRef, ...m }) => ({
+    ...m,
+    categoryName: categoryRef?.name ?? m.category ?? null,
+    subcategoryName: subcategoryRef?.name ?? null,
+  }))
 
   return NextResponse.json({ data })
 }
@@ -60,7 +74,22 @@ export async function POST(req: NextRequest) {
   const min = parsed.data.minimumStock ?? 5
   const status = computeStockStatus(stock, min)
 
-  const [material] = await db.insert(materials).values({ ...parsed.data, status }).returning()
+  // A coluna `category` (texto) é obrigatória — se não veio no payload,
+  // deriva do nome da categoria selecionada para manter compatibilidade.
+  let categoryName = parsed.data.category?.trim() || ''
+  if (!categoryName && parsed.data.categoryId) {
+    const cat = await db.query.materialCategories.findFirst({
+      where: eq(materialCategories.id, parsed.data.categoryId),
+      columns: { name: true },
+    })
+    categoryName = cat?.name ?? 'Outros'
+  }
+  if (!categoryName) categoryName = 'Outros'
+
+  const [material] = await db
+    .insert(materials)
+    .values({ ...parsed.data, category: categoryName, status })
+    .returning()
   return NextResponse.json({ data: material }, { status: 201 })
 }
 

@@ -12,8 +12,12 @@ import {
   DialogFooter,
 } from '@/components/ui/dialog'
 import { toast } from 'sonner'
+import { useSession } from 'next-auth/react'
+import { hasPermission } from '@/lib/permissions'
 import { formatDate, formatCurrency } from '@/lib/utils'
-import type { Material, PurchaseOrder, PurchaseOrderItem, PurchaseOrderStatus } from '@/types'
+import { EditMaterialDialog } from '@/components/materiais/EditMaterialDialog'
+import { useMaterialCategories } from '@/components/materiais/shared'
+import type { Material, PurchaseOrder, PurchaseOrderItem, PurchaseOrderStatus, UserRole } from '@/types'
 
 const inputCls =
   'w-full bg-[#f5f6f8] border border-[rgba(2,21,65,0.12)] rounded-xl px-3 py-2.5 text-sm text-[#021541] placeholder:text-[#718096]/60 focus:outline-none focus:ring-2 focus:ring-[#00BCE4]/30'
@@ -46,6 +50,42 @@ export default function MateriaisPage() {
     ((m: Material) => void) | null
   >(null)
 
+  // edição / filtros de estoque
+  const [editMaterial, setEditMaterial] = useState<Material | null>(null)
+  const [categoryFilter, setCategoryFilter] = useState<string>('all')
+  const [showInactive, setShowInactive] = useState(false)
+
+  const { data: session } = useSession()
+  const role = session?.user?.role as UserRole | undefined
+  const canDelete = role ? hasPermission(role, 'materials:delete') : false
+  const { roots: categoryRoots } = useMaterialCategories()
+
+  async function toggleMaterialActive(mat: Material) {
+    const res = await fetch(`/api/materiais/${mat.id}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ isActive: !mat.isActive }),
+    })
+    if (res.ok) {
+      toast.success(mat.isActive ? 'Material inativado' : 'Material reativado')
+      fetchMaterials()
+    } else {
+      toast.error('Não foi possível alterar o status')
+    }
+  }
+
+  async function deleteMaterialRow(mat: Material) {
+    if (!confirm(`Excluir permanentemente "${mat.name}"?`)) return
+    const res = await fetch(`/api/materiais/${mat.id}`, { method: 'DELETE' })
+    if (res.ok) {
+      toast.success('Material excluído')
+      fetchMaterials()
+    } else {
+      const data = await res.json().catch(() => ({}))
+      toast.error(data.error ?? 'Erro ao excluir. Considere inativar.')
+    }
+  }
+
   const fetchMaterials = useCallback(async () => {
     const res = await fetch('/api/materiais')
     if (res.ok) {
@@ -76,6 +116,13 @@ export default function MateriaisPage() {
     (m) => m.status === 'critical' || m.status === 'out_of_stock'
   ).length
   const low = materials.filter((m) => m.status === 'low').length
+  const inactiveCount = materials.filter((m) => !m.isActive).length
+
+  const visibleMaterials = materials.filter(
+    (m) =>
+      (showInactive || m.isActive) &&
+      (categoryFilter === 'all' || m.categoryId === categoryFilter)
+  )
 
   function openMovement(material: Material, type: 'in' | 'out') {
     setSelectedMaterial(material)
@@ -242,6 +289,50 @@ export default function MateriaisPage() {
             />
           </div>
 
+          {/* Filtros por categoria (abas internas) + inativos */}
+          <div className="flex items-center gap-2 flex-wrap mb-4">
+            <div className="flex items-center gap-1.5 flex-wrap">
+              <button
+                onClick={() => setCategoryFilter('all')}
+                className={`px-3.5 py-1.5 rounded-full text-xs font-semibold transition-all border ${
+                  categoryFilter === 'all'
+                    ? 'bg-[#021541] text-white border-[#021541]'
+                    : 'bg-white text-[#718096] border-[rgba(2,21,65,0.12)] hover:text-[#021541]'
+                }`}
+              >
+                Todos ({materials.filter((m) => showInactive || m.isActive).length})
+              </button>
+              {categoryRoots.map((cat) => {
+                const count = materials.filter(
+                  (m) => m.categoryId === cat.id && (showInactive || m.isActive)
+                ).length
+                if (count === 0) return null
+                return (
+                  <button
+                    key={cat.id}
+                    onClick={() => setCategoryFilter(cat.id)}
+                    className={`px-3.5 py-1.5 rounded-full text-xs font-semibold transition-all border ${
+                      categoryFilter === cat.id
+                        ? 'bg-[#021541] text-white border-[#021541]'
+                        : 'bg-white text-[#718096] border-[rgba(2,21,65,0.12)] hover:text-[#021541]'
+                    }`}
+                  >
+                    {cat.name} ({count})
+                  </button>
+                )
+              })}
+            </div>
+            <label className="ml-auto flex items-center gap-2 text-xs font-medium text-[#718096] cursor-pointer select-none">
+              <input
+                type="checkbox"
+                checked={showInactive}
+                onChange={(e) => setShowInactive(e.target.checked)}
+                className="accent-[#00BCE4] w-3.5 h-3.5"
+              />
+              Mostrar inativos{inactiveCount > 0 ? ` (${inactiveCount})` : ''}
+            </label>
+          </div>
+
           {loading ? (
             <p className="text-sm text-[#718096] py-8 text-center">Carregando...</p>
           ) : (
@@ -262,19 +353,42 @@ export default function MateriaisPage() {
                   </tr>
                 </thead>
                 <tbody>
-                  {materials.map((mat) => {
+                  {visibleMaterials.length === 0 && (
+                    <tr>
+                      <td colSpan={7} className="px-5 py-10 text-center text-sm text-[#718096]">
+                        Nenhum material nesta categoria.
+                      </td>
+                    </tr>
+                  )}
+                  {visibleMaterials.map((mat) => {
                     const isCritical = mat.status === 'critical' || mat.status === 'out_of_stock'
+                    const batchExpiries = (mat.batches ?? [])
+                      .map((b) => b.expiresAt)
+                      .filter((d): d is string => !!d)
+                      .sort()
+                    const nextExpiry = batchExpiries[0] ?? mat.expiresAt
                     return (
                       <tr
                         key={mat.id}
-                        className={`border-b border-[rgba(2,21,65,0.05)] transition-colors ${isCritical ? 'bg-[rgba(239,68,68,0.02)] hover:bg-[rgba(239,68,68,0.04)]' : 'hover:bg-[rgba(2,21,65,0.015)]'}`}
+                        onClick={() => setEditMaterial(mat)}
+                        className={`border-b border-[rgba(2,21,65,0.05)] transition-colors cursor-pointer ${!mat.isActive ? 'opacity-50' : ''} ${isCritical ? 'bg-[rgba(239,68,68,0.02)] hover:bg-[rgba(239,68,68,0.04)]' : 'hover:bg-[rgba(2,21,65,0.015)]'}`}
                       >
                         <td className="px-5 py-3">
-                          <p className="font-medium text-[#021541]">{mat.name}</p>
+                          <p className="font-medium text-[#021541] flex items-center gap-1.5">
+                            {mat.name}
+                            {!mat.isActive && (
+                              <span className="text-[9px] font-bold px-1.5 py-0.5 rounded bg-[rgba(113,128,150,0.15)] text-[#718096]">
+                                INATIVO
+                              </span>
+                            )}
+                          </p>
                           {mat.supplier && <p className="text-xs text-[#718096]">{mat.supplier}</p>}
                         </td>
-                        <td className="px-5 py-3 text-[#718096] capitalize text-xs hidden sm:table-cell">
-                          {mat.category}
+                        <td className="px-5 py-3 text-[#718096] text-xs hidden sm:table-cell">
+                          <span className="capitalize">{mat.categoryName ?? mat.category}</span>
+                          {mat.subcategoryName && (
+                            <span className="text-[#a0aec0]"> · {mat.subcategoryName}</span>
+                          )}
                         </td>
                         <td className="px-5 py-3 text-center font-technical font-bold text-[#021541]">
                           {mat.currentStock}{' '}
@@ -287,19 +401,19 @@ export default function MateriaisPage() {
                           <StatusBadge type="stock_status" value={mat.status} pulse={isCritical} />
                         </td>
                         <td className="px-5 py-3 font-technical text-xs text-[#718096] hidden sm:table-cell">
-                          {mat.expiresAt ? formatDate(mat.expiresAt) : '—'}
+                          {nextExpiry ? formatDate(nextExpiry) : '—'}
+                          {(mat.batches?.length ?? 0) > 1 && (
+                            <span className="text-[#a0aec0]"> +{(mat.batches?.length ?? 0) - 1}</span>
+                          )}
                         </td>
-                        <td className="px-5 py-3">
+                        <td className="px-5 py-3" onClick={(e) => e.stopPropagation()}>
                           <div className="flex items-center justify-end gap-1 flex-wrap">
                             <button
                               onClick={() => openMovement(mat, 'in')}
                               className="p-1.5 rounded-lg bg-[rgba(5,150,105,0.06)] text-[#059669] hover:bg-[rgba(5,150,105,0.12)] transition-all"
                               aria-label="Entrada"
                             >
-                              <span
-                                className="material-symbols-outlined"
-                                style={{ fontSize: '16px' }}
-                              >
+                              <span className="material-symbols-outlined" style={{ fontSize: '16px' }}>
                                 arrow_downward
                               </span>
                             </button>
@@ -308,23 +422,46 @@ export default function MateriaisPage() {
                               className="p-1.5 rounded-lg bg-[rgba(220,38,38,0.06)] text-[#DC2626] hover:bg-[rgba(220,38,38,0.12)] transition-all"
                               aria-label="Saída"
                             >
-                              <span
-                                className="material-symbols-outlined"
-                                style={{ fontSize: '16px' }}
-                              >
+                              <span className="material-symbols-outlined" style={{ fontSize: '16px' }}>
                                 arrow_upward
                               </span>
                             </button>
+                            <button
+                              onClick={() => setEditMaterial(mat)}
+                              className="p-1.5 rounded-lg bg-[rgba(2,21,65,0.05)] text-[#021541] hover:bg-[rgba(2,21,65,0.1)] transition-all"
+                              aria-label="Editar"
+                            >
+                              <span className="material-symbols-outlined" style={{ fontSize: '16px' }}>
+                                edit
+                              </span>
+                            </button>
+                            <button
+                              onClick={() => toggleMaterialActive(mat)}
+                              className={`p-1.5 rounded-lg transition-all ${mat.isActive ? 'bg-[rgba(217,119,6,0.07)] text-[#d97706] hover:bg-[rgba(217,119,6,0.14)]' : 'bg-[rgba(5,150,105,0.07)] text-[#059669] hover:bg-[rgba(5,150,105,0.14)]'}`}
+                              aria-label={mat.isActive ? 'Inativar' : 'Reativar'}
+                            >
+                              <span className="material-symbols-outlined" style={{ fontSize: '16px' }}>
+                                {mat.isActive ? 'toggle_off' : 'toggle_on'}
+                              </span>
+                            </button>
+                            {canDelete && (
+                              <button
+                                onClick={() => deleteMaterialRow(mat)}
+                                className="p-1.5 rounded-lg bg-[rgba(220,38,38,0.06)] text-[#DC2626] hover:bg-[rgba(220,38,38,0.12)] transition-all"
+                                aria-label="Excluir"
+                              >
+                                <span className="material-symbols-outlined" style={{ fontSize: '16px' }}>
+                                  delete
+                                </span>
+                              </button>
+                            )}
                             {mat.supplierContact && (
                               <button
                                 onClick={() => generateWhatsApp(mat)}
                                 className="p-1.5 rounded-lg bg-[rgba(0,188,228,0.06)] text-[#00BCE4] hover:bg-[rgba(0,188,228,0.12)] transition-all"
                                 aria-label="WhatsApp"
                               >
-                                <span
-                                  className="material-symbols-outlined"
-                                  style={{ fontSize: '16px' }}
-                                >
+                                <span className="material-symbols-outlined" style={{ fontSize: '16px' }}>
                                   chat
                                 </span>
                               </button>
@@ -553,6 +690,16 @@ export default function MateriaisPage() {
             onMaterialCreatedCallback(newMat)
           }
         }}
+      />
+
+      <EditMaterialDialog
+        open={!!editMaterial}
+        material={editMaterial}
+        canDelete={canDelete}
+        onOpenChange={(v) => {
+          if (!v) setEditMaterial(null)
+        }}
+        onSaved={fetchMaterials}
       />
 
       {/* Confirmar recebimento */}
@@ -1148,8 +1295,10 @@ function MaterialFormDialog({
   onOpenChange: (v: boolean) => void
   onSaved: (m: Material) => void
 }) {
+  const { roots, subcategoriesOf } = useMaterialCategories()
   const [name, setName] = useState('')
-  const [category, setCategory] = useState('Descartáveis')
+  const [categoryId, setCategoryId] = useState('')
+  const [subcategoryId, setSubcategoryId] = useState('')
   const [unit, setUnit] = useState('un')
   const [customUnit, setCustomUnit] = useState('')
   const [currentStock, setCurrentStock] = useState('0')
@@ -1166,7 +1315,8 @@ function MaterialFormDialog({
   useEffect(() => {
     if (open) {
       setName('')
-      setCategory('Descartáveis')
+      setCategoryId('')
+      setSubcategoryId('')
       setUnit('un')
       setCustomUnit('')
       setCurrentStock('0')
@@ -1195,7 +1345,8 @@ function MaterialFormDialog({
     try {
       const payload = {
         name: name.trim(),
-        category: category.trim(),
+        categoryId: categoryId || null,
+        subcategoryId: subcategoryId || null,
         unit: finalUnit,
         currentStock: parseInt(currentStock) || 0,
         minimumStock: parseInt(minimumStock) || 0,
@@ -1227,8 +1378,8 @@ function MaterialFormDialog({
     }
   }
 
-  const categories = ['Descartáveis', 'Equipamentos', 'Medicamentos', 'Instrumentais', 'Outros']
   const units = ['un', 'ampola', 'seringa', 'agulha', 'pacote', 'frasco', 'par', 'caixa', 'custom']
+  const subcats = subcategoriesOf(categoryId)
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -1249,20 +1400,43 @@ function MaterialFormDialog({
 
           <div className="grid grid-cols-2 gap-3">
             <div className="space-y-1.5">
-              <label className={labelCls}>Categoria *</label>
+              <label className={labelCls}>Categoria</label>
               <select
-                value={category}
-                onChange={(e) => setCategory(e.target.value)}
+                value={categoryId}
+                onChange={(e) => {
+                  setCategoryId(e.target.value)
+                  setSubcategoryId('')
+                }}
                 className={inputCls}
               >
-                {categories.map((cat) => (
-                  <option key={cat} value={cat}>
-                    {cat}
+                <option value="">— Selecione —</option>
+                {roots.map((cat) => (
+                  <option key={cat.id} value={cat.id}>
+                    {cat.name}
                   </option>
                 ))}
               </select>
             </div>
 
+            <div className="space-y-1.5">
+              <label className={labelCls}>Subcategoria</label>
+              <select
+                value={subcategoryId}
+                onChange={(e) => setSubcategoryId(e.target.value)}
+                className={inputCls}
+                disabled={!categoryId || subcats.length === 0}
+              >
+                <option value="">— Nenhuma —</option>
+                {subcats.map((c) => (
+                  <option key={c.id} value={c.id}>
+                    {c.name}
+                  </option>
+                ))}
+              </select>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-2 gap-3">
             <div className="space-y-1.5">
               <label className={labelCls}>Unidade *</label>
               <select value={unit} onChange={(e) => setUnit(e.target.value)} className={inputCls}>

@@ -1,6 +1,6 @@
 import { db } from '@/lib/db'
-import { clinicSettings, whatsappMessages } from '@/lib/db/schema'
-import { eq } from 'drizzle-orm'
+import { whatsappMessages } from '@/lib/db/schema'
+import { getEvolutionConfig } from '@/lib/evolution'
 
 interface EvolutionConfig {
   apiUrl: string
@@ -8,25 +8,12 @@ interface EvolutionConfig {
   instance: string
 }
 
+// Kept for backward compatibility with sendWhatsApp's config shape. Delegates to
+// the shared getEvolutionConfig (single source of truth for Evolution creds).
 async function getConfig(): Promise<EvolutionConfig | null> {
-  const [settings] = await db
-    .select({
-      evolutionApiUrl: clinicSettings.evolutionApiUrl,
-      evolutionApiKey: clinicSettings.evolutionApiKey,
-      evolutionInstance: clinicSettings.evolutionInstance,
-    })
-    .from(clinicSettings)
-    .where(eq(clinicSettings.id, 1))
-
-  if (!settings?.evolutionApiUrl || !settings?.evolutionApiKey || !settings?.evolutionInstance) {
-    return null
-  }
-
-  return {
-    apiUrl: settings.evolutionApiUrl,
-    apiKey: settings.evolutionApiKey,
-    instance: settings.evolutionInstance,
-  }
+  const { serverUrl, apiKey, instance } = await getEvolutionConfig()
+  if (!serverUrl || !apiKey || !instance) return null
+  return { apiUrl: serverUrl, apiKey, instance }
 }
 
 export async function sendWhatsApp(

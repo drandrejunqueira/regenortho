@@ -1,6 +1,6 @@
 import { auth } from '@/lib/auth/config'
 import { db } from '@/lib/db'
-import { leads, leadInteractions } from '@/lib/db/schema'
+import { leads, appointments } from '@/lib/db/schema'
 import { hasPermission } from '@/lib/permissions'
 import { logActivity } from '@/lib/db/logger'
 import { NextRequest, NextResponse } from 'next/server'
@@ -106,7 +106,21 @@ export async function DELETE(req: NextRequest, { params }: Params) {
     return NextResponse.json({ error: 'Lead não encontrado' }, { status: 404 })
   }
 
-  await db.delete(leads).where(eq(leads.id, id))
+  try {
+    // Desvincula agendamentos deste lead antes de excluir.
+    // A FK appointments.lead_id não tem ON DELETE, então a exclusão
+    // direta falharia com violação de chave estrangeira quando o lead
+    // possui consultas agendadas.
+    await db.update(appointments).set({ leadId: null }).where(eq(appointments.leadId, id))
+
+    await db.delete(leads).where(eq(leads.id, id))
+  } catch (error) {
+    console.error('Erro ao excluir lead:', error)
+    return NextResponse.json(
+      { error: 'Não foi possível excluir o lead. Verifique se há registros vinculados.' },
+      { status: 409 }
+    )
+  }
 
   // Registra no log de auditoria
   const ip = req.headers.get('x-forwarded-for') || req.headers.get('x-real-ip')

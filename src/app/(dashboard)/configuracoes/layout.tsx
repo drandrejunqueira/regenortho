@@ -8,6 +8,7 @@ const TABS = [
   { href: '/configuracoes/site',          label: 'Site & SEO',     icon: 'globe' },
   { href: '/configuracoes/usuarios',      label: 'Usuários',       icon: 'manage_accounts' },
   { href: '/configuracoes/salas',         label: 'Salas',          icon: 'meeting_room' },
+  { href: '/configuracoes/categorias',    label: 'Categorias',     icon: 'category' },
   { href: '/configuracoes/pagamentos',    label: 'Pagamentos',     icon: 'credit_card' },
   { href: '/configuracoes/contas',        label: 'Contas',         icon: 'account_balance' },
   { href: '/configuracoes/notificacoes',  label: 'Notificações',   icon: 'notifications_active' },

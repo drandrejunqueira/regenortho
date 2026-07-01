@@ -3,7 +3,8 @@
 import { useState, useTransition } from 'react'
 import {
   Globe, Search, Key, Sparkles, RefreshCw, AlertCircle,
-  ExternalLink, CheckCircle2, XCircle, Link2, Unlink, Server
+  ExternalLink, CheckCircle2, XCircle, Link2, Unlink, Server,
+  MessageCircle, Send, Users, QrCode
 } from 'lucide-react'
 import { toast } from 'sonner'
 import { saveConfigs, reenviarSitemapAgora, desconectarContaGoogle } from '@/app/actions/configuracoes'
@@ -22,7 +23,7 @@ export function ConfiguracoesClient({
   googleEmail,
   googleConnectedAt
 }: Props) {
-  const [activeTab, setActiveTab] = useState<'site' | 'google' | 'ia'>('site')
+  const [activeTab, setActiveTab] = useState<'site' | 'google' | 'ia' | 'whatsapp'>('site')
   const [configs, setConfigs] = useState<Record<string, string>>(initialConfigs)
   const [pending, startTransition] = useTransition()
   const [saved, setSaved] = useState(false)
@@ -30,6 +31,12 @@ export function ConfiguracoesClient({
   // Sitemap sending states
   const [loadingSitemap, setLoadingSitemap] = useState(false)
   const [sitemapStatus, setSitemapStatus] = useState<{ google: boolean; indexnow: boolean } | null>(null)
+
+  // WhatsApp states
+  const [waBusy, setWaBusy] = useState(false)
+  const [waQr, setWaQr] = useState<string | null>(null)
+  const [waStatus, setWaStatus] = useState<string>('')
+  const [waGroups, setWaGroups] = useState<{ id: string; subject: string; size: number }[]>([])
 
   const set = (key: string) => (val: string) => setConfigs(prev => ({ ...prev, [key]: val }))
   const get = (key: string) => configs[key] ?? ''
@@ -82,6 +89,119 @@ export function ConfiguracoesClient({
 
   const sitemapUrl = `${get('site_url').replace(/\/$/, '')}/sitemap.xml`
 
+  // ── WhatsApp helpers ──────────────────────────────────────
+  const REPORT_SECTIONS: [string, string][] = [
+    ['agenda', 'Agenda'],
+    ['financeiro', 'Financeiro'],
+    ['tratamentos', 'Tratamentos'],
+    ['leads', 'Leads'],
+    ['estoque', 'Estoque'],
+  ]
+  const waInstance = () => get('evolution_instance').trim()
+  const flagOn = (key: string) => get(key) === '1'
+  const toggleFlag = (key: string) => set(key)(flagOn(key) ? '0' : '1')
+  const selectedSections = () =>
+    (get('wa_report_sections') || 'agenda,financeiro,tratamentos,leads,estoque')
+      .split(',').map(s => s.trim()).filter(Boolean)
+  const toggleSection = (key: string) => {
+    const cur = new Set(selectedSections())
+    if (cur.has(key)) cur.delete(key)
+    else cur.add(key)
+    set('wa_report_sections')(Array.from(cur).join(','))
+  }
+  // Persist current config to the DB before hitting routes that read it server-side.
+  const persistConfigs = () => saveConfigs(configs)
+
+  const handleWaConnect = async () => {
+    if (!waInstance()) return toast.error('Informe o nome da instância.')
+    setWaBusy(true); setWaQr(null)
+    try {
+      await persistConfigs()
+      await fetch('/api/whatsapp/instance', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ instanceName: waInstance() }),
+      }).catch(() => {})
+      const res = await fetch(`/api/whatsapp/instance/${encodeURIComponent(waInstance())}/connect`)
+      const data = await res.json()
+      if (!res.ok) return toast.error(data?.error || 'Falha ao conectar.')
+      const base64 = data?.qrcode?.base64 || data?.base64 || (typeof data?.qrcode === 'string' ? data.qrcode : '')
+      const code = data?.qrcode?.code || data?.code || data?.pairingCode || ''
+      if (base64) {
+        setWaQr(base64.startsWith('data:') ? base64 : `data:image/png;base64,${base64}`)
+        toast.success('Escaneie o QR Code no WhatsApp.')
+      } else if (code) {
+        toast.info(`Código de pareamento: ${code}`)
+      } else {
+        toast.info('Instância já conectada ou sem QR disponível.')
+      }
+    } catch {
+      toast.error('Erro ao conectar.')
+    } finally {
+      setWaBusy(false)
+    }
+  }
+
+  const handleWaStatus = async () => {
+    if (!waInstance()) return toast.error('Informe o nome da instância.')
+    try {
+      const res = await fetch(`/api/whatsapp/instance/${encodeURIComponent(waInstance())}/status`)
+      const d = await res.json()
+      const st = d?.instance?.state || d?.state || d?.instance?.status || 'desconhecido'
+      setWaStatus(String(st))
+      toast.info(`Status: ${st}`)
+    } catch {
+      toast.error('Erro ao consultar status.')
+    }
+  }
+
+  const handleWaGroups = async () => {
+    if (!waInstance()) return toast.error('Informe o nome da instância.')
+    setWaBusy(true)
+    try {
+      await persistConfigs()
+      const res = await fetch(`/api/whatsapp/instance/${encodeURIComponent(waInstance())}/groups`)
+      const d = await res.json()
+      if (!res.ok) return toast.error(d?.error || 'Falha ao listar grupos.')
+      setWaGroups(d.groups || [])
+      if (!d.groups?.length) toast.info('Nenhum grupo encontrado nesse número.')
+    } catch {
+      toast.error('Erro ao listar grupos.')
+    } finally {
+      setWaBusy(false)
+    }
+  }
+
+  const handleWaWebhook = async () => {
+    if (!waInstance()) return toast.error('Informe o nome da instância.')
+    setWaBusy(true)
+    try {
+      await persistConfigs()
+      const res = await fetch(`/api/whatsapp/instance/${encodeURIComponent(waInstance())}/webhook`, { method: 'POST' })
+      const d = await res.json()
+      if (!res.ok) return toast.error(d?.error || 'Falha ao configurar webhook.')
+      toast.success('Webhook configurado! O grupo já pode conversar com o assistente.')
+    } catch {
+      toast.error('Erro ao configurar webhook.')
+    } finally {
+      setWaBusy(false)
+    }
+  }
+
+  const handleSendReportNow = async () => {
+    setWaBusy(true)
+    try {
+      await persistConfigs()
+      const res = await fetch('/api/whatsapp/report', { method: 'POST' })
+      const d = await res.json()
+      if (!res.ok) return toast.error(d?.error || 'Falha ao enviar relatório.')
+      toast.success('Relatório enviado ao WhatsApp!')
+    } catch {
+      toast.error('Erro ao enviar relatório.')
+    } finally {
+      setWaBusy(false)
+    }
+  }
+
   return (
     <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start max-w-7xl mx-auto">
       {/* Sidebar de Abas */}
@@ -124,6 +244,19 @@ export function ConfiguracoesClient({
         >
           <Key className="size-4" />
           Inteligência Artificial
+        </button>
+        <button
+          type="button"
+          onClick={() => setActiveTab('whatsapp')}
+          className={cn(
+            "w-full flex items-center gap-2.5 px-4 py-3 rounded-xl text-xs font-bold uppercase tracking-wider transition-all text-left",
+            activeTab === 'whatsapp'
+              ? "bg-[#021541] text-white shadow-sm"
+              : "text-[#718096] hover:text-[#021541] hover:bg-[rgba(2,21,65,0.04)]"
+          )}
+        >
+          <MessageCircle className="size-4" />
+          WhatsApp & Relatórios
         </button>
       </div>
 
@@ -450,6 +583,264 @@ export function ConfiguracoesClient({
                     />
                     <p className="text-[10px] text-[#718096]">Chave de API obtida no OpenRouter. Usada quando o motor for OpenRouter.</p>
                   </div>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* TAB 4: WHATSAPP & RELATÓRIOS */}
+          {activeTab === 'whatsapp' && (
+            <div className="space-y-6">
+              <div>
+                <h3 className="text-base font-bold text-[#021541] flex items-center gap-2">
+                  <MessageCircle className="size-5 text-[#00BCE4]" />
+                  WhatsApp — Relatório Diário & Assistente de Grupo
+                </h3>
+                <p className="text-xs text-[#718096] mt-1 leading-relaxed">
+                  Conecte o WhatsApp (Evolution API) e configure o resumo diário da clínica no grupo,
+                  além do assistente que responde perguntas por texto e áudio.
+                </p>
+              </div>
+
+              {/* 1. Conexão Evolution */}
+              <div className="space-y-4">
+                <h4 className="text-sm font-bold text-[#021541] flex items-center gap-1.5">
+                  <Server className="size-4 text-[#00BCE4]" /> Conexão (Evolution API)
+                </h4>
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
+                  <div className="space-y-1.5">
+                    <label className="text-[10px] font-bold text-[#718096] uppercase tracking-wider">URL do Servidor</label>
+                    <input
+                      type="url"
+                      value={get('evolution_api_url')}
+                      onChange={e => set('evolution_api_url')(e.target.value)}
+                      placeholder="https://evo.seuservidor.com"
+                      className="w-full bg-[#f5f6f8] border border-[rgba(2,21,65,0.12)] rounded-xl px-3 py-2.5 text-xs text-[#021541] focus:outline-none focus:ring-2 focus:ring-[rgba(0,188,228,0.2)] font-mono"
+                    />
+                  </div>
+                  <div className="space-y-1.5">
+                    <label className="text-[10px] font-bold text-[#718096] uppercase tracking-wider">API Key</label>
+                    <input
+                      type="password"
+                      value={get('evolution_api_key')}
+                      onChange={e => set('evolution_api_key')(e.target.value)}
+                      placeholder="••••••••"
+                      className="w-full bg-[#f5f6f8] border border-[rgba(2,21,65,0.12)] rounded-xl px-3 py-2.5 text-xs text-[#021541] focus:outline-none focus:ring-2 focus:ring-[rgba(0,188,228,0.2)] font-mono"
+                    />
+                  </div>
+                  <div className="space-y-1.5">
+                    <label className="text-[10px] font-bold text-[#718096] uppercase tracking-wider">Instância</label>
+                    <input
+                      type="text"
+                      value={get('evolution_instance')}
+                      onChange={e => set('evolution_instance')(e.target.value)}
+                      placeholder="regenortho"
+                      className="w-full bg-[#f5f6f8] border border-[rgba(2,21,65,0.12)] rounded-xl px-3 py-2.5 text-xs text-[#021541] focus:outline-none focus:ring-2 focus:ring-[rgba(0,188,228,0.2)] font-mono"
+                    />
+                  </div>
+                </div>
+
+                <div className="flex flex-wrap items-center gap-3">
+                  <button
+                    type="button"
+                    onClick={handleWaConnect}
+                    disabled={waBusy}
+                    className="inline-flex items-center gap-2 px-4 py-2.5 bg-[#00BCE4] hover:bg-[#009ebd] disabled:opacity-50 text-[#021541] font-bold text-xs uppercase tracking-wider rounded-xl transition-all shadow-sm cursor-pointer"
+                  >
+                    <QrCode className={cn('size-3.5', waBusy && 'animate-pulse')} />
+                    Conectar / Gerar QR
+                  </button>
+                  <button
+                    type="button"
+                    onClick={handleWaStatus}
+                    disabled={waBusy}
+                    className="inline-flex items-center gap-2 px-4 py-2.5 border border-[rgba(2,21,65,0.12)] hover:bg-[rgba(2,21,65,0.04)] disabled:opacity-50 text-[#021541] font-bold text-xs uppercase tracking-wider rounded-xl transition-all cursor-pointer"
+                  >
+                    <RefreshCw className="size-3.5" /> Status
+                  </button>
+                  {waStatus && (
+                    <span className={cn(
+                      'inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[11px] font-bold',
+                      waStatus === 'open'
+                        ? 'bg-green-500/10 text-green-700'
+                        : 'bg-amber-500/10 text-amber-700'
+                    )}>
+                      {waStatus === 'open' ? <CheckCircle2 className="size-3.5" /> : <XCircle className="size-3.5" />}
+                      {waStatus === 'open' ? 'Conectado' : waStatus}
+                    </span>
+                  )}
+                </div>
+
+                {waQr && (
+                  <div className="flex flex-col items-center gap-2 p-4 bg-slate-50 border border-slate-100 rounded-xl">
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img src={waQr} alt="QR Code do WhatsApp" className="w-52 h-52" />
+                    <p className="text-[11px] text-[#718096]">Abra o WhatsApp → Aparelhos conectados → Conectar aparelho.</p>
+                  </div>
+                )}
+              </div>
+
+              {/* 2. Grupo da clínica */}
+              <div className="border-t border-[rgba(2,21,65,0.06)] pt-5 space-y-4">
+                <h4 className="text-sm font-bold text-[#021541] flex items-center gap-1.5">
+                  <Users className="size-4 text-[#00BCE4]" /> Grupo da clínica
+                </h4>
+                <div className="flex flex-wrap items-end gap-3">
+                  <div className="space-y-1.5 flex-1 min-w-[240px]">
+                    <label className="text-[10px] font-bold text-[#718096] uppercase tracking-wider">Grupo do WhatsApp</label>
+                    <select
+                      value={get('wa_bot_group_jid')}
+                      onChange={e => { set('wa_bot_group_jid')(e.target.value); set('wa_report_target')(e.target.value) }}
+                      className="w-full bg-[#f5f6f8] border border-[rgba(2,21,65,0.12)] rounded-xl px-3 py-2.5 text-xs text-[#021541] focus:outline-none focus:ring-2 focus:ring-[rgba(0,188,228,0.2)]"
+                    >
+                      <option value="">— selecione um grupo —</option>
+                      {get('wa_bot_group_jid') && !waGroups.some(g => g.id === get('wa_bot_group_jid')) && (
+                        <option value={get('wa_bot_group_jid')}>{get('wa_bot_group_jid')}</option>
+                      )}
+                      {waGroups.map(g => (
+                        <option key={g.id} value={g.id}>{g.subject} ({g.size})</option>
+                      ))}
+                    </select>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={handleWaGroups}
+                    disabled={waBusy}
+                    className="inline-flex items-center gap-2 px-4 py-2.5 border border-[rgba(2,21,65,0.12)] hover:bg-[rgba(2,21,65,0.04)] disabled:opacity-50 text-[#021541] font-bold text-xs uppercase tracking-wider rounded-xl transition-all cursor-pointer"
+                  >
+                    <Users className="size-3.5" /> Listar grupos
+                  </button>
+                  <button
+                    type="button"
+                    onClick={handleWaWebhook}
+                    disabled={waBusy}
+                    className="inline-flex items-center gap-2 px-4 py-2.5 border border-[rgba(2,21,65,0.12)] hover:bg-[rgba(2,21,65,0.04)] disabled:opacity-50 text-[#021541] font-bold text-xs uppercase tracking-wider rounded-xl transition-all cursor-pointer"
+                  >
+                    <Link2 className="size-3.5" /> Configurar webhook
+                  </button>
+                </div>
+                <p className="text-[10px] text-[#718096]">
+                  Conecte o número, clique em “Listar grupos”, escolha o grupo e depois em “Configurar webhook”
+                  para o assistente passar a ouvir as mensagens.
+                </p>
+              </div>
+
+              {/* 3. Relatório diário */}
+              <div className="border-t border-[rgba(2,21,65,0.06)] pt-5 space-y-4">
+                <div className="flex items-center justify-between">
+                  <h4 className="text-sm font-bold text-[#021541] flex items-center gap-1.5">
+                    <Sparkles className="size-4 text-[#00BCE4]" /> Resumo diário automático
+                  </h4>
+                  <button
+                    type="button"
+                    onClick={() => toggleFlag('wa_report_enabled')}
+                    className={cn(
+                      'relative w-11 h-6 rounded-full transition-colors',
+                      flagOn('wa_report_enabled') ? 'bg-[#00BCE4]' : 'bg-slate-300'
+                    )}
+                    aria-pressed={flagOn('wa_report_enabled')}
+                  >
+                    <span className={cn(
+                      'absolute top-0.5 left-0.5 w-5 h-5 bg-white rounded-full shadow transition-transform',
+                      flagOn('wa_report_enabled') && 'translate-x-5'
+                    )} />
+                  </button>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+                  <div className="space-y-1.5">
+                    <label className="text-[10px] font-bold text-[#718096] uppercase tracking-wider">Frequência</label>
+                    <select
+                      value={get('wa_report_days') || 'daily'}
+                      onChange={e => set('wa_report_days')(e.target.value)}
+                      className="w-full bg-[#f5f6f8] border border-[rgba(2,21,65,0.12)] rounded-xl px-3 py-2.5 text-xs text-[#021541] focus:outline-none focus:ring-2 focus:ring-[rgba(0,188,228,0.2)]"
+                    >
+                      <option value="daily">Todos os dias</option>
+                      <option value="mon-fri">Segunda a sexta</option>
+                    </select>
+                    <p className="text-[10px] text-[#718096]">Enviado por volta das 07h (horário de Brasília).</p>
+                  </div>
+                  <div className="space-y-1.5">
+                    <label className="text-[10px] font-bold text-[#718096] uppercase tracking-wider">Destino do relatório</label>
+                    <input
+                      type="text"
+                      value={get('wa_report_target')}
+                      onChange={e => set('wa_report_target')(e.target.value)}
+                      placeholder="Grupo selecionado ou número (ex: 5511999999999)"
+                      className="w-full bg-[#f5f6f8] border border-[rgba(2,21,65,0.12)] rounded-xl px-3 py-2.5 text-xs text-[#021541] focus:outline-none focus:ring-2 focus:ring-[rgba(0,188,228,0.2)] font-mono"
+                    />
+                  </div>
+                </div>
+
+                <div className="space-y-1.5">
+                  <label className="text-[10px] font-bold text-[#718096] uppercase tracking-wider">Seções do relatório</label>
+                  <div className="flex flex-wrap gap-2">
+                    {REPORT_SECTIONS.map(([key, label]) => {
+                      const active = selectedSections().includes(key)
+                      return (
+                        <button
+                          key={key}
+                          type="button"
+                          onClick={() => toggleSection(key)}
+                          className={cn(
+                            'px-3 py-1.5 rounded-lg text-[11px] font-bold uppercase tracking-wider transition-all border',
+                            active
+                              ? 'bg-[#021541] text-white border-[#021541]'
+                              : 'bg-white text-[#718096] border-[rgba(2,21,65,0.12)] hover:border-[#00BCE4]'
+                          )}
+                        >
+                          {label}
+                        </button>
+                      )
+                    })}
+                  </div>
+                </div>
+
+                <button
+                  type="button"
+                  onClick={handleSendReportNow}
+                  disabled={waBusy}
+                  className="inline-flex items-center gap-2 px-5 py-2.5 bg-gradient-to-br from-[#021541] to-[#032170] hover:opacity-90 disabled:opacity-50 text-white font-bold text-xs uppercase tracking-wider rounded-xl transition-all shadow-sm cursor-pointer"
+                >
+                  <Send className={cn('size-3.5', waBusy && 'animate-pulse')} /> Enviar relatório agora
+                </button>
+              </div>
+
+              {/* 4. Assistente de grupo (texto + áudio) */}
+              <div className="border-t border-[rgba(2,21,65,0.06)] pt-5 space-y-4">
+                <div className="flex items-center justify-between">
+                  <h4 className="text-sm font-bold text-[#021541] flex items-center gap-1.5">
+                    <MessageCircle className="size-4 text-[#00BCE4]" /> Assistente no grupo (perguntas)
+                  </h4>
+                  <button
+                    type="button"
+                    onClick={() => toggleFlag('wa_bot_enabled')}
+                    className={cn(
+                      'relative w-11 h-6 rounded-full transition-colors',
+                      flagOn('wa_bot_enabled') ? 'bg-[#00BCE4]' : 'bg-slate-300'
+                    )}
+                    aria-pressed={flagOn('wa_bot_enabled')}
+                  >
+                    <span className={cn(
+                      'absolute top-0.5 left-0.5 w-5 h-5 bg-white rounded-full shadow transition-transform',
+                      flagOn('wa_bot_enabled') && 'translate-x-5'
+                    )} />
+                  </button>
+                </div>
+                <p className="text-xs text-[#718096] leading-relaxed">
+                  Com o assistente ligado, mande no grupo “resumo de hoje”, “como está a clínica?”, “quanto faturamos no mês?”
+                  — por texto ou áudio — e ele responde usando os dados reais.
+                </p>
+                <div className="space-y-1.5 max-w-md">
+                  <label className="text-[10px] font-bold text-[#718096] uppercase tracking-wider">Groq API Key (transcrição de áudio)</label>
+                  <input
+                    type="password"
+                    value={get('groq_api_key')}
+                    onChange={e => set('groq_api_key')(e.target.value)}
+                    placeholder="gsk_..."
+                    className="w-full bg-[#f5f6f8] border border-[rgba(2,21,65,0.12)] rounded-xl px-3 py-2.5 text-xs text-[#021541] focus:outline-none focus:ring-2 focus:ring-[rgba(0,188,228,0.2)] font-mono"
+                  />
+                  <p className="text-[10px] text-[#718096]">Usada para transcrever notas de voz (Whisper). Sem ela, o assistente pede para enviar por texto.</p>
                 </div>
               </div>
             </div>

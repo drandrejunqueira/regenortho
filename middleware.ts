@@ -12,8 +12,21 @@ export default auth((req) => {
   const isPublicLeadsApi = pathname.startsWith('/api/public/leads')
   const isSitemap = pathname.startsWith('/sitemap.xml') || pathname === '/sitemap'
   const isIndexNowKey = pathname.startsWith('/api/seo/indexnow-key')
-  
-  const isPublic = isAuthPage || isApiAuth || isSitePage || isTrackApi || isPublicLeadsApi || isSitemap || isIndexNowKey
+  // WhatsApp inbound webhook (called by Evolution) and cron jobs (called by Vercel
+  // Cron) have no user session — they carry their own token/secret guard instead.
+  const isWhatsAppWebhook = pathname.startsWith('/api/whatsapp/webhook')
+  const isCron = pathname.startsWith('/api/cron')
+
+  const isPublic =
+    isAuthPage ||
+    isApiAuth ||
+    isSitePage ||
+    isTrackApi ||
+    isPublicLeadsApi ||
+    isSitemap ||
+    isIndexNowKey ||
+    isWhatsAppWebhook ||
+    isCron
 
   if (!isLoggedIn && !isPublic) {
     return NextResponse.redirect(new URL('/login', req.url))

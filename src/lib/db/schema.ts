@@ -11,6 +11,7 @@ import {
   jsonb,
   uuid,
   index,
+  type AnyPgColumn,
 } from 'drizzle-orm/pg-core'
 import { relations } from 'drizzle-orm'
 
@@ -389,10 +390,24 @@ export const transactions = pgTable('transactions', {
   updatedAt:     timestamp('updated_at').defaultNow().notNull(),
 })
 
+// Categorias de materiais em 2 níveis (auto-referência via parentId).
+// parentId nulo = categoria raiz; parentId preenchido = subcategoria.
+export const materialCategories = pgTable('material_categories', {
+  id:        uuid('id').defaultRandom().primaryKey(),
+  name:      varchar('name', { length: 120 }).notNull(),
+  parentId:  uuid('parent_id').references((): AnyPgColumn => materialCategories.id, { onDelete: 'cascade' }),
+  isActive:  boolean('is_active').notNull().default(true),
+  sortOrder: integer('sort_order').notNull().default(0),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+  updatedAt: timestamp('updated_at').defaultNow().notNull(),
+})
+
 export const materials = pgTable('materials', {
   id:              uuid('id').defaultRandom().primaryKey(),
   name:            varchar('name', { length: 255 }).notNull(),
   category:        varchar('category', { length: 100 }).notNull(),
+  categoryId:      uuid('category_id').references(() => materialCategories.id, { onDelete: 'set null' }),
+  subcategoryId:   uuid('subcategory_id').references(() => materialCategories.id, { onDelete: 'set null' }),
   unit:            varchar('unit', { length: 30 }).notNull(),
   currentStock:    integer('current_stock').notNull().default(0),
   minimumStock:    integer('minimum_stock').notNull().default(5),
@@ -402,9 +417,22 @@ export const materials = pgTable('materials', {
   batchNumber:     varchar('batch_number', { length: 100 }),
   expiresAt:       date('expires_at'),
   status:          stockStatusEnum('status').notNull().default('ok'),
+  isActive:        boolean('is_active').notNull().default(true),
   notes:           text('notes'),
   createdAt:       timestamp('created_at').defaultNow().notNull(),
   updatedAt:       timestamp('updated_at').defaultNow().notNull(),
+})
+
+// Lotes de um material — cada lote com número, validade e quantidade próprios.
+export const materialBatches = pgTable('material_batches', {
+  id:          uuid('id').defaultRandom().primaryKey(),
+  materialId:  uuid('material_id').notNull().references(() => materials.id, { onDelete: 'cascade' }),
+  batchNumber: varchar('batch_number', { length: 100 }),
+  expiresAt:   date('expires_at'),
+  quantity:    integer('quantity').notNull().default(0),
+  notes:       text('notes'),
+  createdAt:   timestamp('created_at').defaultNow().notNull(),
+  updatedAt:   timestamp('updated_at').defaultNow().notNull(),
 })
 
 export const stockMovements = pgTable('stock_movements', {
@@ -632,8 +660,20 @@ export const transactionsRelations = relations(transactions, ({ one }) => ({
   createdBy:   one(users, { fields: [transactions.createdById], references: [users.id] }),
 }))
 
-export const materialsRelations = relations(materials, ({ many }) => ({
-  movements: many(stockMovements),
+export const materialCategoriesRelations = relations(materialCategories, ({ one, many }) => ({
+  parent:   one(materialCategories, { fields: [materialCategories.parentId], references: [materialCategories.id], relationName: 'category_parent' }),
+  children: many(materialCategories, { relationName: 'category_parent' }),
+}))
+
+export const materialsRelations = relations(materials, ({ one, many }) => ({
+  movements:   many(stockMovements),
+  batches:     many(materialBatches),
+  categoryRef:    one(materialCategories, { fields: [materials.categoryId], references: [materialCategories.id], relationName: 'material_category' }),
+  subcategoryRef: one(materialCategories, { fields: [materials.subcategoryId], references: [materialCategories.id], relationName: 'material_subcategory' }),
+}))
+
+export const materialBatchesRelations = relations(materialBatches, ({ one }) => ({
+  material: one(materials, { fields: [materialBatches.materialId], references: [materials.id] }),
 }))
 
 export const stockMovementsRelations = relations(stockMovements, ({ one }) => ({

@@ -130,10 +130,32 @@ export interface Transaction {
   patient?: Pick<Patient, 'id' | 'name'>
 }
 
+export interface MaterialCategory {
+  id: string
+  name: string
+  parentId: string | null
+  isActive: boolean
+  sortOrder: number
+  createdAt?: string
+  children?: MaterialCategory[]
+}
+
+export interface MaterialBatch {
+  id: string
+  materialId: string
+  batchNumber: string | null
+  expiresAt: string | null
+  quantity: number
+  notes: string | null
+  createdAt?: string
+}
+
 export interface Material {
   id: string
   name: string
   category: string
+  categoryId: string | null
+  subcategoryId: string | null
   unit: string
   currentStock: number
   minimumStock: number
@@ -143,8 +165,12 @@ export interface Material {
   batchNumber: string | null
   expiresAt: string | null
   status: StockStatus
+  isActive: boolean
   notes: string | null
   createdAt: string
+  categoryName?: string | null
+  subcategoryName?: string | null
+  batches?: MaterialBatch[]
 }
 
 export interface StockMovement {
