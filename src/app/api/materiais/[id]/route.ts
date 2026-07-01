@@ -17,6 +17,7 @@ const updateSchema = z.object({
   currentStock: z.number().int().min(0).optional(),
   minimumStock: z.number().int().min(0).optional(),
   unitCost: z.string().nullable().optional(),
+  laboratory: z.string().nullable().optional(),
   supplier: z.string().nullable().optional(),
   supplierContact: z.string().nullable().optional(),
   batchNumber: z.string().nullable().optional(),

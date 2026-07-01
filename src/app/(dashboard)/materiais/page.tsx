@@ -16,6 +16,7 @@ import { useSession } from 'next-auth/react'
 import { hasPermission } from '@/lib/permissions'
 import { formatDate, formatCurrency } from '@/lib/utils'
 import { EditMaterialDialog } from '@/components/materiais/EditMaterialDialog'
+import { SuggestedPurchaseListDrawer } from '@/components/materiais/SuggestedPurchaseListDrawer'
 import { useMaterialCategories } from '@/components/materiais/shared'
 import type { Material, PurchaseOrder, PurchaseOrderItem, PurchaseOrderStatus, UserRole } from '@/types'
 
@@ -46,6 +47,7 @@ export default function MateriaisPage() {
   const [receiveDialog, setReceiveDialog] = useState<PurchaseOrder | null>(null)
   const [cancelDialog, setCancelDialog] = useState<PurchaseOrder | null>(null)
   const [materialDialog, setMaterialDialog] = useState(false)
+  const [suggestedListOpen, setSuggestedListOpen] = useState(false)
   const [onMaterialCreatedCallback, setOnMaterialCreatedCallback] = useState<
     ((m: Material) => void) | null
   >(null)
@@ -117,6 +119,7 @@ export default function MateriaisPage() {
   ).length
   const low = materials.filter((m) => m.status === 'low').length
   const inactiveCount = materials.filter((m) => !m.isActive).length
+  const restockCount = materials.filter((m) => m.isActive && m.status !== 'ok').length
 
   const visibleMaterials = materials.filter(
     (m) =>
@@ -200,7 +203,7 @@ export default function MateriaisPage() {
     .reduce((s, o) => s + parseFloat(o.totalAmount), 0)
 
   return (
-    <div>
+    <div className="print:hidden">
       <PageHeader
         title="Controle de Materiais"
         description="Gerencie o estoque e as compras da clínica"
@@ -481,6 +484,34 @@ export default function MateriaisPage() {
       {/* ── COMPRAS ── */}
       {tab === 'compras' && (
         <>
+          <div className="flex items-center justify-between gap-3 flex-wrap px-4 py-3 bg-[rgba(0,188,228,0.06)] border border-[rgba(0,188,228,0.25)] rounded-xl mb-4">
+            <div className="flex items-center gap-2.5 text-sm text-[#021541]">
+              <span
+                className="material-symbols-outlined text-[#00BCE4] shrink-0"
+                style={{ fontSize: '20px' }}
+              >
+                checklist
+              </span>
+              {restockCount > 0 ? (
+                <span>
+                  <strong>{restockCount}</strong>{' '}
+                  {restockCount === 1
+                    ? 'item está no estoque mínimo ou abaixo'
+                    : 'itens estão no estoque mínimo ou abaixo'}{' '}
+                  — confira a lista de compras sugerida.
+                </span>
+              ) : (
+                <span>Nenhum item precisa de reposição no momento.</span>
+              )}
+            </div>
+            <button
+              onClick={() => setSuggestedListOpen(true)}
+              className="px-3.5 py-2 rounded-lg text-xs font-bold bg-[#00BCE4] text-white hover:opacity-90 transition-opacity shrink-0"
+            >
+              Ver Lista de Compras Sugerida
+            </button>
+          </div>
+
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
             <KpiCard
               title="Total de pedidos"
@@ -700,6 +731,12 @@ export default function MateriaisPage() {
           if (!v) setEditMaterial(null)
         }}
         onSaved={fetchMaterials}
+      />
+
+      <SuggestedPurchaseListDrawer
+        open={suggestedListOpen}
+        materials={materials}
+        onOpenChange={setSuggestedListOpen}
       />
 
       {/* Confirmar recebimento */}
@@ -1304,6 +1341,7 @@ function MaterialFormDialog({
   const [currentStock, setCurrentStock] = useState('0')
   const [minimumStock, setMinimumStock] = useState('5')
   const [unitCost, setUnitCost] = useState('')
+  const [laboratory, setLaboratory] = useState('')
   const [supplier, setSupplier] = useState('')
   const [supplierContact, setSupplierContact] = useState('')
   const [batchNumber, setBatchNumber] = useState('')
@@ -1322,6 +1360,7 @@ function MaterialFormDialog({
       setCurrentStock('0')
       setMinimumStock('5')
       setUnitCost('')
+      setLaboratory('')
       setSupplier('')
       setSupplierContact('')
       setBatchNumber('')
@@ -1351,6 +1390,7 @@ function MaterialFormDialog({
         currentStock: parseInt(currentStock) || 0,
         minimumStock: parseInt(minimumStock) || 0,
         unitCost: unitCost.trim() ? parseFloat(unitCost).toFixed(2) : null,
+        laboratory: laboratory.trim() || null,
         supplier: supplier.trim() || null,
         supplierContact: supplierContact.trim() || null,
         batchNumber: batchNumber.trim() || null,
@@ -1485,17 +1525,29 @@ function MaterialFormDialog({
             </div>
           </div>
 
-          <div className="space-y-1.5">
-            <label className={labelCls}>Custo Unitário (R$)</label>
-            <input
-              type="number"
-              min="0"
-              step="0.01"
-              placeholder="0.00"
-              value={unitCost}
-              onChange={(e) => setUnitCost(e.target.value)}
-              className={inputCls}
-            />
+          <div className="grid grid-cols-2 gap-3">
+            <div className="space-y-1.5">
+              <label className={labelCls}>Custo Unitário (R$)</label>
+              <input
+                type="number"
+                min="0"
+                step="0.01"
+                placeholder="0.00"
+                value={unitCost}
+                onChange={(e) => setUnitCost(e.target.value)}
+                className={inputCls}
+              />
+            </div>
+
+            <div className="space-y-1.5">
+              <label className={labelCls}>Laboratório</label>
+              <input
+                placeholder="Ex: Cristália, União Química..."
+                value={laboratory}
+                onChange={(e) => setLaboratory(e.target.value)}
+                className={inputCls}
+              />
+            </div>
           </div>
 
           <div className="grid grid-cols-2 gap-3">

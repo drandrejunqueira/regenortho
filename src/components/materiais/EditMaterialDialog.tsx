@@ -33,6 +33,7 @@ export function EditMaterialDialog({ open, material, canDelete, onOpenChange, on
   const [minimumStock, setMinimumStock] = useState('5')
   const [currentStock, setCurrentStock] = useState('0')
   const [unitCost, setUnitCost] = useState('')
+  const [laboratory, setLaboratory] = useState('')
   const [supplier, setSupplier] = useState('')
   const [supplierContact, setSupplierContact] = useState('')
   const [notes, setNotes] = useState('')
@@ -64,6 +65,7 @@ export function EditMaterialDialog({ open, material, canDelete, onOpenChange, on
       setMinimumStock(String(material.minimumStock))
       setCurrentStock(String(material.currentStock))
       setUnitCost(material.unitCost ?? '')
+      setLaboratory(material.laboratory ?? '')
       setSupplier(material.supplier ?? '')
       setSupplierContact(material.supplierContact ?? '')
       setNotes(material.notes ?? '')
@@ -95,6 +97,7 @@ export function EditMaterialDialog({ open, material, canDelete, onOpenChange, on
         unit,
         minimumStock: parseInt(minimumStock) || 0,
         unitCost: unitCost.trim() ? parseFloat(unitCost).toFixed(2) : null,
+        laboratory: laboratory.trim() || null,
         supplier: supplier.trim() || null,
         supplierContact: supplierContact.trim() || null,
         notes: notes.trim() || null,
@@ -412,13 +415,23 @@ export function EditMaterialDialog({ open, material, canDelete, onOpenChange, on
               />
             </div>
             <div className="space-y-1.5">
-              <label className={labelCls}>Fornecedor</label>
+              <label className={labelCls}>Laboratório</label>
               <input
-                value={supplier}
-                onChange={(e) => setSupplier(e.target.value)}
+                value={laboratory}
+                onChange={(e) => setLaboratory(e.target.value)}
+                placeholder="Ex: Cristália, União Química..."
                 className={inputCls}
               />
             </div>
+          </div>
+
+          <div className="space-y-1.5">
+            <label className={labelCls}>Fornecedor</label>
+            <input
+              value={supplier}
+              onChange={(e) => setSupplier(e.target.value)}
+              className={inputCls}
+            />
           </div>
 
           <div className="space-y-1.5">

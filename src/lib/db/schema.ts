@@ -412,6 +412,7 @@ export const materials = pgTable('materials', {
   currentStock:    integer('current_stock').notNull().default(0),
   minimumStock:    integer('minimum_stock').notNull().default(5),
   unitCost:        numeric('unit_cost', { precision: 10, scale: 2 }),
+  laboratory:      varchar('laboratory', { length: 255 }),
   supplier:        varchar('supplier', { length: 255 }),
   supplierContact: varchar('supplier_contact', { length: 100 }),
   batchNumber:     varchar('batch_number', { length: 100 }),

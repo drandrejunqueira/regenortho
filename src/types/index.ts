@@ -160,6 +160,7 @@ export interface Material {
   currentStock: number
   minimumStock: number
   unitCost: string | null
+  laboratory: string | null
   supplier: string | null
   supplierContact: string | null
   batchNumber: string | null
