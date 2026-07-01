@@ -8,6 +8,10 @@ import { evoFetch, sendEvolutionText } from '@/lib/evolution'
 import { transcribeAudio } from '@/lib/transcribe'
 import { callAi } from '@/lib/ai'
 import { buildClinicReport } from '@/lib/clinicReport'
+import { db } from '@/lib/db'
+import { and, gte, lte, eq, ilike } from 'drizzle-orm'
+import { patients, appointments, clinicalRecords, users, treatments } from '@/lib/db/schema'
+
 
 export interface IncomingMessage {
   instance: string
@@ -163,10 +167,271 @@ const REPORT_RE =
   /\b(relat[óo]rio|resumo|panorama|fechamento|como (est[áa]|vai)\s+(a\s+)?cl[íi]nica|como estamos|resumo do dia|briefing)\b/i
 
 const QUESTION_TRIGGER_RE =
-  /\b(quanto|quantos|quantas|qual|quais|quando|como|tem|houve|faturamento|faturei|receita|despesa|saldo|agenda|consulta|leads?|estoque|tratamento)\b/i
+  /\b(quanto|quantos|quantas|qual|quais|quando|como|tem|houve|faturamento|faturei|receita|despesa|saldo|agenda|consultas?|leads?|estoque|tratamentos?|pacientes?|prontu[áa]rios?|hist[óo]ricos?|clientes?|m[ée]dicos?)\b/i
 
 export function isReportRequest(text: string): boolean {
   return REPORT_RE.test(text || '')
+}
+
+const TZ = 'America/Sao_Paulo'
+const getBrDateString = (d: Date) => new Intl.DateTimeFormat('en-CA', { timeZone: TZ }).format(d)
+const getBrWeekdayString = (d: Date) => new Intl.DateTimeFormat('pt-BR', { timeZone: TZ, weekday: 'long' }).format(d)
+
+interface DBQueryParams {
+  searchPatientName: string | null
+  dateRange: { start: string; end: string } | null
+  needAllAppointments: boolean
+}
+
+async function extractQueryParams(text: string): Promise<DBQueryParams> {
+  const now = new Date()
+  const todayStr = getBrDateString(now)
+  const tomorrowStr = getBrDateString(new Date(now.getTime() + 24 * 3600_000))
+  const weekdayStr = getBrWeekdayString(now)
+
+  const systemPrompt = `Você é um coordenador de banco de dados para uma clínica. Analise a pergunta do usuário e extraia quais dados precisamos buscar no banco de dados para respondê-la.
+Responda APENAS um JSON válido (sem markdown, sem blocos de código) no formato:
+{
+  "searchPatientName": "Nome ou parte do nome do paciente a buscar, ou null",
+  "dateRange": {
+    "start": "YYYY-MM-DD",
+    "end": "YYYY-MM-DD"
+  } | null,
+  "needAllAppointments": boolean
+}
+
+Informações de data atual de referência:
+- Hoje: ${todayStr} (dia da semana: ${weekdayStr})
+- Amanhã: ${tomorrowStr}
+
+Regras:
+- Se o usuário perguntar da agenda de "hoje", "amanhã", "esta semana" ou datas específicas, preencha o dateRange.
+- Se perguntar "qual cliente tenho amanhã" ou similar, preencha o dateRange para amanhã (ou a data correspondente).
+- Se perguntar sobre informações, prontuário, histórico ou consultas de um paciente específico (ex: "João", "Maria Silva", "histórico do paciente José"), coloque o nome/parte do nome em searchPatientName.
+- Se pedir para buscar a agenda geral ou consultas gerais sem um paciente específico, marque needAllAppointments = true.`
+
+  try {
+    const rawJson = await callAi([
+      { role: 'system', content: systemPrompt },
+      { role: 'user', content: text }
+    ], { timeoutMs: 10000 })
+    
+    if (rawJson) {
+      // Clean JSON formatting
+      const cleaned = rawJson.replace(/```json|```/g, '').trim()
+      const parsed = JSON.parse(cleaned)
+      return {
+        searchPatientName: parsed.searchPatientName || null,
+        dateRange: parsed.dateRange || null,
+        needAllAppointments: !!parsed.needAllAppointments
+      }
+    }
+  } catch (err) {
+    console.error('[whatsappBot] Error extracting query params:', err)
+  }
+
+  // Fallback heuristic extraction
+  const lower = text.toLowerCase()
+  let searchPatientName: string | null = null
+  let dateRange: { start: string; end: string } | null = null
+  let needAllAppointments = false
+
+  if (lower.includes('agenda') || lower.includes('consulta') || lower.includes('cliente') || lower.includes('paciente')) {
+    needAllAppointments = true
+  }
+
+  if (lower.includes('amanhã') || lower.includes('amanha')) {
+    dateRange = { start: tomorrowStr, end: tomorrowStr }
+  } else if (lower.includes('hoje')) {
+    dateRange = { start: todayStr, end: todayStr }
+  }
+
+  const match = text.match(/(?:paciente|sobre|histórico de|consulta de)\s+([A-ZÀ-Ú][a-zà-ú]+(?:\s+[A-ZÀ-Ú][a-zà-ú]+)*)/)
+  if (match) {
+    searchPatientName = match[1]
+  }
+
+  return { searchPatientName, dateRange, needAllAppointments }
+}
+
+async function executeDatabaseQueries(params: DBQueryParams): Promise<string> {
+  const contexts: string[] = []
+
+  // 1. Search Patient Information
+  if (params.searchPatientName) {
+    const queryName = `%${params.searchPatientName.trim()}%`
+    const foundPatients = await db
+      .select()
+      .from(patients)
+      .where(ilike(patients.name, queryName))
+      .limit(5)
+
+    if (foundPatients.length === 0) {
+      contexts.push(`Nenhum paciente encontrado com o nome contendo "${params.searchPatientName}".`)
+    } else {
+      for (const p of foundPatients) {
+        let pContext = `=== Paciente: ${p.name} ===\n`
+        pContext += `- Telefone: ${p.phone || 'Não informado'}\n`
+        pContext += `- Email: ${p.email || 'Não informado'}\n`
+        pContext += `- CPF: ${p.cpf || 'Não informado'}\n`
+        pContext += `- Data de Nascimento: ${p.birthDate ? new Date(p.birthDate).toLocaleDateString('pt-BR') : 'Não informada'}\n`
+        pContext += `- Gênero: ${p.gender || 'Não informado'}\n`
+
+        // Fetch recent appointments for this patient
+        const pAppts = await db
+          .select({
+            id: appointments.id,
+            startAt: appointments.startAt,
+            status: appointments.status,
+            type: appointments.type,
+            notes: appointments.notes,
+            title: appointments.title,
+            doctorName: users.name
+          })
+          .from(appointments)
+          .leftJoin(users, eq(appointments.doctorId, users.id))
+          .where(eq(appointments.patientId, p.id))
+          .orderBy(appointments.startAt)
+          .limit(10)
+
+        if (pAppts.length > 0) {
+          pContext += `\nHistórico de consultas de ${p.name}:\n`
+          for (const a of pAppts) {
+            const dateStr = new Date(a.startAt).toLocaleString('pt-BR', { timeZone: 'America/Sao_Paulo' })
+            pContext += `- ${dateStr} | Status: ${a.status} | Tipo: ${a.type} | Médico: ${a.doctorName || 'Não designado'} | Notas: ${a.notes || ''}\n`
+          }
+        } else {
+          pContext += `\nNão há histórico de consultas registrado.\n`
+        }
+
+        // Fetch clinical records (prontuário/medical history)
+        const pRecords = await db
+          .select({
+            id: clinicalRecords.id,
+            type: clinicalRecords.type,
+            content: clinicalRecords.content,
+            createdAt: clinicalRecords.createdAt,
+            doctorName: users.name
+          })
+          .from(clinicalRecords)
+          .leftJoin(users, eq(clinicalRecords.doctorId, users.id))
+          .where(eq(clinicalRecords.patientId, p.id))
+          .orderBy(clinicalRecords.createdAt)
+          .limit(10)
+
+        if (pRecords.length > 0) {
+          pContext += `\nProntuário / Histórico Médico de ${p.name}:\n`
+          for (const r of pRecords) {
+            const dateStr = new Date(r.createdAt).toLocaleString('pt-BR', { timeZone: 'America/Sao_Paulo' })
+            pContext += `- [${dateStr}] (${r.type}) por Dr(a). ${r.doctorName || 'Desconhecido'}:\n  ${r.content}\n`
+          }
+        } else {
+          pContext += `\nNão há registros no prontuário/histórico médico.\n`
+        }
+
+        // Fetch active treatments
+        const pTreatments = await db
+          .select()
+          .from(treatments)
+          .where(eq(treatments.patientId, p.id))
+          .limit(5)
+
+        if (pTreatments.length > 0) {
+          pContext += `\nTratamentos de ${p.name}:\n`
+          for (const t of pTreatments) {
+            pContext += `- ${t.name || 'Sem nome'} | Status: ${t.status} | Total: R$ ${Number(t.totalSale || 0).toFixed(2)}\n`
+          }
+        }
+
+        contexts.push(pContext)
+      }
+    }
+  }
+
+  // 2. Search Appointments in Date Range
+  if (params.dateRange) {
+    const start = new Date(params.dateRange.start + 'T00:00:00')
+    const end = new Date(params.dateRange.end + 'T23:59:59')
+
+    const dateAppts = await db
+      .select({
+        startAt: appointments.startAt,
+        status: appointments.status,
+        type: appointments.type,
+        notes: appointments.notes,
+        title: appointments.title,
+        patientName: patients.name,
+        doctorName: users.name
+      })
+      .from(appointments)
+      .leftJoin(patients, eq(appointments.patientId, patients.id))
+      .leftJoin(users, eq(appointments.doctorId, users.id))
+      .where(and(
+        gte(appointments.startAt, start),
+        lte(appointments.startAt, end)
+      ))
+      .orderBy(appointments.startAt)
+
+    let dateCtx = `=== Consultas de ${params.dateRange.start}`
+    if (params.dateRange.start !== params.dateRange.end) {
+      dateCtx += ` até ${params.dateRange.end}`
+    }
+    dateCtx += ` ===\n`
+
+    if (dateAppts.length === 0) {
+      dateCtx += `Nenhuma consulta agendada para esse período.\n`
+    } else {
+      for (const a of dateAppts) {
+        const timeStr = new Intl.DateTimeFormat('pt-BR', { timeZone: 'America/Sao_Paulo', hour: '2-digit', minute: '2-digit' }).format(new Date(a.startAt))
+        const pName = a.patientName || a.title || 'Paciente não informado'
+        dateCtx += `- ${timeStr} | Paciente: ${pName} | Médico: ${a.doctorName || 'Não designado'} | Tipo: ${a.type} | Status: ${a.status} | Notas: ${a.notes || ''}\n`
+      }
+    }
+    contexts.push(dateCtx)
+  }
+
+  // 3. Fallback/general appointments check (if needAllAppointments and dateRange wasn't set)
+  if (params.needAllAppointments && !params.dateRange) {
+    const now = new Date()
+    const todayStr = getBrDateString(now)
+    const tomorrowStr = getBrDateString(new Date(now.getTime() + 24 * 3600_000))
+
+    const start = new Date(todayStr + 'T00:00:00')
+    const end = new Date(tomorrowStr + 'T23:59:59')
+
+    const generalAppts = await db
+      .select({
+        startAt: appointments.startAt,
+        status: appointments.status,
+        type: appointments.type,
+        notes: appointments.notes,
+        title: appointments.title,
+        patientName: patients.name,
+        doctorName: users.name
+      })
+      .from(appointments)
+      .leftJoin(patients, eq(appointments.patientId, patients.id))
+      .leftJoin(users, eq(appointments.doctorId, users.id))
+      .where(and(
+        gte(appointments.startAt, start),
+        lte(appointments.startAt, end)
+      ))
+      .orderBy(appointments.startAt)
+
+    let genCtx = `=== Consultas (Hoje e Amanhã) ===\n`
+    if (generalAppts.length === 0) {
+      genCtx += `Nenhuma consulta agendada para hoje ou amanhã.\n`
+    } else {
+      for (const a of generalAppts) {
+        const dateFormatted = new Date(a.startAt).toLocaleString('pt-BR', { timeZone: 'America/Sao_Paulo', day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })
+        const pName = a.patientName || a.title || 'Paciente não informado'
+        genCtx += `- ${dateFormatted} | Paciente: ${pName} | Médico: ${a.doctorName || 'Não designado'} | Status: ${a.status}\n`
+      }
+    }
+    contexts.push(genCtx)
+  }
+
+  return contexts.join('\n\n')
 }
 
 // ── Dispatch ─────────────────────────────────────────────────
@@ -188,17 +453,28 @@ export async function dispatchGroupMessage(text: string): Promise<string | null>
   if (!directed) return null
 
   const report = await buildClinicReport() // deterministic numbers as context
+  const params = await extractQueryParams(t)
+  const dbContent = await executeDatabaseQueries(params)
+
+  const combinedContext = [
+    `=== Resumo Geral da Clínica ===`,
+    report.context,
+    `=== Informações Específicas do Banco de Dados ===`,
+    dbContent || 'Nenhuma informação específica pesquisada ou encontrada no banco.'
+  ].join('\n\n')
+
   const answer = await callAi(
     [
       {
         role: 'system',
         content:
-          'Você é o assistente de uma clínica de ortopedia regenerativa. Responda em português, curto e direto, usando SOMENTE os números fornecidos (moeda em R$ brasileiro). Se a pergunta não puder ser respondida com esses dados, diga o que você tem.',
+          'Você é o assistente inteligente da clínica de ortopedia regenerativa RegenOrtho. Responda em português de forma natural, curta e direta para o WhatsApp. Utilize as informações reais recuperadas do banco de dados (como histórico de consultas, prontuário/histórico médico dos pacientes ou a agenda de compromissos) para responder com precisão. Seja prestativo, mas profissional.',
       },
-      { role: 'user', content: `Dados atuais da clínica:\n${report.context}\n\nPergunta: ${t}` },
+      { role: 'user', content: `Dados e Históricos Recuperados:\n${combinedContext}\n\nPergunta do usuário:\n${t}` },
     ],
     { timeoutMs: 15000 },
   )
+
   if (answer && answer.trim()) return `📊 ${answer.trim()}`
 
   // No AI engine configured → fall back to the full deterministic report.
