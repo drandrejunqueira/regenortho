@@ -1,11 +1,13 @@
 'use client'
 
 import { useState } from 'react'
+import { useSession } from 'next-auth/react'
 import { Sheet, SheetContent } from '@/components/ui/sheet'
 import { toast } from 'sonner'
 import { getInitials, timeAgo } from '@/lib/utils'
+import { hasPermission } from '@/lib/permissions'
 import { LEAD_STATUS_LABELS, LEAD_SOURCE_LABELS } from '@/lib/constants'
-import type { Lead, LeadInteraction, LeadStatus } from '@/types'
+import type { Lead, LeadInteraction, LeadStatus, UserRole } from '@/types'
 
 interface Props {
   lead: Lead | null
@@ -45,6 +47,10 @@ const INTERACTION_ICON: Record<string, string> = {
 }
 
 export function LeadDrawer({ lead, interactions, open, onOpenChange, onUpdate, onScheduleLead }: Props) {
+  const { data: session } = useSession()
+  // Excluir lead é exclusivo de quem tem a permissão (por padrão, só admin).
+  // Sem este gate, recepção via o botão e recebia 403 ("Erro ao excluir o lead").
+  const canDelete = !!session?.user?.role && hasPermission(session.user.role as UserRole, 'leads:delete')
   const [noteContent, setNoteContent] = useState('')
   const [savingNote, setSavingNote] = useState(false)
   const [updatingStatus, setUpdatingStatus] = useState(false)
@@ -91,12 +97,19 @@ export function LeadDrawer({ lead, interactions, open, onOpenChange, onUpdate, o
       const res = await fetch(`/api/leads/${lead.id}`, {
         method: 'DELETE',
       })
-      if (!res.ok) throw new Error()
+      if (!res.ok) {
+        const serverMsg = await res.json().then((d) => d?.error).catch(() => null)
+        const msg =
+          res.status === 403
+            ? 'Você não tem permissão para excluir leads.'
+            : serverMsg || 'Não foi possível excluir o lead.'
+        throw new Error(msg)
+      }
       toast.success('Lead excluído permanentemente!')
       onOpenChange(false)
       onUpdate()
-    } catch {
-      toast.error('Erro ao excluir o lead.')
+    } catch (e) {
+      toast.error(e instanceof Error && e.message ? e.message : 'Erro ao excluir o lead.')
     } finally {
       setDeleting(false)
     }
@@ -477,14 +490,16 @@ export function LeadDrawer({ lead, interactions, open, onOpenChange, onUpdate, o
           >
             <span className="material-symbols-outlined" style={{ fontSize: '18px' }}>person_off</span>
           </button>
-          <button
-            onClick={deleteLead}
-            disabled={updatingStatus || deleting}
-            className="w-12 flex items-center justify-center rounded-2xl bg-red-50 border border-red-100 text-red-500 hover:bg-red-600 hover:text-white hover:border-red-600 transition-all disabled:opacity-30 disabled:cursor-not-allowed cursor-pointer"
-            aria-label="Excluir lead permanentemente"
-          >
-            <span className="material-symbols-outlined" style={{ fontSize: '18px' }}>delete</span>
-          </button>
+          {canDelete && (
+            <button
+              onClick={deleteLead}
+              disabled={updatingStatus || deleting}
+              className="w-12 flex items-center justify-center rounded-2xl bg-red-50 border border-red-100 text-red-500 hover:bg-red-600 hover:text-white hover:border-red-600 transition-all disabled:opacity-30 disabled:cursor-not-allowed cursor-pointer"
+              aria-label="Excluir lead permanentemente"
+            >
+              <span className="material-symbols-outlined" style={{ fontSize: '18px' }}>delete</span>
+            </button>
+          )}
         </div>
       </SheetContent>
     </Sheet>
