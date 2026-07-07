@@ -7,6 +7,8 @@ import {
 } from '@/lib/db/schema'
 import { eq } from 'drizzle-orm'
 import { z } from 'zod'
+import { hasPermission } from '@/lib/permissions'
+import type { UserRole } from '@/types'
 
 const itemSchema = z.object({
   materialId: z.string().uuid(),
@@ -35,6 +37,9 @@ const patchSchema = z.discriminatedUnion('action', [
 export async function GET(_req: Request, { params }: { params: Promise<{ id: string }> }) {
   const session = await auth()
   if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  if (!hasPermission(session.user.role as UserRole, 'materials:view')) {
+    return NextResponse.json({ error: 'Acesso negado' }, { status: 403 })
+  }
 
   const { id } = await params
   const order = await db.query.purchaseOrders.findFirst({
@@ -52,6 +57,9 @@ export async function GET(_req: Request, { params }: { params: Promise<{ id: str
 export async function PATCH(req: Request, { params }: { params: Promise<{ id: string }> }) {
   const session = await auth()
   if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  if (!hasPermission(session.user.role as UserRole, 'materials:edit')) {
+    return NextResponse.json({ error: 'Acesso negado' }, { status: 403 })
+  }
 
   const { id } = await params
   const order = await db.query.purchaseOrders.findFirst({
@@ -102,6 +110,11 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
   }
 
   if (data.action === 'receive') {
+    // 'receive' credita estoque E lança uma despesa paga no financeiro, então
+    // exige também permissão financeira além de materials:edit.
+    if (!hasPermission(session.user.role as UserRole, 'financial:create')) {
+      return NextResponse.json({ error: 'Sem permissão para lançar a despesa do recebimento' }, { status: 403 })
+    }
     if (order.status !== 'ordered' && order.status !== 'draft') {
       return NextResponse.json({ error: 'Pedido não pode ser recebido neste status' }, { status: 409 })
     }
@@ -167,6 +180,9 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
 export async function DELETE(_req: Request, { params }: { params: Promise<{ id: string }> }) {
   const session = await auth()
   if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  if (!hasPermission(session.user.role as UserRole, 'materials:delete')) {
+    return NextResponse.json({ error: 'Acesso negado' }, { status: 403 })
+  }
 
   const { id } = await params
   const order = await db.query.purchaseOrders.findFirst({ where: eq(purchaseOrders.id, id) })

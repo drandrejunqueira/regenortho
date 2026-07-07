@@ -483,7 +483,7 @@ function SidebarContent({ onNavigate }: { onNavigate?: () => void }) {
       >
         {/* Logo */}
         <div className="px-5 pt-6 pb-5" style={{ borderBottom: '1px solid rgba(2,21,65,0.06)' }}>
-          <Link href="/site" className="flex items-center gap-3 group w-fit" target="_blank">
+          <Link href="/site" className="flex items-center gap-3 group w-fit" target="_blank" rel="noopener noreferrer">
             {clinic.logoUrl ? (
               // eslint-disable-next-line @next/next/no-img-element
               <img

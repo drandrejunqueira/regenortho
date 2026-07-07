@@ -33,12 +33,6 @@ interface Webhook {
   lastStatus: number | null
 }
 
-// Mock data
-const MOCK: Webhook[] = [
-  { id: '1', name: 'n8n — Leads Automação', url: 'https://n8n.regemorto.com.br/webhook/leads', events: ['lead.created', 'lead.status_changed'], secret: null, isActive: true, lastTriggeredAt: new Date(Date.now() - 900000).toISOString(), lastStatus: 200 },
-  { id: '2', name: 'Make — Backup Notificação', url: 'https://hook.us1.make.com/abcd1234', events: ['backup.completed'], secret: 'sec_xxxxxxxxxxx', isActive: true, lastTriggeredAt: new Date(Date.now() - 86400000).toISOString(), lastStatus: 200 },
-]
-
 function relativeTime(iso: string | null) {
   if (!iso) return 'Nunca'
   const diff = Date.now() - new Date(iso).getTime()
@@ -48,7 +42,7 @@ function relativeTime(iso: string | null) {
 }
 
 export default function WebhooksPage() {
-  const [webhooks, setWebhooks] = useState<Webhook[]>(MOCK)
+  const [webhooks, setWebhooks] = useState<Webhook[]>([])
   const [dialog, setDialog] = useState(false)
   const [form, setForm] = useState({ name: '', url: '', secret: '', events: new Set<string>() })
   const [saving, setSaving] = useState(false)
@@ -119,6 +113,15 @@ export default function WebhooksPage() {
           <span className="material-symbols-outlined" style={{ fontSize: '18px' }}>add</span>
           Novo Webhook
         </button>
+      </div>
+
+      {/* Aviso honesto: webhooks são salvos, mas o disparo ainda não está implementado */}
+      <div className="flex items-start gap-3 p-4 rounded-xl bg-[#fff8e6] border border-[#e6c364]/30">
+        <span className="material-symbols-outlined text-[#b08a15] shrink-0" style={{ fontSize: '20px' }}>construction</span>
+        <div className="text-xs text-[#718096] leading-relaxed">
+          <p className="font-bold text-[#021541] mb-1">Disparo automático em breve</p>
+          <p>Você já pode cadastrar e salvar webhooks, mas o envio automático de eventos ainda está em desenvolvimento — nenhum evento é disparado no momento.</p>
+        </div>
       </div>
 
       {/* List */}

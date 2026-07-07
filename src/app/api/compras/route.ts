@@ -4,6 +4,8 @@ import { db } from '@/lib/db'
 import { purchaseOrders, purchaseOrderItems } from '@/lib/db/schema'
 import { desc, eq } from 'drizzle-orm'
 import { z } from 'zod'
+import { hasPermission } from '@/lib/permissions'
+import type { UserRole } from '@/types'
 
 const itemSchema = z.object({
   materialId: z.string().uuid(),
@@ -23,6 +25,9 @@ const createSchema = z.object({
 export async function GET() {
   const session = await auth()
   if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  if (!hasPermission(session.user.role as UserRole, 'materials:view')) {
+    return NextResponse.json({ error: 'Acesso negado' }, { status: 403 })
+  }
 
   const rows = await db.query.purchaseOrders.findMany({
     orderBy: [desc(purchaseOrders.createdAt)],
@@ -38,6 +43,9 @@ export async function GET() {
 export async function POST(req: Request) {
   const session = await auth()
   if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  if (!hasPermission(session.user.role as UserRole, 'materials:create')) {
+    return NextResponse.json({ error: 'Acesso negado' }, { status: 403 })
+  }
 
   const body = await req.json()
   const parsed = createSchema.safeParse(body)

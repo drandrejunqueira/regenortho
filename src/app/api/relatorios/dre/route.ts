@@ -65,7 +65,9 @@ export async function GET(req: NextRequest) {
     ))
     .groupBy(transactions.category)
 
-  // Other income (non-treatment)
+  // Other income (non-treatment). Treatment revenue is already summed from the
+  // treatments table (receitaTratamentos below); excluding treatment-linked income
+  // here prevents double-counting it in Receita Bruta / Margem / Resultado.
   const otherIncome = await db.select({
     total: sql<string>`COALESCE(SUM(${transactions.amount}), 0)`,
   })
@@ -73,6 +75,7 @@ export async function GET(req: NextRequest) {
     .where(and(
       eq(transactions.type, 'income'),
       eq(transactions.isPaid, true),
+      sql`${transactions.treatmentId} IS NULL`,
       gte(sql`${transactions.date}::date`, sql`${startDate.toISOString().substring(0, 10)}::date`),
       lte(sql`${transactions.date}::date`, sql`${endDate.toISOString().substring(0, 10)}::date`),
     ))

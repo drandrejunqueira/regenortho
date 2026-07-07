@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState } from 'react'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
@@ -16,13 +16,6 @@ const loginSchema = z.object({
 
 type LoginForm = z.infer<typeof loginSchema>
 
-const QUICK_LOGINS = [
-  { label: 'Admin',      email: 'admin@regemorto.com.br',      password: 'Regem@2025',      icon: 'shield_person' },
-  { label: 'Médico',     email: 'medico@regemorto.com.br',     password: 'Medico@2025',     icon: 'stethoscope' },
-  { label: 'Recepção',   email: 'recepcao@regemorto.com.br',   password: 'Recepcao@2025',   icon: 'headset_mic' },
-  { label: 'Financeiro', email: 'financeiro@regemorto.com.br', password: 'Financeiro@2025', icon: 'payments' },
-]
-
 const BRAND_FEATURES = [
   { icon: 'group_add',      value: '500+',  label: 'Pacientes' },
   { icon: 'star',           value: '5.0★',  label: 'Avaliação Google' },
@@ -34,16 +27,6 @@ export default function LoginPage() {
   const router = useRouter()
   const [loading, setLoading] = useState(false)
   const [showPassword, setShowPassword] = useState(false)
-  const [isLocalhost, setIsLocalhost] = useState(false)
-
-  useEffect(() => {
-    // Quick-login buttons are dev-only: shown solely when running locally
-    // (offline), never on the live/online site.
-    setIsLocalhost(
-      window.location.hostname === 'localhost' ||
-      window.location.hostname === '127.0.0.1'
-    )
-  }, [])
 
   const {
     register,
@@ -71,13 +54,6 @@ export default function LoginPage() {
     } finally {
       setLoading(false)
     }
-  }
-
-  async function quickLogin(email: string, password: string, label: string) {
-    setLoading(true)
-    const result = await signIn('credentials', { email, password, redirect: false })
-    if (result?.error) { toast.error('Credencial inválida'); setLoading(false) }
-    else { toast.success(`Bem-vindo, ${label}!`); router.push('/dashboard'); router.refresh() }
   }
 
   return (
@@ -363,48 +339,9 @@ export default function LoginPage() {
             </form>
 
             <p className="text-center text-xs text-[#021541]/30 mt-5">
-              Problemas para acessar?{' '}
-              <span className="text-[#00BCE4] cursor-pointer hover:text-[#021541] transition-colors font-medium">
-                Fale com o administrador
-              </span>
+              Problemas para acessar? Fale com o administrador da clínica.
             </p>
           </div>
-
-          {/* ── Dev quick-login (somente em localhost/offline) ── */}
-          {isLocalhost && (
-            <div className="mt-6">
-              <div className="flex items-center gap-3 mb-4">
-                <div className="flex-1 h-px" style={{ background: 'rgba(2,21,65,0.08)' }} />
-                <span
-                  className="text-[10px] font-bold text-[#021541]/30 uppercase tracking-widest"
-                  style={{ fontFamily: 'Plus Jakarta Sans, sans-serif' }}
-                >
-                  Acesso rápido · dev
-                </span>
-                <div className="flex-1 h-px" style={{ background: 'rgba(2,21,65,0.08)' }} />
-              </div>
-              <div className="grid grid-cols-2 gap-2">
-                {QUICK_LOGINS.map(acc => (
-                  <button
-                    key={acc.label}
-                    type="button"
-                    disabled={loading}
-                    onClick={() => quickLogin(acc.email, acc.password, acc.label)}
-                    className="flex items-center gap-2 px-3 py-2.5 rounded-xl text-xs font-bold transition-all hover:scale-[1.02] disabled:opacity-40"
-                    style={{
-                      background: '#ffffff',
-                      color: '#021541',
-                      border: '1.5px solid rgba(2,21,65,0.10)',
-                      boxShadow: '0 1px 4px rgba(2,21,65,0.04)',
-                    }}
-                  >
-                    <span className="material-symbols-outlined text-[#00BCE4]" style={{ fontSize: '14px' }}>{acc.icon}</span>
-                    {acc.label}
-                  </button>
-                ))}
-              </div>
-            </div>
-          )}
         </div>
       </div>
     </div>

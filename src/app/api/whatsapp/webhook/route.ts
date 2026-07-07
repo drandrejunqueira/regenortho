@@ -19,7 +19,9 @@ export const dynamic = 'force-dynamic'
 
 async function handle(body: any, token: string): Promise<void> {
   const secret = await getConfig('wa_webhook_token')
-  if (secret && token !== secret) return
+  // Fail-closed: with no configured token, reject everything instead of processing
+  // forged payloads (which could leak patient PII / prontuário into the WhatsApp group).
+  if (!secret || token !== secret) return
 
   const msg = parseWebhookMessage(body)
   if (!msg) return

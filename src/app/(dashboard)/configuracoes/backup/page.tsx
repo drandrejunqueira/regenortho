@@ -27,7 +27,6 @@ export default function BackupPage() {
   const [schedule, setSchedule] = useState('daily')
   const [lastBackup, setLastBackup] = useState<string | null>(null)
   const [modules, setModules] = useState(MODULES)
-  const [running, setRunning] = useState(false)
   const [saving, setSaving] = useState(false)
 
   useEffect(() => {
@@ -53,15 +52,6 @@ export default function BackupPage() {
     } catch { toast.error('Erro ao salvar') } finally { setSaving(false) }
   }
 
-  async function runBackup() {
-    setRunning(true)
-    // Simulate backup (real implementation would call an API)
-    await new Promise((r) => setTimeout(r, 2500))
-    setLastBackup(new Date().toISOString())
-    setRunning(false)
-    toast.success('Backup realizado com sucesso!')
-  }
-
   return (
     <div className="space-y-5">
 
@@ -80,14 +70,13 @@ export default function BackupPage() {
             </div>
           </div>
           <button
-            onClick={runBackup}
-            disabled={running}
-            className="flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-bold bg-gradient-to-br from-[#021541] to-[#032170] text-white hover:opacity-90 transition-opacity disabled:opacity-50"
+            type="button"
+            disabled
+            title="Backup manual sob demanda ainda não está disponível"
+            className="flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-bold bg-[#f5f6f8] text-[#718096] border border-[rgba(2,21,65,0.08)] cursor-not-allowed"
           >
-            <span className="material-symbols-outlined" style={{ fontSize: '18px' }}>
-              {running ? 'sync' : 'backup'}
-            </span>
-            {running ? 'Realizando backup...' : 'Fazer backup agora'}
+            <span className="material-symbols-outlined" style={{ fontSize: '18px' }}>backup</span>
+            Em breve
           </button>
         </div>
       </div>
@@ -150,7 +139,7 @@ export default function BackupPage() {
         <span className="material-symbols-outlined text-[#e6c364] shrink-0" style={{ fontSize: '20px' }}>info</span>
         <div className="text-xs text-[#718096] leading-relaxed">
           <p className="font-bold text-[#021541] mb-1">Sobre os backups</p>
-          <p>Os backups são armazenados com criptografia AES-256. Arquivos disponíveis por 30 dias. Para armazenamento externo, configure o Webhook de backup ou entre em contato com o suporte.</p>
+          <p>Os dados ficam em banco gerenciado (Neon) com backups automáticos contínuos. O backup manual sob demanda e a exportação por este painel estarão disponíveis em breve.</p>
         </div>
       </div>
     </div>

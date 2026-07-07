@@ -5,6 +5,7 @@ import Image from 'next/image'
 import Link from 'next/link'
 import { useParams, notFound } from 'next/navigation'
 import { toast, Toaster } from 'sonner'
+import { captureTrackingParams, getTrackingParams } from '@/lib/tracking'
 
 // 1. DATA STORES FOR THE 5 DYNAMIC LANDING PAGES
 const CAMPAIGN_DATA: Record<string, {
@@ -304,15 +305,8 @@ export default function DynamicLP() {
   const [submitted, setSubmitted] = useState(false)
   const [activeFaq, setActiveFaq] = useState<number | null>(null)
 
-  // Capturar UTMs da URL
-  const [utms, setUtms] = useState({ source: 'google_ads', campaign: '' })
-  useEffect(() => {
-    const urlParams = new URLSearchParams(window.location.search)
-    setUtms({
-      source: urlParams.get('utm_source') || 'google_ads',
-      campaign: urlParams.get('utm_campaign') || `lp_tratamento_${treatmentSlug}`,
-    })
-  }, [treatmentSlug])
+  // Persiste UTMs/IDs de clique ao abrir a LP (centralizado em lib/tracking, LEI 10).
+  useEffect(() => { captureTrackingParams() }, [])
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -331,8 +325,8 @@ export default function DynamicLP() {
           phone: form.phone,
           email: form.email,
           complaint: `Tratamento de interesse: ${treatmentSlug.toUpperCase()}. Articulação: ${form.joint.toUpperCase()}. Queixa: ${form.complaint}`,
-          utmSource: utms.source,
-          utmCampaign: utms.campaign,
+          specialty: `Tratamento: ${treatmentSlug}`,
+          tracking: { utm_campaign: `lp_tratamento_${treatmentSlug}`, ...getTrackingParams() },
         }),
       })
 

@@ -319,7 +319,7 @@ export function CinematicFooter() {
             <div ref={linksRef} className="flex flex-col items-center gap-5 w-full">
               {/* App Store Links (Primary) */}
               <div className="flex flex-wrap justify-center gap-4 w-full">
-                <MagneticButton as="a" href="https://wa.me/5512981767896" target="_blank" className="footer-glass-pill px-8 py-4 rounded-full text-foreground font-bold text-sm md:text-base flex items-center gap-3 group">
+                <MagneticButton as="a" href="https://wa.me/5512981767896" target="_blank" rel="noopener noreferrer" className="footer-glass-pill px-8 py-4 rounded-full text-foreground font-bold text-sm md:text-base flex items-center gap-3 group">
                    Agendar Consulta
                 </MagneticButton>
               </div>

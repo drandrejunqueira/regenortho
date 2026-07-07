@@ -11,8 +11,11 @@ export async function GET(request: NextRequest) {
     return NextResponse.redirect(new URL('/login', request.nextUrl.origin))
   }
 
-  const state = request.nextUrl.searchParams.get('state')
-  const defaultDest = state || '/trafego'
+  // Only accept an internal path as the post-callback destination. An attacker-supplied
+  // absolute URL (e.g. `https://evil.com`) in `state` would otherwise become an open
+  // redirect. Reject anything that is not a single-slash relative path.
+  const rawState = request.nextUrl.searchParams.get('state')
+  const defaultDest = rawState && /^\/(?!\/)/.test(rawState) ? rawState : '/trafego'
 
   const erro = request.nextUrl.searchParams.get('error')
   if (erro) {

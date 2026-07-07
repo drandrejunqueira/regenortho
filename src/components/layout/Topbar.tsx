@@ -66,6 +66,7 @@ export function Topbar() {
           className="hidden sm:flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[10px] font-bold uppercase tracking-widest text-[#021541]/40 hover:text-[#021541] hover:bg-[#021541]/5 transition-colors"
           style={{ fontFamily: 'Plus Jakarta Sans, sans-serif' }}
           target="_blank"
+          rel="noopener noreferrer"
           title="Ver o site público"
         >
           <span className="material-symbols-outlined" style={{ fontSize: '14px' }}>open_in_new</span>

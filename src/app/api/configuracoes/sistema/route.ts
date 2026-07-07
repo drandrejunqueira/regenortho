@@ -42,6 +42,22 @@ const settingsSchema = z.object({
   googleClientId: z.string().nullable().optional(),
   googleClientSecret: z.string().nullable().optional(),
   backupSchedule: z.string().nullable().optional(),
+  // Notificações / WhatsApp (Evolution) — antes eram descartados pelo schema,
+  // fazendo a página de Notificações "salvar" sem persistir nada.
+  evolutionApiUrl: z.string().nullable().optional(),
+  evolutionApiKey: z.string().nullable().optional(),
+  evolutionInstance: z.string().nullable().optional(),
+  notifyNewLeadNumber: z.string().nullable().optional(),
+  notifyWeeklyReportNumber: z.string().nullable().optional(),
+  notifyMonthlyReportNumber: z.string().nullable().optional(),
+  notifyReportDay: z.number().int().nullable().optional(),
+  sendAppointmentReminder: z.boolean().optional(),
+  reminderHoursBefore: z.number().int().nullable().optional(),
+  sendTreatmentSummary: z.boolean().optional(),
+  notifyEmailNewLead: z.boolean().optional(),
+  notifyEmailNewPatient: z.boolean().optional(),
+  notifyEmailWeeklyReport: z.boolean().optional(),
+  alertEmailRecipients: z.string().nullable().optional(),
 })
 
 export async function GET() {

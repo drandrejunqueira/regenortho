@@ -5,11 +5,12 @@ import { usePathname } from 'next/navigation'
 import { useEffect, useState } from 'react'
 import { useClinicSettings } from '@/hooks/useClinicSettings'
 
+// 'Blog' fica fora do menu enquanto a página é apenas mockup (links "Acessar Guia"
+// mortos, busca e newsletter sem função). Reativar quando houver conteúdo real.
 const NAV_LINKS = [
   { href: '/site/tratamentos', label: 'Tratamentos' },
   { href: '/site/especialidades', label: 'Especialidades' },
   { href: '/site/a-clinica', label: 'A Clínica' },
-  { href: '/site/blog', label: 'Blog' },
 ]
 
 export default function SiteNav() {

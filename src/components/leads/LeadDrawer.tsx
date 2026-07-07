@@ -16,7 +16,7 @@ interface Props {
   onScheduleLead?: (lead: Lead) => void
 }
 
-const STATUSES: LeadStatus[] = ['new', 'contacted', 'scheduled', 'lost']
+const STATUSES: LeadStatus[] = ['new', 'contacted', 'scheduled', 'attended', 'active_patient', 'lost']
 
 const STATUS_STYLES: Record<string, string> = {
   new:            'bg-cyan-50 border-cyan-200 text-cyan-700',

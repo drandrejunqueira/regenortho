@@ -1,9 +1,10 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import SiteNav from '@/components/site/SiteNav'
 import SiteFooter from '@/components/site/SiteFooter'
+import { captureTrackingParams, getTrackingParams } from '@/lib/tracking'
 
 const PROCEDURES = [
   { icon: 'water_drop',  label: 'PRP — Plasma Rico em Plaquetas' },
@@ -29,6 +30,9 @@ export default function AgendarPage() {
   const [error, setError]   = useState('')
   const [success, setSuccess] = useState(false)
 
+  // Persiste UTMs/IDs de clique ao abrir a página, sobrevivendo à navegação interna.
+  useEffect(() => { captureTrackingParams() }, [])
+
   function setF(key: string, value: string) { setForm(p => ({ ...p, [key]: value })) }
 
   async function submit() {
@@ -42,7 +46,7 @@ export default function AgendarPage() {
       const res = await fetch('/api/site/agendar', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(form),
+        body: JSON.stringify({ ...form, tracking: getTrackingParams() }),
       })
       if (!res.ok) throw new Error()
       setSuccess(true)

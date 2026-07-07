@@ -12,7 +12,9 @@ import { ScheduleLeadDialog } from './ScheduleLeadDialog'
 import { toast } from 'sonner'
 import type { Lead, LeadStatus, LeadInteraction } from '@/types'
 
-const STATUSES: LeadStatus[] = ['new', 'contacted', 'scheduled', 'lost']
+// Todos os 6 estágios do funil. 'attended' e 'active_patient' antes ficavam de fora,
+// então leads convertidos sumiam do quadro sem coluna para onde ir.
+const STATUSES: LeadStatus[] = ['new', 'contacted', 'scheduled', 'attended', 'active_patient', 'lost']
 
 interface Props {
   initialLeads: Lead[]

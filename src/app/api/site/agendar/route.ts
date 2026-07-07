@@ -4,6 +4,7 @@ import { leads, clinicSettings } from '@/lib/db/schema'
 import { z } from 'zod'
 import { eq } from 'drizzle-orm'
 import { sendAndLog, tplNewLead } from '@/lib/whatsapp'
+import { deriveLeadSource } from '@/lib/tracking'
 
 const schema = z.object({
   name: z.string().min(1).max(255),
@@ -11,6 +12,7 @@ const schema = z.object({
   email: z.string().email().optional().or(z.literal('')),
   procedure: z.string().min(1).max(255),
   message: z.string().max(1000).optional(),
+  tracking: z.record(z.string(), z.string()).optional(),
 })
 
 export async function POST(req: NextRequest) {
@@ -19,16 +21,19 @@ export async function POST(req: NextRequest) {
   if (!parsed.success) return NextResponse.json({ error: parsed.error.flatten() }, { status: 400 })
 
   const d = parsed.data
+  const t = d.tracking ?? {}
 
-  // Create lead in CRM
+  // Create lead in CRM, preserving campaign attribution when present.
   const [lead] = await db.insert(leads).values({
     name: d.name,
     phone: d.phone,
     email: d.email || null,
     status: 'new',
-    source: 'other',
+    source: deriveLeadSource(t),
     specialty: d.procedure,
     complaint: d.message || null,
+    utmSource: t.utm_source ? t.utm_source.slice(0, 100) : null,
+    utmCampaign: t.utm_campaign ? t.utm_campaign.slice(0, 100) : null,
   }).returning()
 
   // Send WhatsApp notification to clinic

@@ -33,12 +33,12 @@ function dayMatches(cfg: string, wd: number): boolean {
 }
 
 export async function GET(req: NextRequest) {
+  // Fail-closed: without CRON_SECRET the endpoint must NOT be callable, otherwise
+  // anyone can trigger the daily clinic report (revenue/agenda/leads) and burn AI credits.
   const secret = process.env.CRON_SECRET
-  if (secret) {
-    const authz = req.headers.get('authorization') || ''
-    if (authz !== `Bearer ${secret}`) {
-      return NextResponse.json({ error: 'Não autorizado.' }, { status: 401 })
-    }
+  const authz = req.headers.get('authorization') || ''
+  if (!secret || authz !== `Bearer ${secret}`) {
+    return NextResponse.json({ error: 'Não autorizado.' }, { status: 401 })
   }
 
   const force = new URL(req.url).searchParams.get('force') === '1'

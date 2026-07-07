@@ -24,6 +24,11 @@ export async function GET(req: NextRequest) {
 
   const { searchParams } = new URL(req.url)
   const patientId = searchParams.get('patientId')
+  // Require a patientId. Without it the query returned the 100 most recent clinical
+  // records of ANY patient (PHI leak / LGPD violation), so scope every read to one patient.
+  if (!patientId) {
+    return NextResponse.json({ error: 'patientId é obrigatório' }, { status: 400 })
+  }
 
   const data = await db
     .select({
@@ -35,7 +40,7 @@ export async function GET(req: NextRequest) {
     })
     .from(clinicalRecords)
     .leftJoin(users, eq(clinicalRecords.doctorId, users.id))
-    .where(patientId ? eq(clinicalRecords.patientId, patientId) : undefined)
+    .where(eq(clinicalRecords.patientId, patientId))
     .orderBy(desc(clinicalRecords.createdAt))
     .limit(100)
 

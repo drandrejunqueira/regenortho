@@ -8,6 +8,10 @@ export default auth((req) => {
   const isAuthPage = pathname.startsWith('/login')
   const isApiAuth = pathname.startsWith('/api/auth')
   const isSitePage = pathname.startsWith('/site')
+  // Public site data endpoints: /api/site/config (branding) and /api/site/agendar
+  // (lead capture) are called by anonymous visitors — must not redirect to /login,
+  // or the public scheduling form silently drops every lead and the site loses branding.
+  const isApiSite = pathname.startsWith('/api/site')
   const isTrackApi = pathname.startsWith('/api/track')
   const isPublicLeadsApi = pathname.startsWith('/api/public/leads')
   const isSitemap = pathname.startsWith('/sitemap.xml') || pathname === '/sitemap'
@@ -21,6 +25,7 @@ export default auth((req) => {
     isAuthPage ||
     isApiAuth ||
     isSitePage ||
+    isApiSite ||
     isTrackApi ||
     isPublicLeadsApi ||
     isSitemap ||

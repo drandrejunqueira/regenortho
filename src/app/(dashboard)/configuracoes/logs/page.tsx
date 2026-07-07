@@ -17,17 +17,16 @@ const MODULE_LABELS: Record<string, string> = {
   financial: 'Financeiro', materials: 'Materiais', users: 'Usuários', settings: 'Configurações',
 }
 
-// Mock logs for demo (real data comes from API)
-const MOCK_LOGS = [
-  { id: '1', userName: 'Dr. André Elias Junqueira', action: 'login',           module: 'users',     targetName: null,              ip: '189.100.20.5',  createdAt: new Date(Date.now() - 2 * 60000).toISOString() },
-  { id: '2', userName: 'Carla Santos',               action: 'lead:create',    module: 'leads',     targetName: 'Maria da Silva',  ip: '189.100.20.6',  createdAt: new Date(Date.now() - 15 * 60000).toISOString() },
-  { id: '3', userName: 'Dr. André Elias Junqueira', action: 'agenda:edit',    module: 'agenda',    targetName: '#003 - João Melo',ip: '189.100.20.5',  createdAt: new Date(Date.now() - 42 * 60000).toISOString() },
-  { id: '4', userName: 'Marcos Financeiro',          action: 'financial:create',module: 'financial', targetName: 'R$ 800,00',       ip: '189.100.20.10', createdAt: new Date(Date.now() - 3600000).toISOString() },
-  { id: '5', userName: 'Carla Santos',               action: 'patient:create', module: 'patients',  targetName: 'Pedro Santos',    ip: '189.100.20.6',  createdAt: new Date(Date.now() - 2 * 3600000).toISOString() },
-  { id: '6', userName: 'Dr. André Elias Junqueira', action: 'settings:edit',  module: 'settings',  targetName: null,              ip: '189.100.20.5',  createdAt: new Date(Date.now() - 5 * 3600000).toISOString() },
-  { id: '7', userName: 'Marcos Financeiro',          action: 'financial:edit', module: 'financial', targetName: 'Lançamento #012', ip: '189.100.20.10', createdAt: new Date(Date.now() - 24 * 3600000).toISOString() },
-  { id: '8', userName: 'Carla Santos',               action: 'lead:delete',   module: 'leads',     targetName: 'Lead descartado', ip: '189.100.20.6',  createdAt: new Date(Date.now() - 2 * 24 * 3600000).toISOString() },
-]
+interface AuditLog {
+  id: string
+  userName: string | null
+  action: string
+  module: string | null
+  targetName: string | null
+  ip: string | null
+  createdAt: string
+  details?: { reason?: string }
+}
 
 const ACTION_LABELS: Record<string, { label: string; icon: string }> = {
   'login':            { label: 'Login',               icon: 'login' },
@@ -58,7 +57,7 @@ function userInitials(name: string) {
 }
 
 export default function LogsPage() {
-  const [logs, setLogs] = useState(MOCK_LOGS)
+  const [logs, setLogs] = useState<AuditLog[]>([])
   const [filter, setFilter] = useState<string>('all')
   const [search, setSearch] = useState('')
 
@@ -71,7 +70,7 @@ export default function LogsPage() {
 
   const filtered = logs.filter((log) => {
     const matchModule = filter === 'all' || log.module === filter
-    const matchSearch = !search || log.userName.toLowerCase().includes(search.toLowerCase()) || (log.targetName ?? '').toLowerCase().includes(search.toLowerCase()) || log.action.toLowerCase().includes(search.toLowerCase())
+    const matchSearch = !search || (log.userName ?? '').toLowerCase().includes(search.toLowerCase()) || (log.targetName ?? '').toLowerCase().includes(search.toLowerCase()) || log.action.toLowerCase().includes(search.toLowerCase())
     return matchModule && matchSearch
   })
 

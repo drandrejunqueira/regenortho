@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react'
 import Image from 'next/image'
 import Link from 'next/link'
 import { toast, Toaster } from 'sonner'
+import { captureTrackingParams, getTrackingParams } from '@/lib/tracking'
 
 const FAQ_ITEMS = [
   {
@@ -34,15 +35,8 @@ export default function ArticulacoesLP() {
   const [submitted, setSubmitted] = useState(false)
   const [activeFaq, setActiveFaq] = useState<number | null>(null)
   
-  // Captura UTMs da URL
-  const [utms, setUtms] = useState({ source: 'google_ads', campaign: '' })
-  useEffect(() => {
-    const params = new URLSearchParams(window.location.search)
-    setUtms({
-      source: params.get('utm_source') || 'google_ads',
-      campaign: params.get('utm_campaign') || 'lp_articulacoes_infiltracoes',
-    })
-  }, [])
+  // Persiste UTMs/IDs de clique ao abrir a LP (centralizado em lib/tracking, LEI 10).
+  useEffect(() => { captureTrackingParams() }, [])
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -61,8 +55,8 @@ export default function ArticulacoesLP() {
           phone: form.phone,
           email: form.email,
           complaint: `Articulação afetada: ${form.joint.toUpperCase()}. Queixa: ${form.complaint}`,
-          utmSource: utms.source,
-          utmCampaign: utms.campaign,
+          specialty: 'Articulações e Dor',
+          tracking: { utm_campaign: 'lp_articulacoes_infiltracoes', ...getTrackingParams() },
         }),
       })
 
