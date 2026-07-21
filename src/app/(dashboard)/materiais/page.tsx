@@ -347,7 +347,7 @@ export default function MateriaisPage() {
                       (h) => (
                         <th
                           key={h}
-                          className={`px-5 py-3 text-xs font-semibold text-[#021541] uppercase tracking-wider ${h === '' ? 'w-24' : h === 'Estoque' || h === 'Mínimo' ? 'text-center' : 'text-left'} ${h === 'Categoria' || h === 'Validade' ? 'hidden sm:table-cell' : ''}`}
+                          className={`px-5 py-3 text-xs font-semibold text-[#021541] uppercase tracking-wider ${h === '' ? 'w-px whitespace-nowrap' : h === 'Estoque' || h === 'Mínimo' ? 'text-center' : 'text-left'} ${h === 'Categoria' || h === 'Validade' ? 'hidden sm:table-cell' : ''}`}
                         >
                           {h}
                         </th>
@@ -409,8 +409,8 @@ export default function MateriaisPage() {
                             <span className="text-[#a0aec0]"> +{(mat.batches?.length ?? 0) - 1}</span>
                           )}
                         </td>
-                        <td className="px-5 py-3" onClick={(e) => e.stopPropagation()}>
-                          <div className="flex items-center justify-end gap-1 flex-wrap">
+                        <td className="px-5 py-3 whitespace-nowrap" onClick={(e) => e.stopPropagation()}>
+                          <div className="flex items-center justify-end gap-1 flex-nowrap">
                             <button
                               onClick={() => openMovement(mat, 'in')}
                               className="p-1.5 rounded-lg bg-[rgba(5,150,105,0.06)] text-[#059669] hover:bg-[rgba(5,150,105,0.12)] transition-all"

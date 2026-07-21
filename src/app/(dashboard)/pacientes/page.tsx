@@ -8,7 +8,9 @@ import ImageUploader from '@/components/shared/ImageUploader'
 import PatientPreview from '@/components/patients/PatientPreview'
 import Link from 'next/link'
 import { toast } from 'sonner'
-import type { Patient } from '@/types'
+import { useSession } from 'next-auth/react'
+import { hasPermission } from '@/lib/permissions'
+import type { Patient, UserRole } from '@/types'
 
 const inputCls = 'w-full bg-[#f5f6f8] border border-[rgba(2,21,65,0.12)] rounded-xl px-3 py-2.5 text-sm text-[#021541] placeholder:text-[#718096] focus:outline-none focus:ring-2 focus:ring-[#00BCE4]/30'
 const labelCls = 'text-[10px] font-bold text-[#718096] uppercase tracking-wider'
@@ -20,11 +22,40 @@ const EMPTY_FORM = {
   photoUrl: '', internalNotes: '',
 }
 
-function NovoPacienteDialog({ open, onOpenChange, onCreated }: {
-  open: boolean; onOpenChange: (v: boolean) => void; onCreated: (id: string) => void
+function patientToForm(p: Patient): typeof EMPTY_FORM {
+  return {
+    name: p.name ?? '',
+    phone: p.phone ?? '',
+    email: p.email ?? '',
+    cpf: p.cpf ?? '',
+    birthDate: p.birthDate ? p.birthDate.slice(0, 10) : '',
+    gender: (p.gender ?? '') as typeof EMPTY_FORM.gender,
+    address: p.address ?? '',
+    city: p.city ?? '',
+    insurance: p.insurance ?? '',
+    insuranceNum: p.insuranceNum ?? '',
+    notes: p.notes ?? '',
+    photoUrl: p.photoUrl ?? '',
+    internalNotes: p.internalNotes ?? '',
+  }
+}
+
+function PacienteDialog({ open, onOpenChange, patient, onCreated, onUpdated }: {
+  open: boolean
+  onOpenChange: (v: boolean) => void
+  /** Quando presente, o diálogo abre em modo de edição. */
+  patient?: Patient | null
+  onCreated: (id: string) => void
+  onUpdated: () => void
 }) {
+  const isEdit = !!patient
   const [form, setForm] = useState(EMPTY_FORM)
   const [loading, setLoading] = useState(false)
+
+  // Sincroniza o formulário sempre que o diálogo abre (novo ou edição)
+  useEffect(() => {
+    if (open) setForm(patient ? patientToForm(patient) : EMPTY_FORM)
+  }, [open, patient])
 
   function set<K extends keyof typeof EMPTY_FORM>(k: K, v: (typeof EMPTY_FORM)[K]) {
     setForm(p => ({ ...p, [k]: v }))
@@ -52,19 +83,20 @@ function NovoPacienteDialog({ open, onOpenChange, onCreated }: {
         photoUrl: form.photoUrl || null,
         internalNotes: form.internalNotes || null,
       }
-      const res = await fetch('/api/pacientes', {
-        method: 'POST',
+      const res = await fetch(isEdit ? `/api/pacientes/${patient.id}` : '/api/pacientes', {
+        method: isEdit ? 'PATCH' : 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload),
       })
       const data = await res.json()
-      if (!res.ok) throw new Error(data.error ?? 'Erro ao cadastrar')
-      toast.success('Paciente cadastrado com sucesso!')
+      if (!res.ok) throw new Error(data.error ?? (isEdit ? 'Erro ao salvar' : 'Erro ao cadastrar'))
+      toast.success(isEdit ? 'Dados do paciente atualizados!' : 'Paciente cadastrado com sucesso!')
       onOpenChange(false)
       reset()
-      onCreated(data.data.id)
+      if (isEdit) onUpdated()
+      else onCreated(data.data.id)
     } catch (e: unknown) {
-      toast.error(e instanceof Error ? e.message : 'Erro ao cadastrar paciente')
+      toast.error(e instanceof Error ? e.message : 'Erro ao salvar paciente')
     } finally { setLoading(false) }
   }
 
@@ -73,8 +105,10 @@ function NovoPacienteDialog({ open, onOpenChange, onCreated }: {
       <DialogContent className="max-w-2xl bg-white border border-[rgba(2,21,65,0.06)] max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle className="text-[#021541] font-bold flex items-center gap-2">
-            <span className="material-symbols-outlined text-[#00BCE4]" style={{ fontSize: '20px' }}>person_add</span>
-            Novo Paciente
+            <span className="material-symbols-outlined text-[#00BCE4]" style={{ fontSize: '20px' }}>
+              {isEdit ? 'edit' : 'person_add'}
+            </span>
+            {isEdit ? 'Editar Paciente' : 'Novo Paciente'}
           </DialogTitle>
         </DialogHeader>
 
@@ -227,8 +261,12 @@ function NovoPacienteDialog({ open, onOpenChange, onCreated }: {
             Cancelar
           </button>
           <button onClick={submit} disabled={loading} className="flex items-center gap-2 px-5 py-2 rounded-full text-sm font-bold bg-[#021541] text-white hover:bg-[#032170] transition-colors disabled:opacity-50">
-            <span className="material-symbols-outlined" style={{ fontSize: '18px' }}>person_add</span>
-            {loading ? 'Cadastrando...' : 'Cadastrar Paciente'}
+            <span className="material-symbols-outlined" style={{ fontSize: '18px' }}>
+              {isEdit ? 'save' : 'person_add'}
+            </span>
+            {loading
+              ? (isEdit ? 'Salvando...' : 'Cadastrando...')
+              : (isEdit ? 'Salvar Alterações' : 'Cadastrar Paciente')}
           </button>
         </DialogFooter>
       </DialogContent>
@@ -243,6 +281,12 @@ export default function PacientesPage() {
   const [treatmentFilter, setTreatmentFilter] = useState('')
   const [loading, setLoading] = useState(true)
   const [newDialog, setNewDialog] = useState(false)
+  const [editPatient, setEditPatient] = useState<Patient | null>(null)
+
+  const { data: session } = useSession()
+  const role = session?.user?.role as UserRole | undefined
+  const canEdit = role ? hasPermission(role, 'patients:edit') : false
+  const canDelete = role ? hasPermission(role, 'patients:delete') : false
 
   const fetchPatients = useCallback(async () => {
     setLoading(true)
@@ -271,6 +315,33 @@ export default function PacientesPage() {
 
   function handleCreated(id: string) {
     window.location.href = `/pacientes/${id}`
+  }
+
+  async function toggleActive(patient: Patient) {
+    const res = await fetch(`/api/pacientes/${patient.id}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ isActive: !patient.isActive }),
+    })
+    if (res.ok) {
+      toast.success(patient.isActive ? 'Paciente inativado' : 'Paciente reativado')
+      fetchPatients()
+    } else {
+      const data = await res.json().catch(() => ({}))
+      toast.error(data.error ?? 'Não foi possível alterar o status')
+    }
+  }
+
+  async function deletePatient(patient: Patient) {
+    if (!confirm(`Excluir permanentemente "${patient.name}"?\n\nEssa ação não pode ser desfeita. Se o paciente tiver histórico, prefira inativá-lo.`)) return
+    const res = await fetch(`/api/pacientes/${patient.id}`, { method: 'DELETE' })
+    if (res.ok) {
+      toast.success('Paciente excluído')
+      fetchPatients()
+    } else {
+      const data = await res.json().catch(() => ({}))
+      toast.error(data.error ?? 'Erro ao excluir. Considere inativar o paciente.')
+    }
   }
 
   return (
@@ -358,7 +429,7 @@ export default function PacientesPage() {
             <thead>
               <tr className="bg-[rgba(2,21,65,0.03)]">
                 {['Paciente', 'Idade', 'Telefone', 'Cidade', 'Status', ''].map((h) => (
-                  <th key={h} className={`px-4 py-3 text-xs font-semibold text-[#021541] uppercase tracking-wider whitespace-nowrap ${h === '' ? 'w-10' : 'text-left'}`}>
+                  <th key={h} className={`px-4 py-3 text-xs font-semibold text-[#021541] uppercase tracking-wider whitespace-nowrap ${h === '' ? 'w-px' : 'text-left'}`}>
                     {h}
                   </th>
                 ))}
@@ -401,14 +472,49 @@ export default function PacientesPage() {
                       {patient.isActive ? 'Ativo' : 'Inativo'}
                     </span>
                   </td>
-                  <td className="px-4 py-3">
-                    <Link
-                      href={`/pacientes/${patient.id}`}
-                      className="p-1.5 rounded-lg bg-[rgba(2,21,65,0.04)] text-[#718096] hover:text-[#00BCE4] hover:bg-[rgba(0,188,228,0.08)] transition-all inline-flex"
-                      aria-label="Ver paciente"
-                    >
-                      <span className="material-symbols-outlined" style={{ fontSize: '16px' }}>chevron_right</span>
-                    </Link>
+                  <td className="px-4 py-3 whitespace-nowrap">
+                    <div className="flex items-center justify-end gap-1 flex-nowrap">
+                      {canEdit && (
+                        <button
+                          onClick={() => setEditPatient(patient)}
+                          className="p-1.5 rounded-lg bg-[rgba(2,21,65,0.05)] text-[#021541] hover:bg-[rgba(2,21,65,0.1)] transition-all"
+                          aria-label="Editar paciente"
+                          title="Editar"
+                        >
+                          <span className="material-symbols-outlined" style={{ fontSize: '16px' }}>edit</span>
+                        </button>
+                      )}
+                      {canEdit && (
+                        <button
+                          onClick={() => toggleActive(patient)}
+                          className={`p-1.5 rounded-lg transition-all ${patient.isActive ? 'bg-[rgba(217,119,6,0.07)] text-[#d97706] hover:bg-[rgba(217,119,6,0.14)]' : 'bg-[rgba(5,150,105,0.07)] text-[#059669] hover:bg-[rgba(5,150,105,0.14)]'}`}
+                          aria-label={patient.isActive ? 'Inativar paciente' : 'Reativar paciente'}
+                          title={patient.isActive ? 'Inativar' : 'Reativar'}
+                        >
+                          <span className="material-symbols-outlined" style={{ fontSize: '16px' }}>
+                            {patient.isActive ? 'toggle_off' : 'toggle_on'}
+                          </span>
+                        </button>
+                      )}
+                      {canDelete && (
+                        <button
+                          onClick={() => deletePatient(patient)}
+                          className="p-1.5 rounded-lg bg-[rgba(220,38,38,0.06)] text-[#DC2626] hover:bg-[rgba(220,38,38,0.12)] transition-all"
+                          aria-label="Excluir paciente"
+                          title="Excluir"
+                        >
+                          <span className="material-symbols-outlined" style={{ fontSize: '16px' }}>delete</span>
+                        </button>
+                      )}
+                      <Link
+                        href={`/pacientes/${patient.id}`}
+                        className="p-1.5 rounded-lg bg-[rgba(2,21,65,0.04)] text-[#718096] hover:text-[#00BCE4] hover:bg-[rgba(0,188,228,0.08)] transition-all inline-flex"
+                        aria-label="Ver paciente"
+                        title="Abrir ficha"
+                      >
+                        <span className="material-symbols-outlined" style={{ fontSize: '16px' }}>chevron_right</span>
+                      </Link>
+                    </div>
                   </td>
                 </tr>
               ))}
@@ -417,7 +523,20 @@ export default function PacientesPage() {
         </div>
       )}
 
-      <NovoPacienteDialog open={newDialog} onOpenChange={setNewDialog} onCreated={handleCreated} />
+      <PacienteDialog
+        open={newDialog}
+        onOpenChange={setNewDialog}
+        onCreated={handleCreated}
+        onUpdated={fetchPatients}
+      />
+
+      <PacienteDialog
+        open={!!editPatient}
+        onOpenChange={(v) => { if (!v) setEditPatient(null) }}
+        patient={editPatient}
+        onCreated={handleCreated}
+        onUpdated={() => { setEditPatient(null); fetchPatients() }}
+      />
     </div>
   )
 }

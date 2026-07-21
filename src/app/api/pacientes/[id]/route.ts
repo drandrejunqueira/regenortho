@@ -112,3 +112,45 @@ export async function PATCH(req: NextRequest, { params }: Params) {
 
   return NextResponse.json({ data: updated })
 }
+
+export async function DELETE(req: NextRequest, { params }: Params) {
+  const session = await auth()
+  if (!session) return NextResponse.json({ error: 'Não autenticado' }, { status: 401 })
+  if (!hasPermission(session.user.role as UserRole, 'patients:delete')) {
+    return NextResponse.json({ error: 'Acesso negado' }, { status: 403 })
+  }
+  const { id } = await params
+
+  // Agendamentos, tratamentos, prontuários e lançamentos referenciam o paciente
+  // sem cascata: se houver histórico, a FK bloqueia a exclusão. Nesse caso o
+  // caminho correto é inativar, preservando o histórico clínico e financeiro.
+  let deleted
+  try {
+    ;[deleted] = await db.delete(patients).where(eq(patients.id, id)).returning()
+  } catch (error) {
+    console.error('Erro ao excluir paciente:', error)
+    return NextResponse.json(
+      {
+        error:
+          'Este paciente possui histórico (agendamentos, tratamentos, prontuários ou lançamentos) e não pode ser excluído. Inative-o para ocultá-lo da lista.',
+      },
+      { status: 409 }
+    )
+  }
+
+  if (!deleted) return NextResponse.json({ error: 'Paciente não encontrado' }, { status: 404 })
+
+  const ip = req.headers.get('x-forwarded-for') || req.headers.get('x-real-ip')
+  await logActivity({
+    userId: session.user.id,
+    userName: session.user.name || session.user.email || null,
+    action: 'patient:delete',
+    module: 'patients',
+    targetId: deleted.id,
+    targetName: deleted.name,
+    ip,
+    details: { name: deleted.name, phone: deleted.phone },
+  })
+
+  return NextResponse.json({ success: true })
+}
