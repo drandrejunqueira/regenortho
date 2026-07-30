@@ -7,6 +7,8 @@ import { NextRequest, NextResponse } from 'next/server'
 import { and, gte, lte, eq, ilike, or, desc, sql } from 'drizzle-orm'
 import { z } from 'zod'
 import type { UserRole } from '@/types'
+import { notify } from '@/lib/notifications'
+import { LEAD_SOURCE_LABELS } from '@/lib/constants'
 
 const createLeadSchema = z.object({
   name: z.string().min(2, 'Nome obrigatório'),
@@ -90,6 +92,14 @@ export async function POST(req: NextRequest) {
       source: lead.source,
       phone: lead.phone
     }
+  })
+
+  await notify({
+    type: 'lead_new',
+    title: `Novo lead: ${lead.name}`,
+    body: `${lead.phone} • ${LEAD_SOURCE_LABELS[lead.source] ?? lead.source}`,
+    link: '/leads',
+    entityId: lead.id,
   })
 
   return NextResponse.json({ data: lead }, { status: 201 })

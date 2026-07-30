@@ -5,6 +5,8 @@ import { z } from 'zod'
 import { eq } from 'drizzle-orm'
 import { sendAndLog, tplNewLead } from '@/lib/whatsapp'
 import { deriveLeadSource } from '@/lib/tracking'
+import { notify } from '@/lib/notifications'
+import { LEAD_SOURCE_LABELS } from '@/lib/constants'
 
 const schema = z.object({
   name: z.string().min(1).max(255),
@@ -29,12 +31,21 @@ export async function POST(req: NextRequest) {
     phone: d.phone,
     email: d.email || null,
     status: 'new',
-    source: deriveLeadSource(t),
+    source: deriveLeadSource(t, t.referrer),
     specialty: d.procedure,
     complaint: d.message || null,
     utmSource: t.utm_source ? t.utm_source.slice(0, 100) : null,
     utmCampaign: t.utm_campaign ? t.utm_campaign.slice(0, 100) : null,
   }).returning()
+
+  await notify({
+    type: 'lead_new',
+    title: `Novo lead: ${lead.name}`,
+    body: `${d.procedure} • ${d.phone} • ${LEAD_SOURCE_LABELS[lead.source] ?? lead.source}`,
+    link: '/leads',
+    entityId: lead.id,
+    priority: 'high',
+  })
 
   // Send WhatsApp notification to clinic
   try {

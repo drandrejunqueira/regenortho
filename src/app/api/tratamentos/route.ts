@@ -6,6 +6,7 @@ import { hasPermission } from '@/lib/permissions'
 import type { UserRole } from '@/types'
 import { z } from 'zod'
 import { eq, desc, sql, inArray } from 'drizzle-orm'
+import { notify } from '@/lib/notifications'
 
 const itemSchema = z.object({
   type: z.enum(['procedure', 'material', 'fee']),
@@ -159,6 +160,14 @@ export async function POST(req: NextRequest) {
       sortOrder: item.sortOrder ?? i,
     }))
   ).returning()
+
+  await notify({
+    type: 'treatment_new',
+    title: `Novo tratamento: ${treatment.name}`,
+    body: `R$ ${treatment.totalSale} • ${treatment.installments}x`,
+    link: '/tratamentos',
+    entityId: treatment.id,
+  })
 
   return NextResponse.json({ data: { ...treatment, items: insertedItems } }, { status: 201 })
 }

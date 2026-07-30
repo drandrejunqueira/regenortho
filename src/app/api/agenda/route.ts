@@ -8,6 +8,9 @@ import { NextRequest, NextResponse } from 'next/server'
 import { and, gte, lte, eq, isNull, ne, isNotNull } from 'drizzle-orm'
 import { z } from 'zod'
 import type { UserRole } from '@/types'
+import { notify } from '@/lib/notifications'
+import { APPOINTMENT_TYPE_LABELS } from '@/lib/constants'
+import { formatDateTime } from '@/lib/utils'
 
 const createSchema = z.object({
   patientId: z.string().uuid().nullable().optional(),
@@ -166,6 +169,14 @@ export async function POST(req: NextRequest) {
         apt.googleEventId = eventId
       }
     }
+
+    await notify({
+      type: 'appointment_new',
+      title: `Novo agendamento: ${displayName || apt.title || 'Compromisso'}`,
+      body: `${APPOINTMENT_TYPE_LABELS[apt.type] ?? apt.type} • ${formatDateTime(apt.startAt)}`,
+      link: '/agenda',
+      entityId: apt.id,
+    })
 
     // Registra no log de auditoria
     const ip = req.headers.get('x-forwarded-for') || req.headers.get('x-real-ip')
