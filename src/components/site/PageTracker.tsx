@@ -2,6 +2,7 @@
 
 import { useEffect, useRef } from 'react'
 import { usePathname, useSearchParams } from 'next/navigation'
+import { captureTrackingParams } from '@/lib/tracking'
 
 const SID_KEY = 'twix_sid'
 
@@ -39,6 +40,13 @@ export function PageTracker() {
   const pathname = usePathname()
   const searchParams = useSearchParams()
   const lastPath = useRef<string | null>(null)
+
+  // Persiste UTMs/IDs de clique em TODA página do site (o layout monta este
+  // componente uma vez). Sem isso só as LPs guardavam atribuição e o botão
+  // flutuante do WhatsApp gravava lead sem origem.
+  useEffect(() => {
+    captureTrackingParams()
+  }, [pathname, searchParams])
 
   // Pageview em cada navegação
   useEffect(() => {
