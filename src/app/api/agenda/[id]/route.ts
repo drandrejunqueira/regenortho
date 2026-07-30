@@ -36,7 +36,7 @@ type Params = { params: Promise<{ id: string }> }
 export async function PATCH(req: NextRequest, { params }: Params) {
   const session = await auth()
   if (!session) return NextResponse.json({ error: 'Não autenticado' }, { status: 401 })
-  if (!hasPermission(session.user.role as UserRole, 'agenda:edit')) {
+  if (!hasPermission(session.user.role as UserRole, 'agenda:edit', session.user.customPermissions)) {
     return NextResponse.json({ error: 'Acesso negado' }, { status: 403 })
   }
   const { id } = await params
@@ -185,7 +185,7 @@ export async function PATCH(req: NextRequest, { params }: Params) {
 export async function DELETE(req: NextRequest, { params }: Params) {
   const session = await auth()
   if (!session) return NextResponse.json({ error: 'Não autenticado' }, { status: 401 })
-  if (!hasPermission(session.user.role as UserRole, 'agenda:delete')) {
+  if (!hasPermission(session.user.role as UserRole, 'agenda:delete', session.user.customPermissions)) {
     return NextResponse.json({ error: 'Acesso negado' }, { status: 403 })
   }
   const { id } = await params

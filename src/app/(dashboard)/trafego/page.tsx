@@ -3,8 +3,19 @@ import { db } from '@/lib/db'
 import { leads, analyticsEvents } from '@/lib/db/schema'
 import { gte, eq, or, and, desc, sql } from 'drizzle-orm'
 import { TrafegoClient } from '@/components/admin/TrafegoClient'
+import { auth } from '@/lib/auth/config'
+import { redirect } from 'next/navigation'
+import { hasPermission } from '@/lib/permissions'
+import type { UserRole } from '@/types'
 
 export default async function TrafegoPage() {
+  // A página consulta leads direto no banco e renderiza no servidor: sem este
+  // guarda, qualquer usuário logado via os dados de captação da clínica.
+  const session = await auth()
+  if (!session) redirect('/login')
+  const role = session.user.role as UserRole
+  if (!hasPermission(role, 'traffic:view', session.user.customPermissions)) redirect('/dashboard')
+
   const desde = new Date()
   desde.setDate(desde.getDate() - 30)
 

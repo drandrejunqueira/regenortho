@@ -37,7 +37,7 @@ const patchSchema = z.discriminatedUnion('action', [
 export async function GET(_req: Request, { params }: { params: Promise<{ id: string }> }) {
   const session = await auth()
   if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-  if (!hasPermission(session.user.role as UserRole, 'materials:view')) {
+  if (!hasPermission(session.user.role as UserRole, 'materials:view', session.user.customPermissions)) {
     return NextResponse.json({ error: 'Acesso negado' }, { status: 403 })
   }
 
@@ -57,7 +57,7 @@ export async function GET(_req: Request, { params }: { params: Promise<{ id: str
 export async function PATCH(req: Request, { params }: { params: Promise<{ id: string }> }) {
   const session = await auth()
   if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-  if (!hasPermission(session.user.role as UserRole, 'materials:edit')) {
+  if (!hasPermission(session.user.role as UserRole, 'materials:edit', session.user.customPermissions)) {
     return NextResponse.json({ error: 'Acesso negado' }, { status: 403 })
   }
 
@@ -112,7 +112,7 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
   if (data.action === 'receive') {
     // 'receive' credita estoque E lança uma despesa paga no financeiro, então
     // exige também permissão financeira além de materials:edit.
-    if (!hasPermission(session.user.role as UserRole, 'financial:create')) {
+    if (!hasPermission(session.user.role as UserRole, 'financial:create', session.user.customPermissions)) {
       return NextResponse.json({ error: 'Sem permissão para lançar a despesa do recebimento' }, { status: 403 })
     }
     if (order.status !== 'ordered' && order.status !== 'draft') {
@@ -180,7 +180,7 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
 export async function DELETE(_req: Request, { params }: { params: Promise<{ id: string }> }) {
   const session = await auth()
   if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-  if (!hasPermission(session.user.role as UserRole, 'materials:delete')) {
+  if (!hasPermission(session.user.role as UserRole, 'materials:delete', session.user.customPermissions)) {
     return NextResponse.json({ error: 'Acesso negado' }, { status: 403 })
   }
 

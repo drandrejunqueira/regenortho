@@ -25,6 +25,12 @@ export default auth((req) => {
   // /api/portal/token continua protegido (exige sessão + permissão da clínica).
   const isPortalPage = pathname.startsWith('/portal')
   const isPortalApi = pathname.startsWith('/api/portal/me')
+  // Assets servidos por rota: crawler e cliente de e-mail não têm sessão, então
+  // a prévia de link e o favicon vinham como redirect para /login.
+  const isPublicAsset =
+    pathname.startsWith('/api/og-image') ||
+    pathname.startsWith('/api/favicon') ||
+    pathname === '/robots.txt'
 
   const isPublic =
     isAuthPage ||
@@ -38,7 +44,8 @@ export default auth((req) => {
     isWhatsAppWebhook ||
     isCron ||
     isPortalPage ||
-    isPortalApi
+    isPortalApi ||
+    isPublicAsset
 
   if (!isLoggedIn && !isPublic) {
     return NextResponse.redirect(new URL('/login', req.url))

@@ -44,7 +44,7 @@ const updateSchema = z.object({
 export async function GET(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const session = await auth()
   if (!session) return NextResponse.json({ error: 'Não autenticado' }, { status: 401 })
-  if (!hasPermission(session.user.role as UserRole, 'treatments:view')) {
+  if (!hasPermission(session.user.role as UserRole, 'treatments:view', session.user.customPermissions)) {
     return NextResponse.json({ error: 'Acesso negado' }, { status: 403 })
   }
 
@@ -60,7 +60,7 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
 export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const session = await auth()
   if (!session) return NextResponse.json({ error: 'Não autenticado' }, { status: 401 })
-  if (!hasPermission(session.user.role as UserRole, 'treatments:edit')) {
+  if (!hasPermission(session.user.role as UserRole, 'treatments:edit', session.user.customPermissions)) {
     return NextResponse.json({ error: 'Acesso negado' }, { status: 403 })
   }
 
@@ -116,6 +116,21 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
   if (d.status !== undefined) {
     updates.status = d.status
     if (d.status === 'completed' && existing.status !== 'completed') {
+      // Concluir tratamento lança receitas e credita saldo bancário. Isso é
+      // operação financeira e não podia depender só de treatments:edit.
+      if (!hasPermission(session.user.role as UserRole, 'financial:create', session.user.customPermissions)) {
+        return NextResponse.json(
+          { error: 'Concluir o tratamento gera lançamentos financeiros. Peça ao financeiro para concluir.' },
+          { status: 403 }
+        )
+      }
+      if (d.bankAccountId && !hasPermission(session.user.role as UserRole, 'payments:edit', session.user.customPermissions)) {
+        return NextResponse.json(
+          { error: 'Sem permissão para creditar saldo em conta bancária.' },
+          { status: 403 }
+        )
+      }
+
       updates.completedAt = new Date()
       // Deduct materials from stock
       const items = await db.select().from(treatmentItems)
@@ -239,7 +254,7 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
 export async function DELETE(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const session = await auth()
   if (!session) return NextResponse.json({ error: 'Não autenticado' }, { status: 401 })
-  if (!hasPermission(session.user.role as UserRole, 'treatments:delete')) {
+  if (!hasPermission(session.user.role as UserRole, 'treatments:delete', session.user.customPermissions)) {
     return NextResponse.json({ error: 'Acesso negado' }, { status: 403 })
   }
 

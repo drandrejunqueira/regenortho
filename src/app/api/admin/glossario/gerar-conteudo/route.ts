@@ -1,5 +1,7 @@
 import { NextResponse } from 'next/server'
 import { auth } from '@/lib/auth/config'
+import { hasPermission } from '@/lib/permissions'
+import type { UserRole } from '@/types'
 import { getConfig } from '@/lib/db/queries/configuracoes'
 import { getTermoById, updateTermo } from '@/lib/db/queries/glossario'
 import { notificarBuscadores } from '@/lib/seo/notificar'
@@ -82,6 +84,9 @@ function cleanJsonResponse(text: string): string {
 export async function POST(request: Request) {
   const session = await auth()
   if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  if (!hasPermission(session.user.role as UserRole, 'settings:edit', session.user.customPermissions)) {
+    return NextResponse.json({ error: 'Acesso negado' }, { status: 403 })
+  }
 
   try {
     const { id } = await request.json()

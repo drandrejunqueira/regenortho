@@ -25,7 +25,7 @@ const createSchema = z.object({
 export async function GET() {
   const session = await auth()
   if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-  if (!hasPermission(session.user.role as UserRole, 'materials:view')) {
+  if (!hasPermission(session.user.role as UserRole, 'materials:view', session.user.customPermissions)) {
     return NextResponse.json({ error: 'Acesso negado' }, { status: 403 })
   }
 
@@ -43,7 +43,7 @@ export async function GET() {
 export async function POST(req: Request) {
   const session = await auth()
   if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-  if (!hasPermission(session.user.role as UserRole, 'materials:create')) {
+  if (!hasPermission(session.user.role as UserRole, 'materials:create', session.user.customPermissions)) {
     return NextResponse.json({ error: 'Acesso negado' }, { status: 403 })
   }
 

@@ -4,6 +4,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { z } from 'zod'
 import { deriveLeadSource } from '@/lib/tracking'
 import { notify } from '@/lib/notifications'
+import { rateLimit, getClientIp } from '@/lib/rate-limit'
 import { LEAD_SOURCE_LABELS } from '@/lib/constants'
 
 const publicLeadSchema = z.object({
@@ -19,6 +20,16 @@ const publicLeadSchema = z.object({
 
 export async function POST(req: NextRequest) {
   try {
+    // Endpoint público: sem limite, um script enche o CRM de lead falso.
+    const ip = getClientIp(req)
+    const rl = rateLimit(`lead:${ip}`, 5, 10 * 60 * 1000)
+    if (!rl.ok) {
+      return NextResponse.json(
+        { error: 'Muitas tentativas. Aguarde alguns minutos.' },
+        { status: 429, headers: { 'Retry-After': String(rl.retryAfterSec) } }
+      )
+    }
+
     const body = await req.json().catch(() => null)
     if (!body) {
       return NextResponse.json({ error: 'Dados não informados' }, { status: 400 })
