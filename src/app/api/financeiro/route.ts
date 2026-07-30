@@ -20,6 +20,11 @@ const createSchema = z.object({
   date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'Data inválida'),
   dueDate: z.string().nullable().optional(),
   isPaid: z.boolean().default(false),
+  // paidAt e paymentMethodId eram enviados pela tela de Finalizar Consulta e
+  // descartados aqui em silêncio — a baixa ficava sem data e sem forma de pagamento.
+  paidAt: z.string().datetime().nullable().optional(),
+  paymentMethodId: z.string().uuid().nullable().optional(),
+  bankAccountId: z.string().uuid().nullable().optional(),
   patientId: z.string().uuid().nullable().optional(),
   appointmentId: z.string().uuid().nullable().optional(),
   notes: z.string().nullable().optional(),
@@ -67,8 +72,11 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'Dados inválidos', details: parsed.error.flatten() }, { status: 400 })
   }
 
+  // paidAt chega como string ISO e a coluna é timestamp.
+  const { paidAt, ...rest } = parsed.data
   const [tx] = await db.insert(transactions).values({
-    ...parsed.data,
+    ...rest,
+    paidAt: paidAt ? new Date(paidAt) : null,
     createdById: session.user.id,
   }).returning()
 

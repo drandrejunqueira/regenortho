@@ -13,7 +13,9 @@ import { LEAD_SOURCE_LABELS } from '@/lib/constants'
 const createLeadSchema = z.object({
   name: z.string().min(2, 'Nome obrigatório'),
   phone: z.string().min(8, 'Telefone inválido'),
-  email: z.string().email().optional().or(z.literal('')),
+  // Aceita null: o formulário de Novo Lead envia null quando o campo fica vazio.
+  // Sem isso, criar lead sem e-mail devolvia 400 e a tela só dizia "Erro ao criar lead".
+  email: z.union([z.string().email(), z.literal(''), z.null()]).optional(),
   source: z.enum(['google_ads', 'meta_ads', 'instagram_organic', 'facebook_organic', 'google_organic', 'referral', 'whatsapp', 'other']).default('other'),
   specialty: z.string().optional(),
   complaint: z.string().optional(),

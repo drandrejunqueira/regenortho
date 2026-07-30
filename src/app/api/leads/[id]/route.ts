@@ -20,6 +20,10 @@ const updateLeadSchema = z.object({
   lostReason: z.string().nullable().optional(),
   assignedToId: z.string().uuid().nullable().optional(),
   tags: z.array(z.string()).optional(),
+  // Conversão lead -> paciente. Sem estes dois campos o zod descartava o vínculo
+  // em silêncio e cada novo agendamento criava outro paciente para o mesmo lead.
+  patientId: z.string().uuid().nullable().optional(),
+  convertedAt: z.string().datetime().nullable().optional(),
 })
 
 const interactionSchema = z.object({
@@ -63,8 +67,14 @@ export async function PATCH(req: NextRequest, { params }: Params) {
     return NextResponse.json({ error: 'Dados inválidos', details: parsed.error.flatten() }, { status: 400 })
   }
 
+  // convertedAt chega como string ISO e a coluna é timestamp.
+  const { convertedAt, ...rest } = parsed.data
   const [updated] = await db.update(leads)
-    .set({ ...parsed.data, updatedAt: new Date() })
+    .set({
+      ...rest,
+      ...(convertedAt !== undefined && { convertedAt: convertedAt ? new Date(convertedAt) : null }),
+      updatedAt: new Date(),
+    })
     .where(eq(leads.id, id))
     .returning()
 

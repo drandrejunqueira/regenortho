@@ -84,12 +84,23 @@ export default function WebhooksPage() {
   }
 
   async function toggleActive(wh: Webhook) {
-    await fetch('/api/configuracoes/webhooks', { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id: wh.id, isActive: !wh.isActive }) })
+    const res = await fetch('/api/configuracoes/webhooks', { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id: wh.id, isActive: !wh.isActive }) })
+    // O switch virava na tela mesmo com a API recusando: o webhook aparecia
+    // ativo e nunca disparava (ou o contrário).
+    if (!res.ok) {
+      toast.error('Não foi possível alterar o status do webhook')
+      return
+    }
     setWebhooks((prev) => prev.map((w) => w.id === wh.id ? { ...w, isActive: !w.isActive } : w))
   }
 
   async function remove(id: string) {
-    await fetch('/api/configuracoes/webhooks', { method: 'DELETE', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id }) })
+    if (!confirm('Excluir este webhook? As integrações que dependem dele param de receber eventos.')) return
+    const res = await fetch('/api/configuracoes/webhooks', { method: 'DELETE', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id }) })
+    if (!res.ok) {
+      toast.error('Não foi possível remover o webhook')
+      return
+    }
     setWebhooks((prev) => prev.filter((w) => w.id !== id))
     toast.success('Webhook removido')
   }

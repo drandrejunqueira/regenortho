@@ -546,14 +546,22 @@ export default function PacienteDetailPage({ params }: { params: { id: string } 
 
   const loadAll = () => {
     setLoading(true)
+    // Cada requisição falha isoladamente. Antes, um 403 no prontuário ou um erro
+    // de rede em qualquer aba rejeitava o Promise.all inteiro e a ficha exibia
+    // "Paciente não encontrado" mesmo com o paciente tendo carregado.
+    const safe = (url: string) =>
+      fetch(url)
+        .then(r => (r.ok ? r.json() : { data: null }))
+        .catch(() => ({ data: null }))
+
     Promise.all([
-      fetch(`/api/pacientes/${id}`).then(r => r.json()),
-      fetch(`/api/agenda?patientId=${id}`).then(r => r.json()),
-      fetch(`/api/tratamentos?patientId=${id}`).then(r => r.json()),
-      fetch(`/api/exames?patientId=${id}`).then(r => r.json()),
-      fetch(`/api/prontuario?patientId=${id}`).then(r => r.json()).catch(() => ({ data: [] })),
-      fetch(`/api/financeiro?patientId=${id}`).then(r => r.json()).catch(() => ({ data: [] })),
-      fetch('/api/usuarios').then(r => r.json()).catch(() => ({ data: [] })),
+      safe(`/api/pacientes/${id}`),
+      safe(`/api/agenda?patientId=${id}`),
+      safe(`/api/tratamentos?patientId=${id}`),
+      safe(`/api/exames?patientId=${id}`),
+      safe(`/api/prontuario?patientId=${id}`),
+      safe(`/api/financeiro?patientId=${id}`),
+      safe('/api/usuarios'),
     ]).then(([pat, appts, treats, exs, recs, txs, usrs]) => {
       if (pat.data) { setPatient(pat.data); setEditForm(pat.data) }
       if (appts.data) setAppointments(appts.data)
@@ -562,7 +570,7 @@ export default function PacienteDetailPage({ params }: { params: { id: string } 
       if (recs.data) setRecords(recs.data)
       if (txs.data) setTransactions(txs.data)
       if (usrs.data) setDoctors(usrs.data.filter((u: { role: string }) => u.role === 'doctor'))
-    }).catch(() => {}).finally(() => setLoading(false))
+    }).finally(() => setLoading(false))
   }
 
   useEffect(() => { loadAll() }, [id])
