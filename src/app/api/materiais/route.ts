@@ -1,6 +1,6 @@
 import { auth } from '@/lib/auth/config'
 import { db } from '@/lib/db'
-import { materials, materialCategories } from '@/lib/db/schema'
+import { materials, materialCategories, materialBatches } from '@/lib/db/schema'
 import { hasPermission } from '@/lib/permissions'
 import { NextRequest, NextResponse } from 'next/server'
 import { and, eq } from 'drizzle-orm'
@@ -91,6 +91,21 @@ export async function POST(req: NextRequest) {
     .insert(materials)
     .values({ ...parsed.data, category: categoryName, status })
     .returning()
+
+  // O lote informado no cadastro também vira uma linha em material_batches —
+  // é de lá que a tela de edição lê os lotes. Sem isto o número digitado ficava
+  // só na coluna do material e "sumia" ao reabrir o cadastro.
+  // A quantidade espelha o estoque inicial, então o total dos lotes continua
+  // batendo com currentStock (nada a recalcular).
+  if (parsed.data.batchNumber?.trim() || parsed.data.expiresAt) {
+    await db.insert(materialBatches).values({
+      materialId: material.id,
+      batchNumber: parsed.data.batchNumber?.trim() || null,
+      expiresAt: parsed.data.expiresAt || null,
+      quantity: stock,
+    })
+  }
+
   return NextResponse.json({ data: material }, { status: 201 })
 }
 
