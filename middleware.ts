@@ -20,6 +20,11 @@ export default auth((req) => {
   // Cron) have no user session — they carry their own token/secret guard instead.
   const isWhatsAppWebhook = pathname.startsWith('/api/whatsapp/webhook')
   const isCron = pathname.startsWith('/api/cron')
+  // Portal do paciente: o paciente não tem sessão do CRM — entra por token ou
+  // código de 6 dígitos, validados com rate limit dentro de /api/portal/me.
+  // /api/portal/token continua protegido (exige sessão + permissão da clínica).
+  const isPortalPage = pathname.startsWith('/portal')
+  const isPortalApi = pathname.startsWith('/api/portal/me')
 
   const isPublic =
     isAuthPage ||
@@ -31,7 +36,9 @@ export default auth((req) => {
     isSitemap ||
     isIndexNowKey ||
     isWhatsAppWebhook ||
-    isCron
+    isCron ||
+    isPortalPage ||
+    isPortalApi
 
   if (!isLoggedIn && !isPublic) {
     return NextResponse.redirect(new URL('/login', req.url))

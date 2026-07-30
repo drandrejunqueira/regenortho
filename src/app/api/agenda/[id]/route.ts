@@ -5,9 +5,11 @@ import { hasPermission } from '@/lib/permissions'
 import { syncAppointment, removeAppointment } from '@/lib/google/calendar'
 import { logActivity } from '@/lib/db/logger'
 import { NextRequest, NextResponse } from 'next/server'
-import { eq } from 'drizzle-orm'
+import { and, eq, isNull } from 'drizzle-orm'
 import { z } from 'zod'
 import type { UserRole } from '@/types'
+import { notify } from '@/lib/notifications'
+import { formatDateTime } from '@/lib/utils'
 
 const updateSchema = z.object({
   status: z.enum(['scheduled', 'confirmed', 'attended', 'no_show', 'rescheduled', 'cancelled']).optional(),
@@ -61,7 +63,17 @@ export async function PATCH(req: NextRequest, { params }: Params) {
 
   if (!updated) return NextResponse.json({ error: 'Agendamento não encontrado' }, { status: 404 })
 
-  // Sincroniza o faturamento/financeiro da consulta
+  // Sincroniza o faturamento/financeiro da consulta.
+  // ATENÇÃO: o appointmentId NÃO identifica sozinho o lançamento da consulta —
+  // as parcelas de tratamento herdam o mesmo appointmentId (tratamentos/[id]).
+  // Todo acesso aqui é escopado à taxa de consulta; sem isso, arrastar um card
+  // na agenda apagava as parcelas do tratamento junto.
+  const somenteTaxaDeConsulta = and(
+    eq(transactions.appointmentId, updated.id),
+    eq(transactions.category, 'consultation_fee'),
+    isNull(transactions.treatmentId),
+  )
+
   if (updated.isPaidConsultation && updated.patientId) {
     let displayName: string | null = null
     if (updated.patientId) {
@@ -69,18 +81,22 @@ export async function PATCH(req: NextRequest, { params }: Params) {
       displayName = p?.name ?? null
     }
 
-    // Busca transação existente vinculada a esse agendamento
-    const [existingTx] = await db.select().from(transactions).where(eq(transactions.appointmentId, updated.id))
-    
+    const [existingTx] = await db.select().from(transactions).where(somenteTaxaDeConsulta)
+
+    // Só recalcula a baixa quando a requisição realmente mexeu no pagamento —
+    // senão remarcar o horário reverteria um recebimento já dado no Financeiro.
+    const pagamentoMudou = parsed.data.paymentStatus !== undefined
+    const isPaid = pagamentoMudou ? updated.paymentStatus === 'paid' : (existingTx?.isPaid ?? false)
+
     const txData = {
       type: 'income' as const,
       category: 'consultation_fee' as const,
       amount: updated.consultationPrice || '0.00',
-      description: `Consulta: ${displayName || 'Paciente'}` + (updated.paymentStatus === 'paid' ? ' (Pago)' : ' (A receber)'),
+      description: `Consulta: ${displayName || 'Paciente'}` + (isPaid ? ' (Pago)' : ' (A receber)'),
       date: new Date().toISOString().split('T')[0],
       dueDate: updated.startAt.toISOString().split('T')[0],
-      isPaid: updated.paymentStatus === 'paid',
-      paidAt: updated.paymentStatus === 'paid' ? new Date() : null,
+      isPaid,
+      paidAt: pagamentoMudou ? (isPaid ? new Date() : null) : (existingTx?.paidAt ?? null),
       patientId: updated.patientId,
       appointmentId: updated.id,
       notes: updated.paymentReceiptUrl ? `Comprovante: ${updated.paymentReceiptUrl}` : null,
@@ -92,9 +108,10 @@ export async function PATCH(req: NextRequest, { params }: Params) {
     } else {
       await db.insert(transactions).values(txData)
     }
-  } else {
-    // Se não for consulta paga, garante que qualquer transação anterior vinculada a este agendamento seja removida
-    await db.delete(transactions).where(eq(transactions.appointmentId, updated.id))
+  } else if (parsed.data.isPaidConsultation !== undefined) {
+    // Só remove quando a PRÓPRIA requisição desmarcou a cobrança da consulta.
+    // Um PATCH de status ou de horário não pode encostar no financeiro.
+    await db.delete(transactions).where(somenteTaxaDeConsulta)
   }
 
   // Reflete na Google Agenda do médico (não-bloqueante)
@@ -131,6 +148,19 @@ export async function PATCH(req: NextRequest, { params }: Params) {
   } else if (updated.leadId) {
     const [l] = await db.select({ name: leads.name }).from(leads).where(eq(leads.id, updated.leadId))
     displayName = l?.name ?? null
+  }
+
+  // Só avisa quando o cancelamento veio nesta requisição — evita repetir o aviso
+  // a cada edição posterior de um agendamento já cancelado.
+  if (parsed.data.status === 'cancelled') {
+    await notify({
+      type: 'appointment_cancelled',
+      title: `Agendamento cancelado: ${displayName || updated.title || 'Compromisso'}`,
+      body: formatDateTime(updated.startAt),
+      link: '/agenda',
+      entityId: updated.id,
+      priority: 'high',
+    })
   }
 
   await logActivity({
@@ -213,8 +243,18 @@ export async function DELETE(req: NextRequest, { params }: Params) {
     await removeAppointment(appointmentData.doctorId, appointmentData.googleEventId)
   }
 
-  // Deleta a transação de faturamento relacionada (se houver)
-  await db.delete(transactions).where(eq(transactions.appointmentId, id))
+  // Excluir o agendamento só pode levar embora a taxa da própria consulta.
+  await db.delete(transactions).where(and(
+    eq(transactions.appointmentId, id),
+    eq(transactions.category, 'consultation_fee'),
+    isNull(transactions.treatmentId),
+  ))
+
+  // O que sobrou (parcelas de tratamento) é apenas desvinculado: continua no
+  // contas a receber e libera a FK para o agendamento poder ser excluído.
+  await db.update(transactions)
+    .set({ appointmentId: null })
+    .where(eq(transactions.appointmentId, id))
 
   // Deleta o agendamento
   await db.delete(appointments).where(eq(appointments.id, id))
