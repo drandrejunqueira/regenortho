@@ -42,12 +42,16 @@ export async function GET(req: NextRequest) {
   const isPaid = searchParams.get('isPaid')
   const start = searchParams.get('start')
   const end = searchParams.get('end')
+  // A aba Financeiro da ficha do paciente já chamava com ?patientId=..., mas o
+  // filtro não existia — mostrava lançamentos de todos os pacientes da clínica.
+  const patientId = searchParams.get('patientId')
 
   const conditions = []
   if (type) conditions.push(eq(transactions.type, type as 'income' | 'expense'))
   if (isPaid !== null) conditions.push(eq(transactions.isPaid, isPaid === 'true'))
   if (start) conditions.push(gte(transactions.date, start))
   if (end) conditions.push(lte(transactions.date, end))
+  if (patientId) conditions.push(eq(transactions.patientId, patientId))
 
   const data = await db.query.transactions.findMany({
     where: conditions.length ? and(...conditions) : undefined,

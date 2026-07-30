@@ -42,15 +42,21 @@ export async function GET(req: NextRequest) {
   const start = searchParams.get('start')
   const end = searchParams.get('end')
   const doctorId = searchParams.get('doctorId')
+  // A ficha do paciente já chamava com ?patientId=..., mas o filtro não existia
+  // aqui — a aba Consultas listava a agenda inteira da clínica.
+  const patientId = searchParams.get('patientId')
 
   const conditions = []
   if (start) conditions.push(gte(appointments.startAt, new Date(start)))
   if (end) conditions.push(lte(appointments.startAt, new Date(end)))
   if (doctorId) conditions.push(eq(appointments.doctorId, doctorId))
+  if (patientId) conditions.push(eq(appointments.patientId, patientId))
 
   const data = await db.query.appointments.findMany({
     where: conditions.length ? and(...conditions) : undefined,
     orderBy: (a, { asc }) => [asc(a.startAt)],
+    // Teto de segurança: sem nenhum filtro isto varria a tabela inteira.
+    limit: 1000,
     with: {
       patient: { columns: { id: true, name: true, phone: true } },
       lead: { columns: { id: true, name: true, phone: true } },
