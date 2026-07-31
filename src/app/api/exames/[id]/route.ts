@@ -17,7 +17,7 @@ const updateSchema = z.object({
 export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const session = await auth()
   if (!session) return NextResponse.json({ error: 'Não autenticado' }, { status: 401 })
-  if (!hasPermission(session.user.role as UserRole, 'exams:edit')) {
+  if (!hasPermission(session.user.role as UserRole, 'exams:edit', session.user.customPermissions)) {
     return NextResponse.json({ error: 'Acesso negado' }, { status: 403 })
   }
 
@@ -42,7 +42,7 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
 export async function DELETE(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const session = await auth()
   if (!session) return NextResponse.json({ error: 'Não autenticado' }, { status: 401 })
-  if (!hasPermission(session.user.role as UserRole, 'exams:edit')) {
+  if (!hasPermission(session.user.role as UserRole, 'exams:edit', session.user.customPermissions)) {
     return NextResponse.json({ error: 'Acesso negado' }, { status: 403 })
   }
 

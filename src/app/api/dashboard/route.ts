@@ -9,7 +9,7 @@ import type { UserRole } from '@/types'
 export async function GET() {
   const session = await auth()
   if (!session) return NextResponse.json({ error: 'Não autenticado' }, { status: 401 })
-  if (!hasPermission(session.user.role as UserRole, 'dashboard:view')) {
+  if (!hasPermission(session.user.role as UserRole, 'dashboard:view', session.user.customPermissions)) {
     return NextResponse.json({ error: 'Acesso negado' }, { status: 403 })
   }
 

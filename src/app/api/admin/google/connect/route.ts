@@ -10,7 +10,11 @@ export async function GET(request: NextRequest) {
   if (!sessao?.user) {
     return NextResponse.redirect(new URL('/login', request.nextUrl.origin))
   }
-  const redirectParam = request.nextUrl.searchParams.get('redirect') || undefined
+  // Só aceita caminho interno. Sem isto, ?redirect=https://site-malicioso mandava
+  // o usuário para fora logo após o consentimento do Google (open redirect).
+  const redirectBruto = request.nextUrl.searchParams.get('redirect')
+  const redirectParam =
+    redirectBruto && /^\/(?!\/)[\w\-/]*$/.test(redirectBruto) ? redirectBruto : undefined
   if (!(await googleConfigurado())) {
     const errorRedirect = redirectParam || '/trafego'
     return NextResponse.redirect(

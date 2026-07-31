@@ -7,6 +7,15 @@ import type { UserRole } from '@/types'
 import { z } from 'zod'
 import { eq, and, sql } from 'drizzle-orm'
 import { sendAndLog, tplTreatmentSummary } from '@/lib/whatsapp'
+import { notify } from '@/lib/notifications'
+
+const TREATMENT_STATUS_LABELS: Record<string, string> = {
+  draft: 'Rascunho',
+  approved: 'Aprovado',
+  in_progress: 'Em andamento',
+  completed: 'Concluído',
+  cancelled: 'Cancelado',
+}
 
 const itemSchema = z.object({
   type: z.enum(['procedure', 'material', 'fee']),
@@ -35,7 +44,7 @@ const updateSchema = z.object({
 export async function GET(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const session = await auth()
   if (!session) return NextResponse.json({ error: 'Não autenticado' }, { status: 401 })
-  if (!hasPermission(session.user.role as UserRole, 'treatments:view')) {
+  if (!hasPermission(session.user.role as UserRole, 'treatments:view', session.user.customPermissions)) {
     return NextResponse.json({ error: 'Acesso negado' }, { status: 403 })
   }
 
@@ -51,7 +60,7 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
 export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const session = await auth()
   if (!session) return NextResponse.json({ error: 'Não autenticado' }, { status: 401 })
-  if (!hasPermission(session.user.role as UserRole, 'treatments:edit')) {
+  if (!hasPermission(session.user.role as UserRole, 'treatments:edit', session.user.customPermissions)) {
     return NextResponse.json({ error: 'Acesso negado' }, { status: 403 })
   }
 
@@ -107,6 +116,21 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
   if (d.status !== undefined) {
     updates.status = d.status
     if (d.status === 'completed' && existing.status !== 'completed') {
+      // Concluir tratamento lança receitas e credita saldo bancário. Isso é
+      // operação financeira e não podia depender só de treatments:edit.
+      if (!hasPermission(session.user.role as UserRole, 'financial:create', session.user.customPermissions)) {
+        return NextResponse.json(
+          { error: 'Concluir o tratamento gera lançamentos financeiros. Peça ao financeiro para concluir.' },
+          { status: 403 }
+        )
+      }
+      if (d.bankAccountId && !hasPermission(session.user.role as UserRole, 'payments:edit', session.user.customPermissions)) {
+        return NextResponse.json(
+          { error: 'Sem permissão para creditar saldo em conta bancária.' },
+          { status: 403 }
+        )
+      }
+
       updates.completedAt = new Date()
       // Deduct materials from stock
       const items = await db.select().from(treatmentItems)
@@ -116,9 +140,27 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
         if (item.materialId) {
           const qty = Math.round(Number(item.quantity))
           // Atomic decrement using sql tag to avoid injection
-          await db.update(materials)
+          const [material] = await db.update(materials)
             .set({ currentStock: sql`GREATEST(0, current_stock - ${qty})` })
             .where(eq(materials.id, item.materialId))
+            .returning({
+              name: materials.name,
+              currentStock: materials.currentStock,
+              minimumStock: materials.minimumStock,
+              unit: materials.unit,
+            })
+          // A baixa do tratamento é o momento em que o estoque realmente cai —
+          // avisa a equipe antes de faltar material no próximo procedimento.
+          if (material && material.currentStock <= material.minimumStock) {
+            await notify({
+              type: 'stock_low',
+              title: `Estoque baixo: ${material.name}`,
+              body: `Restam ${material.currentStock} ${material.unit} (mínimo: ${material.minimumStock})`,
+              link: '/materiais',
+              entityId: item.materialId,
+              priority: 'high',
+            })
+          }
           await db.insert(stockMovements).values({
             materialId: item.materialId,
             type: 'out',
@@ -195,13 +237,24 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
   }
 
   const [updated] = await db.update(treatments).set(updates).where(eq(treatments.id, id)).returning()
+
+  if (d.status !== undefined && d.status !== existing.status) {
+    await notify({
+      type: 'treatment_status',
+      title: `Tratamento ${TREATMENT_STATUS_LABELS[d.status] ?? d.status}: ${updated.name}`,
+      body: `R$ ${updated.totalSale}` + (d.cancelReason ? ` • Motivo: ${d.cancelReason}` : ''),
+      link: '/tratamentos',
+      entityId: updated.id,
+    })
+  }
+
   return NextResponse.json({ data: updated })
 }
 
 export async function DELETE(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const session = await auth()
   if (!session) return NextResponse.json({ error: 'Não autenticado' }, { status: 401 })
-  if (!hasPermission(session.user.role as UserRole, 'treatments:delete')) {
+  if (!hasPermission(session.user.role as UserRole, 'treatments:delete', session.user.customPermissions)) {
     return NextResponse.json({ error: 'Acesso negado' }, { status: 403 })
   }
 

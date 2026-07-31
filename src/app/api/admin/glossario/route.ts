@@ -1,5 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { auth } from '@/lib/auth/config'
+import { hasPermission } from '@/lib/permissions'
+import type { UserRole } from '@/types'
 import { getTermosAdmin, deleteTermo, createTermos, updateTermo } from '@/lib/db/queries/glossario'
 import { slugify } from '@/lib/utils'
 import { revalidatePath } from 'next/cache'
@@ -7,6 +9,9 @@ import { revalidatePath } from 'next/cache'
 export async function GET(req: NextRequest) {
   const session = await auth()
   if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  if (!hasPermission(session.user.role as UserRole, 'settings:view', session.user.customPermissions)) {
+    return NextResponse.json({ error: 'Acesso negado' }, { status: 403 })
+  }
 
   const searchParams = req.nextUrl.searchParams
   const search = searchParams.get('search') ?? undefined
@@ -25,6 +30,9 @@ export async function GET(req: NextRequest) {
 export async function POST(req: NextRequest) {
   const session = await auth()
   if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  if (!hasPermission(session.user.role as UserRole, 'settings:edit', session.user.customPermissions)) {
+    return NextResponse.json({ error: 'Acesso negado' }, { status: 403 })
+  }
 
   try {
     const { termo, letra, nicho } = await req.json()
@@ -55,6 +63,9 @@ export async function POST(req: NextRequest) {
 export async function PUT(req: NextRequest) {
   const session = await auth()
   if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  if (!hasPermission(session.user.role as UserRole, 'settings:edit', session.user.customPermissions)) {
+    return NextResponse.json({ error: 'Acesso negado' }, { status: 403 })
+  }
 
   try {
     const { id, termo, nicho } = await req.json()
@@ -84,6 +95,9 @@ export async function PUT(req: NextRequest) {
 export async function DELETE(req: NextRequest) {
   const session = await auth()
   if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  if (!hasPermission(session.user.role as UserRole, 'settings:edit', session.user.customPermissions)) {
+    return NextResponse.json({ error: 'Acesso negado' }, { status: 403 })
+  }
 
   try {
     const { id } = await req.json()

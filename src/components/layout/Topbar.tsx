@@ -4,6 +4,7 @@ import { usePathname } from 'next/navigation'
 import { MobileSidebar } from './Sidebar'
 import { useSession } from 'next-auth/react'
 import Link from 'next/link'
+import { NotificationBell } from './NotificationBell'
 
 const ROUTE_LABELS: Record<string, string> = {
   '/dashboard':            'Dashboard',
@@ -77,13 +78,7 @@ export function Topbar() {
         <div className="h-4 w-px bg-[#021541]/10 mx-1" />
 
         {/* Notifications */}
-        <button
-          className="relative p-2 rounded-lg text-[#021541]/40 hover:text-[#021541] hover:bg-[#021541]/5 transition-colors"
-          aria-label="Notificações"
-        >
-          <span className="material-symbols-outlined" style={{ fontSize: '20px' }}>notifications</span>
-          <span className="absolute top-2 right-2 w-1.5 h-1.5 bg-[#00BCE4] rounded-full" />
-        </button>
+        <NotificationBell />
 
         {/* User chip */}
         <div

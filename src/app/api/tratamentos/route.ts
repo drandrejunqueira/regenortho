@@ -6,6 +6,7 @@ import { hasPermission } from '@/lib/permissions'
 import type { UserRole } from '@/types'
 import { z } from 'zod'
 import { eq, desc, sql, inArray } from 'drizzle-orm'
+import { notify } from '@/lib/notifications'
 
 const itemSchema = z.object({
   type: z.enum(['procedure', 'material', 'fee']),
@@ -40,7 +41,7 @@ const createSchema = z.object({
 export async function GET(req: NextRequest) {
   const session = await auth()
   if (!session) return NextResponse.json({ error: 'Não autenticado' }, { status: 401 })
-  if (!hasPermission(session.user.role as UserRole, 'treatments:view')) {
+  if (!hasPermission(session.user.role as UserRole, 'treatments:view', session.user.customPermissions)) {
     return NextResponse.json({ error: 'Acesso negado' }, { status: 403 })
   }
 
@@ -109,7 +110,7 @@ export async function GET(req: NextRequest) {
 export async function POST(req: NextRequest) {
   const session = await auth()
   if (!session) return NextResponse.json({ error: 'Não autenticado' }, { status: 401 })
-  if (!hasPermission(session.user.role as UserRole, 'treatments:create')) {
+  if (!hasPermission(session.user.role as UserRole, 'treatments:create', session.user.customPermissions)) {
     return NextResponse.json({ error: 'Acesso negado' }, { status: 403 })
   }
 
@@ -159,6 +160,14 @@ export async function POST(req: NextRequest) {
       sortOrder: item.sortOrder ?? i,
     }))
   ).returning()
+
+  await notify({
+    type: 'treatment_new',
+    title: `Novo tratamento: ${treatment.name}`,
+    body: `R$ ${treatment.totalSale} • ${treatment.installments}x`,
+    link: '/tratamentos',
+    entityId: treatment.id,
+  })
 
   return NextResponse.json({ data: { ...treatment, items: insertedItems } }, { status: 201 })
 }

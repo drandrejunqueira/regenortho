@@ -48,7 +48,7 @@ async function computeTotals(items: z.infer<typeof itemSchema>[]) {
 export async function GET(_req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const session = await auth()
   if (!session) return NextResponse.json({ error: 'Não autenticado' }, { status: 401 })
-  if (!hasPermission(session.user.role as UserRole, 'treatments:view')) {
+  if (!hasPermission(session.user.role as UserRole, 'treatments:view', session.user.customPermissions)) {
     return NextResponse.json({ error: 'Acesso negado' }, { status: 403 })
   }
   const { id } = await params
@@ -62,7 +62,7 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ id:
 export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const session = await auth()
   if (!session) return NextResponse.json({ error: 'Não autenticado' }, { status: 401 })
-  if (!hasPermission(session.user.role as UserRole, 'treatments:edit')) {
+  if (!hasPermission(session.user.role as UserRole, 'treatments:edit', session.user.customPermissions)) {
     return NextResponse.json({ error: 'Acesso negado' }, { status: 403 })
   }
   const { id } = await params
@@ -110,7 +110,7 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
 export async function DELETE(_req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const session = await auth()
   if (!session) return NextResponse.json({ error: 'Não autenticado' }, { status: 401 })
-  if (!hasPermission(session.user.role as UserRole, 'treatments:delete')) {
+  if (!hasPermission(session.user.role as UserRole, 'treatments:delete', session.user.customPermissions)) {
     return NextResponse.json({ error: 'Acesso negado' }, { status: 403 })
   }
   const { id } = await params

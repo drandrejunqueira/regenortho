@@ -65,21 +65,32 @@ export default function ContasPage() {
   }
 
   async function setDefault(id: string) {
-    await fetch('/api/configuracoes/contas', {
+    const res = await fetch('/api/configuracoes/contas', {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ id, isDefault: true }),
     })
+    // Sem checar a resposta, um 403 ou 500 ainda pintava a tela como se tivesse
+    // dado certo — e a conta padrão continuava a antiga no banco.
+    if (!res.ok) {
+      toast.error('Não foi possível definir a conta padrão')
+      return
+    }
     setAccounts(p => p.map(a => ({ ...a, isDefault: a.id === id })))
     toast.success('Conta padrão definida')
   }
 
   async function remove(id: string) {
-    await fetch('/api/configuracoes/contas', {
+    if (!confirm('Remover esta conta bancária? Ela deixará de aparecer nos recebimentos.')) return
+    const res = await fetch('/api/configuracoes/contas', {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ id, isActive: false }),
     })
+    if (!res.ok) {
+      toast.error('Não foi possível remover a conta')
+      return
+    }
     setAccounts(p => p.filter(a => a.id !== id))
     toast.success('Conta removida')
   }

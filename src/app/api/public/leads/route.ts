@@ -3,6 +3,9 @@ import { leads } from '@/lib/db/schema'
 import { NextRequest, NextResponse } from 'next/server'
 import { z } from 'zod'
 import { deriveLeadSource } from '@/lib/tracking'
+import { notify } from '@/lib/notifications'
+import { rateLimit, getClientIp } from '@/lib/rate-limit'
+import { LEAD_SOURCE_LABELS } from '@/lib/constants'
 
 const publicLeadSchema = z.object({
   name: z.string().min(2, 'Nome obrigatório'),
@@ -17,6 +20,16 @@ const publicLeadSchema = z.object({
 
 export async function POST(req: NextRequest) {
   try {
+    // Endpoint público: sem limite, um script enche o CRM de lead falso.
+    const ip = getClientIp(req)
+    const rl = rateLimit(`lead:${ip}`, 5, 10 * 60 * 1000)
+    if (!rl.ok) {
+      return NextResponse.json(
+        { error: 'Muitas tentativas. Aguarde alguns minutos.' },
+        { status: 429, headers: { 'Retry-After': String(rl.retryAfterSec) } }
+      )
+    }
+
     const body = await req.json().catch(() => null)
     if (!body) {
       return NextResponse.json({ error: 'Dados não informados' }, { status: 400 })
@@ -38,12 +51,21 @@ export async function POST(req: NextRequest) {
       phone: p.phone,
       email: p.email || null,
       complaint: p.complaint || null,
-      source: deriveLeadSource(t), // derivado da atribuição, não mais hardcoded
+      source: deriveLeadSource(t, t.referrer), // derivado da atribuição, não mais hardcoded
       status: 'new',
       utmSource: utmSource || null,
       utmCampaign: utmCampaign || null,
       specialty: p.specialty || 'Articulações e Dor',
     }).returning()
+
+    await notify({
+      type: 'lead_new',
+      title: `Novo lead: ${lead.name}`,
+      body: `${lead.specialty ?? 'Sem especialidade'} • ${lead.phone} • ${LEAD_SOURCE_LABELS[lead.source] ?? lead.source}`,
+      link: '/leads',
+      entityId: lead.id,
+      priority: 'high',
+    })
 
     return NextResponse.json({ ok: true, id: lead.id }, { status: 201 })
   } catch (error) {

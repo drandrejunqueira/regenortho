@@ -5,6 +5,9 @@ import { z } from 'zod'
 import { eq } from 'drizzle-orm'
 import { sendAndLog, tplNewLead } from '@/lib/whatsapp'
 import { deriveLeadSource } from '@/lib/tracking'
+import { notify } from '@/lib/notifications'
+import { LEAD_SOURCE_LABELS } from '@/lib/constants'
+import { rateLimit, getClientIp } from '@/lib/rate-limit'
 
 const schema = z.object({
   name: z.string().min(1).max(255),
@@ -16,6 +19,16 @@ const schema = z.object({
 })
 
 export async function POST(req: NextRequest) {
+  // Endpoint público: sem limite, um script enche o CRM de lead falso.
+  const ip = getClientIp(req)
+  const rl = rateLimit(`lead:${ip}`, 5, 10 * 60 * 1000)
+  if (!rl.ok) {
+    return NextResponse.json(
+      { error: 'Muitas tentativas. Aguarde alguns minutos.' },
+      { status: 429, headers: { 'Retry-After': String(rl.retryAfterSec) } }
+    )
+  }
+
   const body = await req.json()
   const parsed = schema.safeParse(body)
   if (!parsed.success) return NextResponse.json({ error: parsed.error.flatten() }, { status: 400 })
@@ -29,12 +42,21 @@ export async function POST(req: NextRequest) {
     phone: d.phone,
     email: d.email || null,
     status: 'new',
-    source: deriveLeadSource(t),
+    source: deriveLeadSource(t, t.referrer),
     specialty: d.procedure,
     complaint: d.message || null,
     utmSource: t.utm_source ? t.utm_source.slice(0, 100) : null,
     utmCampaign: t.utm_campaign ? t.utm_campaign.slice(0, 100) : null,
   }).returning()
+
+  await notify({
+    type: 'lead_new',
+    title: `Novo lead: ${lead.name}`,
+    body: `${d.procedure} • ${d.phone} • ${LEAD_SOURCE_LABELS[lead.source] ?? lead.source}`,
+    link: '/leads',
+    entityId: lead.id,
+    priority: 'high',
+  })
 
   // Send WhatsApp notification to clinic
   try {

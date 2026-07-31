@@ -50,7 +50,7 @@ export function LeadDrawer({ lead, interactions, open, onOpenChange, onUpdate, o
   const { data: session } = useSession()
   // Excluir lead é exclusivo de quem tem a permissão (por padrão, só admin).
   // Sem este gate, recepção via o botão e recebia 403 ("Erro ao excluir o lead").
-  const canDelete = !!session?.user?.role && hasPermission(session.user.role as UserRole, 'leads:delete')
+  const canDelete = !!session?.user?.role && hasPermission(session.user.role as UserRole, 'leads:delete', session.user.customPermissions)
   const [noteContent, setNoteContent] = useState('')
   const [savingNote, setSavingNote] = useState(false)
   const [updatingStatus, setUpdatingStatus] = useState(false)

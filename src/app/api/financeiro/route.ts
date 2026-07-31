@@ -20,6 +20,11 @@ const createSchema = z.object({
   date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'Data inválida'),
   dueDate: z.string().nullable().optional(),
   isPaid: z.boolean().default(false),
+  // paidAt e paymentMethodId eram enviados pela tela de Finalizar Consulta e
+  // descartados aqui em silêncio — a baixa ficava sem data e sem forma de pagamento.
+  paidAt: z.string().datetime().nullable().optional(),
+  paymentMethodId: z.string().uuid().nullable().optional(),
+  bankAccountId: z.string().uuid().nullable().optional(),
   patientId: z.string().uuid().nullable().optional(),
   appointmentId: z.string().uuid().nullable().optional(),
   notes: z.string().nullable().optional(),
@@ -28,7 +33,7 @@ const createSchema = z.object({
 export async function GET(req: NextRequest) {
   const session = await auth()
   if (!session) return NextResponse.json({ error: 'Não autenticado' }, { status: 401 })
-  if (!hasPermission(session.user.role as UserRole, 'financial:view')) {
+  if (!hasPermission(session.user.role as UserRole, 'financial:view', session.user.customPermissions)) {
     return NextResponse.json({ error: 'Acesso negado' }, { status: 403 })
   }
 
@@ -37,12 +42,16 @@ export async function GET(req: NextRequest) {
   const isPaid = searchParams.get('isPaid')
   const start = searchParams.get('start')
   const end = searchParams.get('end')
+  // A aba Financeiro da ficha do paciente já chamava com ?patientId=..., mas o
+  // filtro não existia — mostrava lançamentos de todos os pacientes da clínica.
+  const patientId = searchParams.get('patientId')
 
   const conditions = []
   if (type) conditions.push(eq(transactions.type, type as 'income' | 'expense'))
   if (isPaid !== null) conditions.push(eq(transactions.isPaid, isPaid === 'true'))
   if (start) conditions.push(gte(transactions.date, start))
   if (end) conditions.push(lte(transactions.date, end))
+  if (patientId) conditions.push(eq(transactions.patientId, patientId))
 
   const data = await db.query.transactions.findMany({
     where: conditions.length ? and(...conditions) : undefined,
@@ -57,7 +66,7 @@ export async function GET(req: NextRequest) {
 export async function POST(req: NextRequest) {
   const session = await auth()
   if (!session) return NextResponse.json({ error: 'Não autenticado' }, { status: 401 })
-  if (!hasPermission(session.user.role as UserRole, 'financial:create')) {
+  if (!hasPermission(session.user.role as UserRole, 'financial:create', session.user.customPermissions)) {
     return NextResponse.json({ error: 'Acesso negado' }, { status: 403 })
   }
 
@@ -67,8 +76,11 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'Dados inválidos', details: parsed.error.flatten() }, { status: 400 })
   }
 
+  // paidAt chega como string ISO e a coluna é timestamp.
+  const { paidAt, ...rest } = parsed.data
   const [tx] = await db.insert(transactions).values({
-    ...parsed.data,
+    ...rest,
+    paidAt: paidAt ? new Date(paidAt) : null,
     createdById: session.user.id,
   }).returning()
 

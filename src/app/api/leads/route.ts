@@ -7,11 +7,15 @@ import { NextRequest, NextResponse } from 'next/server'
 import { and, gte, lte, eq, ilike, or, desc, sql } from 'drizzle-orm'
 import { z } from 'zod'
 import type { UserRole } from '@/types'
+import { notify } from '@/lib/notifications'
+import { LEAD_SOURCE_LABELS } from '@/lib/constants'
 
 const createLeadSchema = z.object({
   name: z.string().min(2, 'Nome obrigatório'),
   phone: z.string().min(8, 'Telefone inválido'),
-  email: z.string().email().optional().or(z.literal('')),
+  // Aceita null: o formulário de Novo Lead envia null quando o campo fica vazio.
+  // Sem isso, criar lead sem e-mail devolvia 400 e a tela só dizia "Erro ao criar lead".
+  email: z.union([z.string().email(), z.literal(''), z.null()]).optional(),
   source: z.enum(['google_ads', 'meta_ads', 'instagram_organic', 'facebook_organic', 'google_organic', 'referral', 'whatsapp', 'other']).default('other'),
   specialty: z.string().optional(),
   complaint: z.string().optional(),
@@ -24,7 +28,7 @@ const createLeadSchema = z.object({
 export async function GET(req: NextRequest) {
   const session = await auth()
   if (!session) return NextResponse.json({ error: 'Não autenticado' }, { status: 401 })
-  if (!hasPermission(session.user.role as UserRole, 'leads:view')) {
+  if (!hasPermission(session.user.role as UserRole, 'leads:view', session.user.customPermissions)) {
     return NextResponse.json({ error: 'Acesso negado' }, { status: 403 })
   }
 
@@ -61,7 +65,7 @@ export async function GET(req: NextRequest) {
 export async function POST(req: NextRequest) {
   const session = await auth()
   if (!session) return NextResponse.json({ error: 'Não autenticado' }, { status: 401 })
-  if (!hasPermission(session.user.role as UserRole, 'leads:create')) {
+  if (!hasPermission(session.user.role as UserRole, 'leads:create', session.user.customPermissions)) {
     return NextResponse.json({ error: 'Acesso negado' }, { status: 403 })
   }
 
@@ -90,6 +94,14 @@ export async function POST(req: NextRequest) {
       source: lead.source,
       phone: lead.phone
     }
+  })
+
+  await notify({
+    type: 'lead_new',
+    title: `Novo lead: ${lead.name}`,
+    body: `${lead.phone} • ${LEAD_SOURCE_LABELS[lead.source] ?? lead.source}`,
+    link: '/leads',
+    entityId: lead.id,
   })
 
   return NextResponse.json({ data: lead }, { status: 201 })

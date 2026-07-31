@@ -9,7 +9,7 @@ import { eq, and, gte, lte, sql } from 'drizzle-orm'
 export async function GET(req: NextRequest) {
   const session = await auth()
   if (!session) return NextResponse.json({ error: 'Não autenticado' }, { status: 401 })
-  if (!hasPermission(session.user.role as UserRole, 'reports:balancete')) {
+  if (!hasPermission(session.user.role as UserRole, 'reports:balancete', session.user.customPermissions)) {
     return NextResponse.json({ error: 'Acesso negado' }, { status: 403 })
   }
 

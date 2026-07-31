@@ -11,6 +11,11 @@ const loginSchema = z.object({
   password: z.string().min(6),
 })
 
+// De quanto em quanto tempo o JWT é reconferido contra o banco. Curto o
+// bastante para revogar acesso rápido, longo o bastante para não fazer uma
+// consulta por requisição.
+const REVALIDATE_SESSION_MS = 5 * 60 * 1000
+
 export const { handlers, signIn, signOut, auth } = NextAuth({
   providers: [
     Credentials({
@@ -45,6 +50,7 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
           name: user.name,
           email: user.email,
           role: user.role,
+          customPermissions: user.customPermissions ?? null,
         }
       },
     }),
@@ -52,8 +58,10 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
   callbacks: {
     async jwt({ token, user, trigger, session }) {
       if (user) {
-        token.id = user.id
+        token.id = user.id as string
         token.role = (user as { role: string }).role
+        token.customPermissions = (user as { customPermissions?: string[] | null }).customPermissions ?? null
+        token.checkedAt = Date.now()
       }
       // Reflete edições leves do próprio perfil (apenas nome/email) na sessão
       if (trigger === 'update' && session) {
@@ -61,11 +69,29 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
         if (s.name !== undefined) token.name = s.name as string
         if (s.email !== undefined) token.email = s.email as string
       }
+
+      // Revalida contra o banco de tempos em tempos. Sem isto, role, isActive e
+      // permissões personalizadas ficavam congelados no JWT: desativar ou
+      // rebaixar um usuário não tinha efeito nenhum até o token expirar.
+      const checkedAt = typeof token.checkedAt === 'number' ? token.checkedAt : 0
+      if (token.id && Date.now() - checkedAt > REVALIDATE_SESSION_MS) {
+        const current = await db.query.users.findFirst({
+          where: eq(users.id, token.id as string),
+          columns: { role: true, isActive: true, customPermissions: true },
+        })
+        // Usuário removido ou desativado: derruba a sessão.
+        if (!current || !current.isActive) return null
+        token.role = current.role
+        token.customPermissions = current.customPermissions ?? null
+        token.checkedAt = Date.now()
+      }
+
       return token
     },
     async session({ session, token }) {
       session.user.id = token.id as string
       session.user.role = token.role as string
+      session.user.customPermissions = (token.customPermissions as string[] | null) ?? null
       return session
     },
   },

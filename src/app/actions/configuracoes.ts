@@ -39,6 +39,24 @@ export async function salvarConfigGoogle(entries: { gscSite?: string; ga4Propert
   revalidatePath('/trafego')
 }
 
+/** Salva as credenciais do Google Ads (developer token + conta de anúncios). */
+export async function salvarConfigGoogleAds(entries: {
+  developerToken?: string
+  customerId?: string
+  loginCustomerId?: string
+}) {
+  if (entries.developerToken !== undefined) {
+    await setConfig(GKEYS.adsDeveloperToken, entries.developerToken.trim(), 'Developer token do Google Ads')
+  }
+  if (entries.customerId !== undefined) {
+    await setConfig(GKEYS.adsCustomerId, entries.customerId.trim(), 'ID da conta de anúncios (customer ID)')
+  }
+  if (entries.loginCustomerId !== undefined) {
+    await setConfig(GKEYS.adsLoginCustomerId, entries.loginCustomerId.trim(), 'ID da conta de administrador (MCC), se houver')
+  }
+  revalidatePath('/trafego')
+}
+
 /** Desconecta a conta Google (remove refresh token salvo). */
 export async function desconectarContaGoogle() {
   await desconectarGoogle()

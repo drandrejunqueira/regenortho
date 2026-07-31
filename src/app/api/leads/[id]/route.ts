@@ -20,6 +20,10 @@ const updateLeadSchema = z.object({
   lostReason: z.string().nullable().optional(),
   assignedToId: z.string().uuid().nullable().optional(),
   tags: z.array(z.string()).optional(),
+  // Conversão lead -> paciente. Sem estes dois campos o zod descartava o vínculo
+  // em silêncio e cada novo agendamento criava outro paciente para o mesmo lead.
+  patientId: z.string().uuid().nullable().optional(),
+  convertedAt: z.string().datetime().nullable().optional(),
 })
 
 const interactionSchema = z.object({
@@ -32,7 +36,7 @@ type Params = { params: Promise<{ id: string }> }
 export async function GET(_: NextRequest, { params }: Params) {
   const session = await auth()
   if (!session) return NextResponse.json({ error: 'Não autenticado' }, { status: 401 })
-  if (!hasPermission(session.user.role as UserRole, 'leads:view')) {
+  if (!hasPermission(session.user.role as UserRole, 'leads:view', session.user.customPermissions)) {
     return NextResponse.json({ error: 'Acesso negado' }, { status: 403 })
   }
   const { id } = await params
@@ -52,7 +56,7 @@ export async function GET(_: NextRequest, { params }: Params) {
 export async function PATCH(req: NextRequest, { params }: Params) {
   const session = await auth()
   if (!session) return NextResponse.json({ error: 'Não autenticado' }, { status: 401 })
-  if (!hasPermission(session.user.role as UserRole, 'leads:edit')) {
+  if (!hasPermission(session.user.role as UserRole, 'leads:edit', session.user.customPermissions)) {
     return NextResponse.json({ error: 'Acesso negado' }, { status: 403 })
   }
   const { id } = await params
@@ -63,8 +67,14 @@ export async function PATCH(req: NextRequest, { params }: Params) {
     return NextResponse.json({ error: 'Dados inválidos', details: parsed.error.flatten() }, { status: 400 })
   }
 
+  // convertedAt chega como string ISO e a coluna é timestamp.
+  const { convertedAt, ...rest } = parsed.data
   const [updated] = await db.update(leads)
-    .set({ ...parsed.data, updatedAt: new Date() })
+    .set({
+      ...rest,
+      ...(convertedAt !== undefined && { convertedAt: convertedAt ? new Date(convertedAt) : null }),
+      updatedAt: new Date(),
+    })
     .where(eq(leads.id, id))
     .returning()
 
@@ -92,7 +102,7 @@ export async function PATCH(req: NextRequest, { params }: Params) {
 export async function DELETE(req: NextRequest, { params }: Params) {
   const session = await auth()
   if (!session) return NextResponse.json({ error: 'Não autenticado' }, { status: 401 })
-  if (!hasPermission(session.user.role as UserRole, 'leads:delete')) {
+  if (!hasPermission(session.user.role as UserRole, 'leads:delete', session.user.customPermissions)) {
     return NextResponse.json({ error: 'Acesso negado' }, { status: 403 })
   }
   const { id } = await params

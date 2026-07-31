@@ -11,6 +11,7 @@ import {
 } from '@/components/ui/dialog'
 import { toast } from 'sonner'
 import { useClinicSettings } from '@/hooks/useClinicSettings'
+import { getTrackingParams } from '@/lib/tracking'
 
 export default function InteractiveWhatsAppFab() {
   const [open, setOpen] = useState(false)
@@ -54,6 +55,8 @@ export default function InteractiveWhatsAppFab() {
           name,
           phone,
           procedure: 'Contato WhatsApp (Botão Flutuante)',
+          // Sem isto o lead entrava no CRM sem nenhuma atribuição.
+          tracking: getTrackingParams(),
         }),
       })
 

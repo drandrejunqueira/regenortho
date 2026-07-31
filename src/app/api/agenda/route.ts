@@ -8,6 +8,9 @@ import { NextRequest, NextResponse } from 'next/server'
 import { and, gte, lte, eq, isNull, ne, isNotNull } from 'drizzle-orm'
 import { z } from 'zod'
 import type { UserRole } from '@/types'
+import { notify } from '@/lib/notifications'
+import { APPOINTMENT_TYPE_LABELS } from '@/lib/constants'
+import { formatDateTime } from '@/lib/utils'
 
 const createSchema = z.object({
   patientId: z.string().uuid().nullable().optional(),
@@ -31,7 +34,7 @@ const createSchema = z.object({
 export async function GET(req: NextRequest) {
   const session = await auth()
   if (!session) return NextResponse.json({ error: 'Não autenticado' }, { status: 401 })
-  if (!hasPermission(session.user.role as UserRole, 'agenda:view')) {
+  if (!hasPermission(session.user.role as UserRole, 'agenda:view', session.user.customPermissions)) {
     return NextResponse.json({ error: 'Acesso negado' }, { status: 403 })
   }
 
@@ -39,15 +42,21 @@ export async function GET(req: NextRequest) {
   const start = searchParams.get('start')
   const end = searchParams.get('end')
   const doctorId = searchParams.get('doctorId')
+  // A ficha do paciente já chamava com ?patientId=..., mas o filtro não existia
+  // aqui — a aba Consultas listava a agenda inteira da clínica.
+  const patientId = searchParams.get('patientId')
 
   const conditions = []
   if (start) conditions.push(gte(appointments.startAt, new Date(start)))
   if (end) conditions.push(lte(appointments.startAt, new Date(end)))
   if (doctorId) conditions.push(eq(appointments.doctorId, doctorId))
+  if (patientId) conditions.push(eq(appointments.patientId, patientId))
 
   const data = await db.query.appointments.findMany({
     where: conditions.length ? and(...conditions) : undefined,
     orderBy: (a, { asc }) => [asc(a.startAt)],
+    // Teto de segurança: sem nenhum filtro isto varria a tabela inteira.
+    limit: 1000,
     with: {
       patient: { columns: { id: true, name: true, phone: true } },
       lead: { columns: { id: true, name: true, phone: true } },
@@ -113,7 +122,7 @@ export async function GET(req: NextRequest) {
 export async function POST(req: NextRequest) {
   const session = await auth()
   if (!session) return NextResponse.json({ error: 'Não autenticado' }, { status: 401 })
-  if (!hasPermission(session.user.role as UserRole, 'agenda:create')) {
+  if (!hasPermission(session.user.role as UserRole, 'agenda:create', session.user.customPermissions)) {
     return NextResponse.json({ error: 'Acesso negado' }, { status: 403 })
   }
 
@@ -166,6 +175,14 @@ export async function POST(req: NextRequest) {
         apt.googleEventId = eventId
       }
     }
+
+    await notify({
+      type: 'appointment_new',
+      title: `Novo agendamento: ${displayName || apt.title || 'Compromisso'}`,
+      body: `${APPOINTMENT_TYPE_LABELS[apt.type] ?? apt.type} • ${formatDateTime(apt.startAt)}`,
+      link: '/agenda',
+      entityId: apt.id,
+    })
 
     // Registra no log de auditoria
     const ip = req.headers.get('x-forwarded-for') || req.headers.get('x-real-ip')

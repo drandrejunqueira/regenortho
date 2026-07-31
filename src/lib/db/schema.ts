@@ -610,6 +610,22 @@ export const whatsappMessages = pgTable('whatsapp_messages', {
   createdAt:          timestamp('created_at').defaultNow().notNull(),
 })
 
+// Central de avisos do sistema (sino do topo). Uma linha por evento da clínica;
+// cada usuário marca como lida individualmente via `readBy`, evitando duplicar
+// a mesma notificação por usuário. `type` é varchar de propósito: novos tipos de
+// aviso não devem exigir migração de enum.
+export const notifications = pgTable('notifications', {
+  id:        uuid('id').defaultRandom().primaryKey(),
+  type:      varchar('type', { length: 40 }).notNull(),
+  title:     varchar('title', { length: 160 }).notNull(),
+  body:      text('body'),
+  link:      varchar('link', { length: 255 }),
+  entityId:  uuid('entity_id'),
+  priority:  varchar('priority', { length: 10 }).notNull().default('normal'),
+  readBy:    jsonb('read_by').$type<string[]>().notNull().default([]),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+})
+
 // ── RELATIONS ─────────────────────────────────────────────
 
 export const usersRelations = relations(users, ({ many }) => ({

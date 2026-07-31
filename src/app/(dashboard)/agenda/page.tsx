@@ -1381,6 +1381,8 @@ function FinalizarConsultaDialog({
   async function submit() {
     if (!appointment) return
     setLoading(true)
+    // Etapas secundárias que podem falhar sem impedir a finalização da consulta.
+    const falhas: string[] = []
     try {
       // 1. Calcular datas de retorno se aplicável
       let returnDeadlineISO: string | null = null
@@ -1417,7 +1419,7 @@ function FinalizarConsultaDialog({
             type: 'income',
             category: 'consultation_fee',
             description: `Consulta médica — ${appointment.patient?.name || 'Paciente'}`,
-            amount: Number(feeAmount),
+            amount: Number(feeAmount).toFixed(2),
             date: new Date().toISOString().split('T')[0],
             isPaid,
             ...(isPaid && { paidAt: new Date().toISOString() }),
@@ -1426,7 +1428,7 @@ function FinalizarConsultaDialog({
             paymentMethodId: paymentMethodId || null,
           })
         })
-        if (!transRes.ok) toast.error('Falha ao registrar cobrança no financeiro')
+        if (!transRes.ok) falhas.push('cobrança no financeiro')
       }
 
       // 4. Gravar no Prontuário / Evolução
@@ -1442,7 +1444,7 @@ function FinalizarConsultaDialog({
             content: evolucaoNote.trim(),
           })
         })
-        if (!recordRes.ok) toast.error('Falha ao registrar anotação no prontuário')
+        if (!recordRes.ok) falhas.push('anotação no prontuário')
       }
 
       // 5. Iniciar Tratamento Rápido se selecionado
@@ -1470,10 +1472,19 @@ function FinalizarConsultaDialog({
             }]
           })
         })
-        if (!treatRes.ok) toast.error('Falha ao registrar plano de tratamento')
+        if (!treatRes.ok) falhas.push('plano de tratamento')
       }
 
-      toast.success('Consulta finalizada com sucesso!')
+      // A consulta em si foi finalizada, mas dizer "sucesso" escondendo que a
+      // cobrança ou o prontuário não gravaram fazia o dado sumir sem ninguém ver.
+      if (falhas.length > 0) {
+        toast.error(
+          `Consulta finalizada, mas falhou: ${falhas.join(', ')}. Lance manualmente.`,
+          { duration: 10000 }
+        )
+      } else {
+        toast.success('Consulta finalizada com sucesso!')
+      }
       onOpenChange(false)
       onCompleted()
     } catch (e: any) {
