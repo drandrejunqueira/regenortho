@@ -133,9 +133,15 @@ export function KanbanBoard({ initialLeads, onRefresh }: Props) {
       const res = await fetch(`/api/leads/${lead.id}`)
       if (res.ok) {
         const { data } = await res.json()
+        // Também atualiza o lead exibido, não só as interações. Sem isto o
+        // drawer seguia com a cópia do card (tags desatualizadas), e salvar a
+        // 2ª tag reenviava o array antigo — apagando a 1ª.
+        setSelectedLead(data)
         setInteractions(data.interactions ?? [])
       }
-    } catch {}
+    } catch {
+      /* mantém o lead do card; o drawer ainda abre com o que já se sabe */
+    }
   }
 
   function handleDrawerUpdate() {

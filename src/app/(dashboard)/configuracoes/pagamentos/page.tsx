@@ -63,11 +63,16 @@ export default function PagamentosPage() {
   }
 
   async function toggleActive(pm: PaymentMethod) {
-    await fetch('/api/configuracoes/pagamentos', {
+    const res = await fetch('/api/configuracoes/pagamentos', {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ id: pm.id, isActive: !pm.isActive }),
     })
+    // O switch virava na tela mesmo com a API recusando.
+    if (!res.ok) {
+      toast.error('Não foi possível alterar a forma de pagamento')
+      return
+    }
     setMethods(p => p.map(m => m.id === pm.id ? { ...m, isActive: !m.isActive } : m))
   }
 

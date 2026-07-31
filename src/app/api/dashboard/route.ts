@@ -62,6 +62,7 @@ export async function GET() {
     db.select({ total: sum(transactions.amount) }).from(transactions)
       .where(and(
         eq(transactions.type, 'income'),
+        eq(transactions.isPaid, true),
         gte(transactions.date, startOfMonth.toISOString().split('T')[0]),
         lte(transactions.date, endOfMonth.toISOString().split('T')[0]),
       )),
@@ -70,6 +71,7 @@ export async function GET() {
     db.select({ total: sum(transactions.amount) }).from(transactions)
       .where(and(
         eq(transactions.type, 'expense'),
+        eq(transactions.isPaid, true),
         gte(transactions.date, startOfMonth.toISOString().split('T')[0]),
         lte(transactions.date, endOfMonth.toISOString().split('T')[0]),
       )),
@@ -105,6 +107,7 @@ export async function GET() {
   }).from(transactions)
   .where(and(
     eq(transactions.type, 'income'),
+        eq(transactions.isPaid, true),
     gte(transactions.date, sevenDaysAgo.toISOString().split('T')[0]),
     lte(transactions.date, now.toISOString().split('T')[0]),
   ))

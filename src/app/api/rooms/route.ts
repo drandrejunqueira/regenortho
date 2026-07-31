@@ -18,7 +18,7 @@ export async function GET() {
   if (!session) return NextResponse.json({ error: 'Não autenticado' }, { status: 401 })
   
   const role = session.user.role as UserRole
-  if (!hasPermission(role, 'agenda:view') && !hasPermission(role, 'settings:view')) {
+  if (!hasPermission(role, 'agenda:view', session.user.customPermissions) && !hasPermission(role, 'settings:view', session.user.customPermissions)) {
     return NextResponse.json({ error: 'Acesso negado' }, { status: 403 })
   }
 

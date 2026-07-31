@@ -285,8 +285,10 @@ export default function PacientesPage() {
 
   const { data: session } = useSession()
   const role = session?.user?.role as UserRole | undefined
-  const canEdit = role ? hasPermission(role, 'patients:edit') : false
-  const canDelete = role ? hasPermission(role, 'patients:delete') : false
+  const custom = session?.user?.customPermissions
+  const canCreate = role ? hasPermission(role, 'patients:create', custom) : false
+  const canEdit = role ? hasPermission(role, 'patients:edit', custom) : false
+  const canDelete = role ? hasPermission(role, 'patients:delete', custom) : false
 
   const fetchPatients = useCallback(async () => {
     setLoading(true)
@@ -350,13 +352,15 @@ export default function PacientesPage() {
         title="Pacientes"
         description="Gerencie a base de pacientes da clínica"
         action={
-          <button
-            onClick={() => setNewDialog(true)}
-            className="flex items-center gap-2 px-4 py-2 rounded-full bg-[#021541] text-white text-sm font-bold hover:bg-[#032170] transition-colors"
-          >
-            <span className="material-symbols-outlined" style={{ fontSize: '18px' }}>person_add</span>
-            Novo Paciente
-          </button>
+          canCreate ? (
+            <button
+              onClick={() => setNewDialog(true)}
+              className="flex items-center gap-2 px-4 py-2 rounded-full bg-[#021541] text-white text-sm font-bold hover:bg-[#032170] transition-colors"
+            >
+              <span className="material-symbols-outlined" style={{ fontSize: '18px' }}>person_add</span>
+              Novo Paciente
+            </button>
+          ) : null
         }
       />
 

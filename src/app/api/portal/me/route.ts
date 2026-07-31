@@ -30,10 +30,19 @@ export async function GET(req: NextRequest) {
     conditions.push(eq(patientAccessTokens.code, code))
   }
 
-  // Validate token/code
-  const [tokenRow] = await db.select().from(patientAccessTokens)
+  // Validate token/code. Busca até 2 linhas de propósito: se um código de 6
+  // dígitos casar com mais de um paciente ativo, pegar "a primeira" abriria o
+  // prontuário de outra pessoa. Nesse caso o acesso é recusado.
+  const linhas = await db.select().from(patientAccessTokens)
     .where(and(...conditions))
+    .limit(2)
 
+  if (linhas.length > 1) {
+    console.error('[portal] código ambíguo — mais de um acesso ativo com o mesmo código')
+    return NextResponse.json({ error: 'Acesso inválido ou expirado' }, { status: 401 })
+  }
+
+  const tokenRow = linhas[0]
   if (!tokenRow) return NextResponse.json({ error: 'Acesso inválido ou expirado' }, { status: 401 })
 
   // Update last used

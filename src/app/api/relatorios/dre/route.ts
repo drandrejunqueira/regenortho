@@ -4,7 +4,7 @@ import { db } from '@/lib/db'
 import { treatments, treatmentItems, transactions } from '@/lib/db/schema'
 import { hasPermission } from '@/lib/permissions'
 import type { UserRole } from '@/types'
-import { eq, and, gte, lte, sql } from 'drizzle-orm'
+import { eq, and, gte, lte, ne, sql } from 'drizzle-orm'
 
 export async function GET(req: NextRequest) {
   const session = await auth()
@@ -17,12 +17,20 @@ export async function GET(req: NextRequest) {
   const year  = Number(url.searchParams.get('year')  ?? new Date().getFullYear())
   const month = url.searchParams.get('month') ? Number(url.searchParams.get('month')) : null
 
+  // Os limites do período são o horário da clínica, não o do servidor (UTC na
+  // Vercel). Sem isto, um tratamento concluído às 22h do dia 31 já era 1º do mês
+  // seguinte em UTC e caía no DRE errado, enquanto a despesa — filtrada pela
+  // coluna `date` — continuava no mês certo.
+  const OFFSET_BRT_MIN = 3 * 60 // America/Sao_Paulo = UTC-3
+  const naClinica = (y: number, m: number, d: number, h = 0, min = 0, s = 0) =>
+    new Date(Date.UTC(y, m, d, h, min, s) + OFFSET_BRT_MIN * 60_000)
+
   const startDate = month
-    ? new Date(year, month - 1, 1)
-    : new Date(year, 0, 1)
+    ? naClinica(year, month - 1, 1)
+    : naClinica(year, 0, 1)
   const endDate = month
-    ? new Date(year, month, 0, 23, 59, 59)
-    : new Date(year, 11, 31, 23, 59, 59)
+    ? naClinica(year, month, 0, 23, 59, 59)
+    : naClinica(year, 11, 31, 23, 59, 59)
 
   // Completed treatments in period
   const completedTreatments = await db.select({
@@ -60,6 +68,11 @@ export async function GET(req: NextRequest) {
     .where(and(
       eq(transactions.type, 'expense'),
       eq(transactions.isPaid, true),
+      // O DRE trabalha por competência: o custo do material é reconhecido no
+      // CONSUMO (custoMateriais, somado de treatments.totalCost). A despesa da
+      // COMPRA é lançada em 'materials' ao receber o pedido — contar as duas
+      // abatia o mesmo material duas vezes do resultado.
+      ne(transactions.category, 'materials'),
       gte(sql`${transactions.date}::date`, sql`${startDate.toISOString().substring(0, 10)}::date`),
       lte(sql`${transactions.date}::date`, sql`${endDate.toISOString().substring(0, 10)}::date`),
     ))

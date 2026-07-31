@@ -59,8 +59,34 @@ export async function POST(req: NextRequest) {
 
   // Create new token — 7 days expiry
   const token = crypto.randomBytes(32).toString('hex')
-  const code = Math.floor(100000 + Math.random() * 900000).toString() // 6 digits
   const expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000)
+
+  // O código de 6 dígitos é a credencial de acesso ao prontuário. Antes vinha de
+  // Math.random (não criptográfico) e sem nenhuma checagem de colisão: dois
+  // pacientes podiam ficar com o mesmo código ativo e quem digitasse abriria a
+  // ficha do outro, porque a consulta pega a primeira linha que casar.
+  let code = ''
+  for (let tentativa = 0; tentativa < 10; tentativa++) {
+    const candidato = String(crypto.randomInt(100000, 1000000))
+    const emUso = await db.query.patientAccessTokens.findFirst({
+      where: and(
+        eq(patientAccessTokens.code, candidato),
+        eq(patientAccessTokens.isActive, true),
+        gt(patientAccessTokens.expiresAt, new Date()),
+      ),
+      columns: { id: true },
+    })
+    if (!emUso) {
+      code = candidato
+      break
+    }
+  }
+  if (!code) {
+    return NextResponse.json(
+      { error: 'Não foi possível gerar um código livre. Tente novamente.' },
+      { status: 503 }
+    )
+  }
 
   const [row] = await db.insert(patientAccessTokens).values({
     patientId,

@@ -59,7 +59,11 @@ export default function MateriaisPage() {
 
   const { data: session } = useSession()
   const role = session?.user?.role as UserRole | undefined
-  const canDelete = role ? hasPermission(role, 'materials:delete') : false
+  const custom = session?.user?.customPermissions
+  const canDelete = role ? hasPermission(role, 'materials:delete', custom) : false
+  // Botões que a API rejeitaria com 403 não devem aparecer.
+  const canCreate = role ? hasPermission(role, 'materials:create', custom) : false
+  const canEdit = role ? hasPermission(role, 'materials:edit', custom) : false
   const { roots: categoryRoots } = useMaterialCategories()
 
   async function toggleMaterialActive(mat: Material) {
@@ -187,6 +191,7 @@ export default function MateriaisPage() {
   }
 
   async function handleDelete(order: PurchaseOrder) {
+    if (!confirm(`Excluir o rascunho de compra de "${order.supplier}"? Esta ação não pode ser desfeita.`)) return
     const res = await fetch(`/api/compras/${order.id}`, { method: 'DELETE' })
     if (res.ok) {
       toast.success('Rascunho excluído.')
@@ -208,7 +213,7 @@ export default function MateriaisPage() {
         title="Controle de Materiais"
         description="Gerencie o estoque e as compras da clínica"
         action={
-          tab === 'compras' ? (
+          !canCreate ? null : tab === 'compras' ? (
             <button
               onClick={() => {
                 setEditingOrder(null)

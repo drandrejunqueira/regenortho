@@ -9,7 +9,7 @@ import { and, eq, isNull } from 'drizzle-orm'
 import { z } from 'zod'
 import type { UserRole } from '@/types'
 import { notify } from '@/lib/notifications'
-import { formatDateTime } from '@/lib/utils'
+import { formatDateTime, toDateBR } from '@/lib/utils'
 
 const updateSchema = z.object({
   status: z.enum(['scheduled', 'confirmed', 'attended', 'no_show', 'rescheduled', 'cancelled']).optional(),
@@ -45,6 +45,25 @@ export async function PATCH(req: NextRequest, { params }: Params) {
   const parsed = updateSchema.safeParse(body)
   if (!parsed.success) {
     return NextResponse.json({ error: 'Dados inválidos' }, { status: 400 })
+  }
+
+  // No PATCH os dois campos são opcionais, então a validação precisa comparar o
+  // resultado final (o que veio no corpo mesclado com o que já está no banco).
+  // Sem isto era possível salvar um agendamento que termina antes de começar.
+  if (parsed.data.startAt || parsed.data.endAt) {
+    const atual = await db.query.appointments.findFirst({
+      where: eq(appointments.id, id),
+      columns: { startAt: true, endAt: true },
+    })
+    if (!atual) return NextResponse.json({ error: 'Agendamento não encontrado' }, { status: 404 })
+    const inicio = parsed.data.startAt ? new Date(parsed.data.startAt) : atual.startAt
+    const fim = parsed.data.endAt ? new Date(parsed.data.endAt) : atual.endAt
+    if (fim <= inicio) {
+      return NextResponse.json(
+        { error: 'O término deve ser posterior ao início' },
+        { status: 400 }
+      )
+    }
   }
 
   const updateData: Record<string, unknown> = { ...parsed.data, updatedAt: new Date() }
@@ -93,7 +112,7 @@ export async function PATCH(req: NextRequest, { params }: Params) {
       category: 'consultation_fee' as const,
       amount: updated.consultationPrice || '0.00',
       description: `Consulta: ${displayName || 'Paciente'}` + (isPaid ? ' (Pago)' : ' (A receber)'),
-      date: new Date().toISOString().split('T')[0],
+      date: toDateBR(),
       dueDate: updated.startAt.toISOString().split('T')[0],
       isPaid,
       paidAt: pagamentoMudou ? (isPaid ? new Date() : null) : (existingTx?.paidAt ?? null),

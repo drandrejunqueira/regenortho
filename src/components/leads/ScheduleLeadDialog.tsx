@@ -65,11 +65,13 @@ export function ScheduleLeadDialog({ open, onOpenChange, lead, onScheduled }: Pr
     if (!open) return
 
     // Carregar Médicos
-    fetch('/api/usuarios')
+    fetch('/api/usuarios?role=doctor')
       .then(r => r.json())
       .then(res => {
         if (res.data) {
-          const docs = res.data.filter((u: any) => u.role === 'doctor' && u.isActive !== false)
+          // A rota já devolve apenas médicos ativos, com projeção mínima —
+          // filtrar por `role` aqui zeraria a lista, porque o campo não vem.
+          const docs = res.data
           setDoctors(docs)
           if (docs.length > 0) setSelectedDoctor(docs[0].id)
         }

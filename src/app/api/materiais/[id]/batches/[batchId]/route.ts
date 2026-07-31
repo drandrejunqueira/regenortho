@@ -62,6 +62,8 @@ export async function DELETE(_req: NextRequest, { params }: Params) {
 
   if (!deleted) return NextResponse.json({ error: 'Lote não encontrado' }, { status: 404 })
 
-  await recomputeStockFromBatches(id)
+  // Ao apagar o ÚLTIMO lote o saldo é zero, não "material sem controle por
+  // lote" — sem isto sobrava no estoque a quantidade do lote apagado.
+  await recomputeStockFromBatches(id, true)
   return NextResponse.json({ success: true })
 }

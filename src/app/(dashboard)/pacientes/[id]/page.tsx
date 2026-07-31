@@ -529,6 +529,7 @@ export default function PacienteDetailPage({ params }: { params: { id: string } 
   const [treatments, setTreatments] = useState<Treatment[]>([])
   const [exams, setExams] = useState<ExamOrder[]>([])
   const [records, setRecords] = useState<ClinicalRecord[]>([])
+  const [prontuarioNegado, setProntuarioNegado] = useState(false)
   const [transactions, setTransactions] = useState<Transaction[]>([])
   const [doctors, setDoctors] = useState<Doctor[]>([])
   const [activeTab, setActiveTab] = useState('timeline')
@@ -551,8 +552,8 @@ export default function PacienteDetailPage({ params }: { params: { id: string } 
     // "Paciente não encontrado" mesmo com o paciente tendo carregado.
     const safe = (url: string) =>
       fetch(url)
-        .then(r => (r.ok ? r.json() : { data: null }))
-        .catch(() => ({ data: null }))
+        .then(async r => (r.ok ? { ...(await r.json()), status: r.status } : { data: null, status: r.status }))
+        .catch(() => ({ data: null, status: 0 }))
 
     Promise.all([
       safe(`/api/pacientes/${id}`),
@@ -568,6 +569,9 @@ export default function PacienteDetailPage({ params }: { params: { id: string } 
       if (treats.data) setTreatments(treats.data)
       if (exs.data) setExams(exs.data)
       if (recs.data) setRecords(recs.data)
+      // 403 e "sem registro" são coisas diferentes: dizer "nenhum registro
+      // clínico" para quem não tem acesso escondia o motivo real.
+      setProntuarioNegado(recs.status === 403)
       if (txs.data) setTransactions(txs.data)
       if (usrs.data) setDoctors(usrs.data.filter((u: { role: string }) => u.role === 'doctor'))
     }).finally(() => setLoading(false))
@@ -744,7 +748,13 @@ export default function PacienteDetailPage({ params }: { params: { id: string } 
                 Novo Registro
               </button>
             </div>
-            {records.length === 0 ? (
+            {prontuarioNegado ? (
+              <div className="bg-white rounded-xl py-12 text-center">
+                <span className="material-symbols-outlined text-[#dc2626]/30" style={{ fontSize: '40px' }}>lock</span>
+                <p className="text-sm text-[#021541] mt-3 font-medium">Você não tem permissão para ver o prontuário</p>
+                <p className="text-xs text-[#718096]/60 mt-1">Peça acesso a um administrador da clínica</p>
+              </div>
+            ) : records.length === 0 ? (
               <div className="bg-white rounded-xl py-12 text-center">
                 <span className="material-symbols-outlined text-[#718096]/20" style={{ fontSize: '40px' }}>medical_information</span>
                 <p className="text-sm text-[#718096] mt-3">Nenhum registro clínico</p>

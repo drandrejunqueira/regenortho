@@ -9,32 +9,6 @@ import {
 } from 'recharts'
 import { formatCurrency } from '@/lib/utils'
 
-const LEADS_MENSAL = [
-  { mes: 'Nov', leads: 28 },
-  { mes: 'Dez', leads: 32 },
-  { mes: 'Jan', leads: 24 },
-  { mes: 'Fev', leads: 35 },
-  { mes: 'Mar', leads: 41 },
-  { mes: 'Abr', leads: 38 },
-]
-
-const FATURAMENTO_MENSAL = [
-  { mes: 'Nov', valor: 18500 },
-  { mes: 'Dez', valor: 22000 },
-  { mes: 'Jan', valor: 15800 },
-  { mes: 'Fev', valor: 24500 },
-  { mes: 'Mar', valor: 28000 },
-  { mes: 'Abr', valor: 21500 },
-]
-
-const ORIGEM_LEADS = [
-  { name: 'Google Ads', value: 38 },
-  { name: 'Meta Ads', value: 28 },
-  { name: 'Indicação', value: 18 },
-  { name: 'Orgânico', value: 12 },
-  { name: 'Outros', value: 4 },
-]
-
 const CHART_COLORS = ['#00BCE4', '#F59E0B', '#8B5CF6', '#10B981', '#EF4444']
 
 // ── DRE types ─────────────────────────────────────────
@@ -221,7 +195,41 @@ const tooltipStyle = {
 
 const axisStyle = { tick: { fontSize: 11, fill: '#718096' }, axisLine: false as const, tickLine: false as const }
 
+const LEAD_SOURCE_CURTO: Record<string, string> = {
+  google_ads: 'Google Ads',
+  meta_ads: 'Meta Ads',
+  instagram_organic: 'Instagram',
+  facebook_organic: 'Facebook',
+  google_organic: 'Google Orgânico',
+  referral: 'Indicação',
+  whatsapp: 'WhatsApp',
+  other: 'Outros',
+}
+
 export default function RelatoriosPage() {
+  // Estes gráficos exibiam constantes inventadas no código — número bonito e
+  // completamente desconectado da clínica. Agora vêm de /api/relatorios/resumo.
+  const [leadsMensal, setLeadsMensal] = useState<{ mes: string; leads: number }[]>([])
+  const [faturamentoMensal, setFaturamentoMensal] = useState<{ mes: string; valor: number }[]>([])
+  const [origemLeads, setOrigemLeads] = useState<{ name: string; value: number }[]>([])
+
+  useEffect(() => {
+    fetch('/api/relatorios/resumo')
+      .then((r) => (r.ok ? r.json() : null))
+      .then((d) => {
+        if (!d) return
+        setLeadsMensal(d.leadsMensal ?? [])
+        setFaturamentoMensal(d.faturamentoMensal ?? [])
+        setOrigemLeads(
+          (d.origemLeads ?? []).map((o: { origem: string; value: number }) => ({
+            name: LEAD_SOURCE_CURTO[o.origem] ?? o.origem,
+            value: o.value,
+          }))
+        )
+      })
+      .catch(() => {})
+  }, [])
+
   return (
     <div>
       <PageHeader
@@ -261,7 +269,7 @@ export default function RelatoriosPage() {
             <div className="bg-white rounded-xl border border-[rgba(2,21,65,0.06)] shadow-[0_2px_12px_rgba(2,21,65,0.04)] p-5 min-h-[200px]">
               <h3 className="text-sm font-semibold text-[#021541] mb-4">Leads por Mês (6 meses)</h3>
               <ResponsiveContainer width="100%" height={180}>
-                <BarChart data={LEADS_MENSAL}>
+                <BarChart data={leadsMensal}>
                   <CartesianGrid stroke="rgba(2,21,65,0.08)" vertical={false} />
                   <XAxis dataKey="mes" {...axisStyle} />
                   <YAxis {...axisStyle} />
@@ -274,7 +282,7 @@ export default function RelatoriosPage() {
             <div className="bg-white rounded-xl border border-[rgba(2,21,65,0.06)] shadow-[0_2px_12px_rgba(2,21,65,0.04)] p-5 min-h-[200px]">
               <h3 className="text-sm font-semibold text-[#021541] mb-4">Faturamento Mensal (R$)</h3>
               <ResponsiveContainer width="100%" height={180}>
-                <LineChart data={FATURAMENTO_MENSAL}>
+                <LineChart data={faturamentoMensal}>
                   <CartesianGrid stroke="rgba(2,21,65,0.08)" vertical={false} />
                   <XAxis dataKey="mes" {...axisStyle} />
                   <YAxis {...axisStyle} tickFormatter={(v) => `${v / 1000}k`} />
@@ -289,7 +297,7 @@ export default function RelatoriosPage() {
               <ResponsiveContainer width="100%" height={180}>
                 <PieChart>
                   <Pie
-                    data={ORIGEM_LEADS}
+                    data={origemLeads}
                     dataKey="value"
                     nameKey="name"
                     cx="50%"
@@ -298,7 +306,7 @@ export default function RelatoriosPage() {
                     label={({ name, percent }) => `${name} ${((percent ?? 0) * 100).toFixed(0)}%`}
                     labelLine={false}
                   >
-                    {ORIGEM_LEADS.map((_, i) => <Cell key={i} fill={CHART_COLORS[i]} />)}
+                    {origemLeads.map((_, i) => <Cell key={i} fill={CHART_COLORS[i % CHART_COLORS.length]} />)}
                   </Pie>
                   <Tooltip {...tooltipStyle} />
                 </PieChart>
@@ -328,7 +336,7 @@ export default function RelatoriosPage() {
           <div className="bg-white rounded-xl border border-[rgba(2,21,65,0.06)] shadow-[0_2px_12px_rgba(2,21,65,0.04)] p-5 min-h-[200px]">
             <h3 className="text-sm font-semibold text-[#021541] mb-4">Evolução de Leads</h3>
             <ResponsiveContainer width="100%" height={260}>
-              <BarChart data={LEADS_MENSAL}>
+              <BarChart data={leadsMensal}>
                 <CartesianGrid stroke="rgba(2,21,65,0.08)" vertical={false} />
                 <XAxis dataKey="mes" {...axisStyle} />
                 <YAxis {...axisStyle} />
@@ -343,7 +351,7 @@ export default function RelatoriosPage() {
           <div className="bg-white rounded-xl border border-[rgba(2,21,65,0.06)] shadow-[0_2px_12px_rgba(2,21,65,0.04)] p-5 min-h-[200px]">
             <h3 className="text-sm font-semibold text-[#021541] mb-4">Evolução do Faturamento</h3>
             <ResponsiveContainer width="100%" height={260}>
-              <LineChart data={FATURAMENTO_MENSAL}>
+              <LineChart data={faturamentoMensal}>
                 <CartesianGrid stroke="rgba(2,21,65,0.08)" vertical={false} />
                 <XAxis dataKey="mes" {...axisStyle} />
                 <YAxis {...axisStyle} tickFormatter={(v) => `R$${v / 1000}k`} />

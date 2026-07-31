@@ -1,5 +1,6 @@
 import { auth } from '@/lib/auth/config'
 import { db } from '@/lib/db'
+import { toDateBR } from '@/lib/utils'
 import { patients } from '@/lib/db/schema'
 import { hasPermission } from '@/lib/permissions'
 import { logActivity } from '@/lib/db/logger'
@@ -60,7 +61,7 @@ export async function GET(req: NextRequest) {
 
   if (financialStatus) {
     const { transactions } = await import('@/lib/db/schema')
-    const todayStr = new Date().toISOString().split('T')[0]
+    const todayStr = toDateBR()
     
     if (financialStatus === 'devendo') {
       const subquery = db

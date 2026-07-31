@@ -3,7 +3,7 @@ import { db } from '@/lib/db'
 import { users } from '@/lib/db/schema'
 import { hasPermission } from '@/lib/permissions'
 import { NextRequest, NextResponse } from 'next/server'
-import { eq, desc } from 'drizzle-orm'
+import { and, eq, desc } from 'drizzle-orm'
 import { z } from 'zod'
 import bcrypt from 'bcryptjs'
 import type { UserRole } from '@/types'
@@ -17,10 +17,28 @@ const createSchema = z.object({
   googleCalendarId: z.string().nullable().optional(),
 })
 
-export async function GET() {
+export async function GET(req: NextRequest) {
   const session = await auth()
   if (!session) return NextResponse.json({ error: 'Não autenticado' }, { status: 401 })
-  if (!hasPermission(session.user.role as UserRole, 'users:view', session.user.customPermissions)) {
+
+  const role = session.user.role as UserRole
+  const custom = session.user.customPermissions
+  const soMedicos = new URL(req.url).searchParams.get('role') === 'doctor'
+
+  // Agendar exige escolher o médico, mas recepção e o próprio médico não têm
+  // users:view — o campo "Médico responsável *" ficava vazio e o agendamento
+  // travava. Quem pode ver a agenda recebe apenas a lista de médicos ativos,
+  // com projeção mínima (sem e-mail, telefone, papel ou permissões).
+  if (soMedicos && hasPermission(role, 'agenda:view', custom)) {
+    const medicos = await db.query.users.findMany({
+      where: and(eq(users.role, 'doctor'), eq(users.isActive, true)),
+      columns: { id: true, name: true, googleCalendarId: true },
+      orderBy: [desc(users.createdAt)],
+    })
+    return NextResponse.json({ data: medicos })
+  }
+
+  if (!hasPermission(role, 'users:view', custom)) {
     return NextResponse.json({ error: 'Acesso negado' }, { status: 403 })
   }
 

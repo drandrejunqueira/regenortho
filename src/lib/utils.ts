@@ -30,6 +30,17 @@ export function formatDate(date: string | Date): string {
   return d.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric' })
 }
 
+/**
+ * Data YYYY-MM-DD no fuso da clínica.
+ *
+ * `toISOString().split('T')[0]` devolve a data em UTC: depois das 21h (BRT) já
+ * é o dia seguinte, então lançamentos do fim da noite entravam no financeiro
+ * com a data adiantada em um dia.
+ */
+export function toDateBR(date: Date = new Date()): string {
+  return new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Sao_Paulo' }).format(date)
+}
+
 export function formatDateTime(date: string | Date): string {
   const d = typeof date === 'string' ? new Date(date) : date
   return d.toLocaleDateString('pt-BR', {

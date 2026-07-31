@@ -25,7 +25,13 @@ const updateSchema = createSchema.partial().extend({
 export async function GET() {
   const session = await auth()
   if (!session) return NextResponse.json({ error: 'Não autenticado' }, { status: 401 })
-  if (!hasPermission(session.user.role as UserRole, 'payments:view', session.user.customPermissions)) {
+  // Concluir tratamento exige escolher forma de pagamento e conta. Sem esta
+  // abertura, o médico levava 403 e via um seletor vazio com um botão de
+  // faturar que nunca funcionava.
+  const podeLer =
+    hasPermission(session.user.role as UserRole, 'payments:view', session.user.customPermissions) ||
+    hasPermission(session.user.role as UserRole, 'treatments:edit', session.user.customPermissions)
+  if (!podeLer) {
     return NextResponse.json({ error: 'Acesso negado' }, { status: 403 })
   }
 

@@ -9,7 +9,7 @@ export default async function DashboardPage() {
   if (!session) redirect('/login')
 
   const role = session.user.role as UserRole
-  if (!hasPermission(role, 'dashboard:view')) redirect('/login')
+  if (!hasPermission(role, 'dashboard:view', session.user.customPermissions)) redirect('/login')
 
   const { db } = await import('@/lib/db')
   const { leads, appointments, transactions, materials, monthlyGoals } = await import('@/lib/db/schema')
@@ -56,6 +56,10 @@ export default async function DashboardPage() {
     db.select({ total: sum(transactions.amount) }).from(transactions)
       .where(and(
         eq(transactions.type, 'income'),
+        // Só o que entrou de fato. Sem isto, as parcelas futuras de um
+        // tratamento (todas gravadas com a data da conclusão) entravam como
+        // faturamento do mês e batiam a meta com dinheiro que não chegou.
+        eq(transactions.isPaid, true),
         gte(transactions.date, startOfMonth.toISOString().split('T')[0]),
         lte(transactions.date, endOfMonth.toISOString().split('T')[0]),
       )),
@@ -63,6 +67,7 @@ export default async function DashboardPage() {
     db.select({ total: sum(transactions.amount) }).from(transactions)
       .where(and(
         eq(transactions.type, 'expense'),
+        eq(transactions.isPaid, true),
         gte(transactions.date, startOfMonth.toISOString().split('T')[0]),
         lte(transactions.date, endOfMonth.toISOString().split('T')[0]),
       )),
@@ -87,6 +92,7 @@ export default async function DashboardPage() {
     }).from(transactions)
       .where(and(
         eq(transactions.type, 'income'),
+        eq(transactions.isPaid, true),
         gte(transactions.date, sevenDaysAgo.toISOString().split('T')[0]),
         lte(transactions.date, now.toISOString().split('T')[0]),
       ))
@@ -149,8 +155,8 @@ export default async function DashboardPage() {
       }}
       recentLeads={recentLeads as never}
       stockAlerts={stockAlertsRes as never}
-      hasFinancialPermission={hasPermission(role, 'financial:view')}
-      hasMaterialsPermission={hasPermission(role, 'materials:view')}
+      hasFinancialPermission={hasPermission(role, 'financial:view', session.user.customPermissions)}
+      hasMaterialsPermission={hasPermission(role, 'materials:view', session.user.customPermissions)}
     />
   )
 }
