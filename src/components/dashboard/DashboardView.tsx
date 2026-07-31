@@ -98,14 +98,20 @@ export function DashboardView({
         </div>
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
           <KpiCard title="Leads este mês" value={leadsNow} accent="cyan" icon="group_add" />
-          <KpiCard title="Faturamento" value={fmt(income)} accent="gold" icon="payments" />
+          {/* Faturamento e resultado são financeiro: a prop já existia e era
+              usada mais abaixo, mas estes dois cards ignoravam a permissão. */}
+          {hasFinancialPermission && (
+            <KpiCard title="Faturamento" value={fmt(income)} accent="gold" icon="payments" />
+          )}
           <KpiCard title="Consultas hoje" value={todayApts.length} accent="cyan" icon="calendar_month" />
-          <KpiCard
-            title="Resultado líquido"
-            value={fmt(netResult)}
-            accent={netResult >= 0 ? 'cyan' : 'error'}
-            icon="trending_up"
-          />
+          {hasFinancialPermission && (
+            <KpiCard
+              title="Resultado líquido"
+              value={fmt(netResult)}
+              accent={netResult >= 0 ? 'cyan' : 'error'}
+              icon="trending_up"
+            />
+          )}
         </div>
       </div>
 

@@ -67,13 +67,13 @@ export default function AgendaPage() {
   }, [])
 
   useEffect(() => {
-    fetch('/api/usuarios')
+    fetch('/api/usuarios?role=doctor')
       .then((r) => r.json())
       .then(({ data }) => {
         if (data) {
-          setDoctors(data.filter((u: { role: string; googleCalendarId?: string | null; isActive?: boolean }) => 
-            u.role === 'doctor' && u.isActive && !!u.googleCalendarId
-          ))
+          // A rota já devolve apenas médicos ativos; aqui só resta exigir a
+          // agenda do Google configurada.
+          setDoctors(data.filter((u: { googleCalendarId?: string | null }) => !!u.googleCalendarId))
         }
       })
       .catch(() => {})
@@ -709,6 +709,13 @@ export default function AgendaPage() {
                           if (btn.status === 'attended' && selectedApt.patientId) {
                             setFinishDialogOpen(true)
                             setDetailOpen(false)
+                          } else if (btn.status === 'cancelled') {
+                            // Cancelar avisa o paciente e mexe na Google Agenda —
+                            // não pode sair num clique seco.
+                            const quem = selectedApt.patient?.name || selectedApt.lead?.name || 'este compromisso'
+                            if (confirm(`Cancelar o agendamento de ${quem}?`)) {
+                              updateStatus(selectedApt.id, btn.status)
+                            }
                           } else {
                             updateStatus(selectedApt.id, btn.status)
                           }

@@ -184,11 +184,15 @@ export function EditMaterialDialog({ open, material, canDelete, onOpenChange, on
 
   async function removeBatch(batchId: string) {
     if (!material) return
+    // Excluir lote recalcula o estoque para baixo — não pode ser um clique seco.
+    const alvo = batches.find(b => b.id === batchId)
+    if (!confirm(`Excluir o lote ${alvo?.batchNumber || 'sem número'}? O estoque será recalculado.`)) return
     const res = await fetch(`/api/materiais/${material.id}/batches/${batchId}`, { method: 'DELETE' })
     if (res.ok) {
       if (editingBatchId === batchId) resetBatchForm()
       await loadBatches(material.id)
       onSaved()
+      toast.success('Lote excluído')
     } else {
       toast.error('Erro ao excluir lote')
     }
