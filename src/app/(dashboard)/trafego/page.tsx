@@ -1,4 +1,5 @@
 import { getGoogleStatus, getSearchConsoleResumo, getAnalyticsResumo } from '@/lib/google/data'
+import { getCampanhas, getAdsConfig } from '@/lib/google/ads'
 import { db } from '@/lib/db'
 import { leads, analyticsEvents } from '@/lib/db/schema'
 import { gte, eq, or, and, desc, sql } from 'drizzle-orm'
@@ -22,11 +23,22 @@ export default async function TrafegoPage() {
   // 1. Google connection status
   const googleStatus = await getGoogleStatus()
 
-  // 2. Fetch GSC + GA4 if connected
-  const [gscData, ga4Data] = await Promise.all([
+  // 2. Fetch GSC + GA4 + campanhas de mídia paga se conectado
+  const [gscData, ga4Data, campanhas] = await Promise.all([
     googleStatus.conectado ? getSearchConsoleResumo(30) : Promise.resolve(null),
-    googleStatus.conectado ? getAnalyticsResumo(30) : Promise.resolve(null)
+    googleStatus.conectado ? getAnalyticsResumo(30) : Promise.resolve(null),
+    googleStatus.conectado
+      ? getCampanhas(30)
+      : Promise.resolve({ origem: 'nenhuma' as const, campanhas: [], erro: null, faltaConfigurar: [] }),
   ])
+
+  // O developer token nunca é enviado ao cliente — só se ele existe.
+  const cfgAds = await getAdsConfig()
+  const adsConfig = {
+    temToken: Boolean(cfgAds.developerToken),
+    customerId: cfgAds.customerId,
+    loginCustomerId: cfgAds.loginCustomerId,
+  }
 
   // 3. Fetch real CRM leads from paid traffic in the last 30 days
   const dbLeads = await db
@@ -134,6 +146,8 @@ export default async function TrafegoPage() {
         ga4Property: googleStatus.ga4Property
       }}
       leads={serializedLeads}
+      campanhas={campanhas}
+      adsConfig={adsConfig}
       firstPartyStats={{
         pageviews,
         clicks: clickEvents,

@@ -11,6 +11,7 @@ import {
   BarChart, Bar, Legend, CartesianGrid
 } from 'recharts'
 import { formatCurrency, cn } from '@/lib/utils'
+import { salvarConfigGoogle, salvarConfigGoogleAds } from '@/app/actions/configuracoes'
 
 interface Lead {
   id: string
@@ -31,6 +32,29 @@ interface Props {
     ga4Property: string | null
   }
   leads: Lead[]
+  campanhas: {
+    origem: 'google_ads' | 'ga4' | 'nenhuma'
+    campanhas: {
+      id: string
+      nome: string
+      status: string | null
+      impressoes: number | null
+      cliques: number | null
+      custo: number | null
+      cpc: number | null
+      ctr: number | null
+      conversoes: number | null
+      orcamentoDiario: number | null
+      sessoes: number | null
+    }[]
+    erro: string | null
+    faltaConfigurar: string[]
+  }
+  adsConfig: {
+    temToken: boolean
+    customerId: string | null
+    loginCustomerId: string | null
+  }
   firstPartyStats: {
     pageviews: number
     clicks: number
@@ -99,9 +123,302 @@ const LANDING_PAGES = [
   }
 ]
 
+const STATUS_CAMPANHA: Record<string, { label: string; cor: string; fundo: string }> = {
+  ENABLED: { label: 'Ativa', cor: '#16a34a', fundo: 'rgba(22,163,74,0.10)' },
+  PAUSED: { label: 'Pausada', cor: '#d97706', fundo: 'rgba(217,119,6,0.10)' },
+  REMOVED: { label: 'Removida', cor: '#dc2626', fundo: 'rgba(220,38,38,0.10)' },
+}
+
+function ConfiguracaoIntegracao({
+  googleStatus,
+  adsConfig,
+}: {
+  googleStatus: Props['googleStatus']
+  adsConfig: Props['adsConfig']
+}) {
+  const [aberto, setAberto] = useState(false)
+  const [salvando, setSalvando] = useState(false)
+  const [msg, setMsg] = useState<string | null>(null)
+  const [form, setForm] = useState({
+    gscSite: googleStatus.gscSite ?? '',
+    ga4Property: googleStatus.ga4Property ?? '',
+    developerToken: '',
+    customerId: adsConfig.customerId ?? '',
+    loginCustomerId: adsConfig.loginCustomerId ?? '',
+  })
+
+  const faltando = [
+    !googleStatus.ga4Property && 'Propriedade GA4',
+    !googleStatus.gscSite && 'Site do Search Console',
+    !adsConfig.temToken && 'Developer token do Google Ads',
+  ].filter(Boolean) as string[]
+
+  async function salvar() {
+    setSalvando(true)
+    setMsg(null)
+    try {
+      await salvarConfigGoogle({ gscSite: form.gscSite, ga4Property: form.ga4Property })
+      await salvarConfigGoogleAds({
+        // Campo em branco não apaga o token já salvo.
+        ...(form.developerToken.trim() ? { developerToken: form.developerToken } : {}),
+        customerId: form.customerId,
+        loginCustomerId: form.loginCustomerId,
+      })
+      setMsg('Salvo. Recarregue a página para ver os dados.')
+      setForm((f) => ({ ...f, developerToken: '' }))
+    } catch {
+      setMsg('Não foi possível salvar. Tente novamente.')
+    } finally {
+      setSalvando(false)
+    }
+  }
+
+  const campo = 'w-full bg-[#f5f6f8] border border-[rgba(2,21,65,0.12)] rounded-xl px-3 py-2 text-sm text-[#021541] placeholder:text-[#718096]/50 focus:outline-none focus:ring-2 focus:ring-[#00BCE4]/30'
+  const rotulo = 'text-[10px] font-bold text-[#718096] uppercase tracking-wider'
+
+  return (
+    <div className="rounded-2xl border border-[rgba(2,21,65,0.06)] bg-white p-5 shadow-sm">
+      <button
+        onClick={() => setAberto((v) => !v)}
+        className="w-full flex items-center justify-between gap-3 text-left"
+      >
+        <div>
+          <h3 className="text-sm font-bold text-[#021541] flex items-center gap-2">
+            <ListFilter className="size-4 text-[#00BCE4]" />
+            Configuração da integração
+          </h3>
+          <p className="text-xs text-[#718096] mt-0.5">
+            {faltando.length > 0
+              ? `Faltando: ${faltando.join(' · ')}`
+              : 'Search Console, GA4 e Google Ads configurados.'}
+          </p>
+        </div>
+        <ChevronRight className={cn('size-4 text-[#718096] shrink-0 transition-transform', aberto && 'rotate-90')} />
+      </button>
+
+      {aberto && (
+        <div className="mt-4 space-y-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+            <div className="space-y-1.5">
+              <label className={rotulo}>Propriedade GA4 (só números)</label>
+              <input
+                className={campo}
+                placeholder="123456789"
+                value={form.ga4Property}
+                onChange={(e) => setForm({ ...form, ga4Property: e.target.value })}
+              />
+            </div>
+            <div className="space-y-1.5">
+              <label className={rotulo}>Site do Search Console</label>
+              <input
+                className={campo}
+                placeholder="sc-domain:regenortho.com.br"
+                value={form.gscSite}
+                onChange={(e) => setForm({ ...form, gscSite: e.target.value })}
+              />
+            </div>
+          </div>
+
+          <div className="pt-3 border-t border-[rgba(2,21,65,0.06)] space-y-3">
+            <p className="text-[11px] text-[#718096]">
+              Google Ads — o developer token sai no API Center da sua conta de administrador (MCC) e
+              precisa de aprovação nível <strong>Basic</strong> para ler dados reais.
+            </p>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+              <div className="space-y-1.5">
+                <label className={rotulo}>
+                  Developer token {adsConfig.temToken && <span className="text-[#16a34a]">(salvo)</span>}
+                </label>
+                <input
+                  className={campo}
+                  type="password"
+                  placeholder={adsConfig.temToken ? '••••••••  (deixe vazio p/ manter)' : 'cole aqui'}
+                  value={form.developerToken}
+                  onChange={(e) => setForm({ ...form, developerToken: e.target.value })}
+                />
+              </div>
+              <div className="space-y-1.5">
+                <label className={rotulo}>ID da conta de anúncios</label>
+                <input
+                  className={campo}
+                  placeholder="123-456-7890"
+                  value={form.customerId}
+                  onChange={(e) => setForm({ ...form, customerId: e.target.value })}
+                />
+              </div>
+              <div className="space-y-1.5">
+                <label className={rotulo}>Conta MCC (se houver)</label>
+                <input
+                  className={campo}
+                  placeholder="opcional"
+                  value={form.loginCustomerId}
+                  onChange={(e) => setForm({ ...form, loginCustomerId: e.target.value })}
+                />
+              </div>
+            </div>
+          </div>
+
+          <div className="flex items-center gap-3">
+            <button
+              onClick={salvar}
+              disabled={salvando}
+              className="px-4 py-2 rounded-xl text-xs font-bold text-white bg-[#021541] hover:bg-[#021541]/90 disabled:opacity-60 transition-colors"
+            >
+              {salvando ? 'Salvando...' : 'Salvar'}
+            </button>
+            {msg && <span className="text-xs text-[#718096]">{msg}</span>}
+          </div>
+        </div>
+      )}
+    </div>
+  )
+}
+
+function CampanhasAtivas({
+  dados,
+  leads,
+}: {
+  dados: Props['campanhas']
+  leads: Lead[]
+}) {
+  const num = (v: number | null) => (v === null ? '—' : v.toLocaleString('pt-BR'))
+
+  // Cruza com os leads reais do CRM pelo utm_campaign — é o número que importa
+  // para a clínica: quantos pacientes cada campanha trouxe de fato.
+  const leadsPorCampanha = (nome: string) =>
+    leads.filter((l) => (l.utmCampaign ?? '').toLowerCase() === nome.toLowerCase()).length
+
+  const temDadosDeCusto = dados.origem === 'google_ads'
+
+  return (
+    <div className="rounded-2xl border border-[rgba(2,21,65,0.06)] bg-white p-5 shadow-sm space-y-4">
+      <div className="flex items-start justify-between gap-4 flex-wrap">
+        <div>
+          <h3 className="text-sm font-bold text-[#021541] flex items-center gap-2">
+            <Activity className="size-4 text-[#00BCE4]" />
+            Campanhas no Google Ads
+          </h3>
+          <p className="text-xs text-[#718096] mt-0.5">
+            {temDadosDeCusto
+              ? 'Últimos 30 dias, direto da API do Google Ads.'
+              : 'Últimos 30 dias, atribuição do GA4. Custo e CPC exigem a API do Google Ads.'}
+          </p>
+        </div>
+        {dados.origem !== 'nenhuma' && (
+          <span
+            className="text-[10px] font-bold uppercase tracking-wider px-2.5 py-1 rounded-full shrink-0"
+            style={{
+              color: temDadosDeCusto ? '#16a34a' : '#d97706',
+              background: temDadosDeCusto ? 'rgba(22,163,74,0.10)' : 'rgba(217,119,6,0.10)',
+            }}
+          >
+            {temDadosDeCusto ? 'Google Ads API' : 'via GA4'}
+          </span>
+        )}
+      </div>
+
+      {dados.erro && (
+        <div className="flex items-start gap-2 rounded-xl p-3" style={{ background: 'rgba(220,38,38,0.06)' }}>
+          <AlertCircle className="size-4 text-[#dc2626] shrink-0 mt-0.5" />
+          <p className="text-xs text-[#dc2626] break-words">{dados.erro}</p>
+        </div>
+      )}
+
+      {dados.faltaConfigurar.length > 0 && (
+        <div className="rounded-xl p-4 space-y-2" style={{ background: 'rgba(0,188,228,0.06)' }}>
+          <p className="text-xs font-semibold text-[#021541]">
+            Para ver custo, cliques, CPC e status das campanhas, falta configurar:
+          </p>
+          <ul className="text-xs text-[#718096] space-y-1 list-disc pl-4">
+            {dados.faltaConfigurar.map((item) => (
+              <li key={item}>{item}</li>
+            ))}
+          </ul>
+          <p className="text-[11px] text-[#718096] pt-1">
+            O developer token sai no API Center da sua conta de administrador do Google Ads e passa
+            por aprovação do Google. Depois é só colar em Configurações.
+          </p>
+        </div>
+      )}
+
+      {dados.campanhas.length === 0 && !dados.erro && dados.faltaConfigurar.length === 0 && (
+        <p className="text-xs text-[#718096] py-6 text-center">
+          Nenhuma campanha com movimento nos últimos 30 dias.
+        </p>
+      )}
+
+      {dados.campanhas.length > 0 && (
+        <div className="overflow-x-auto -mx-5 px-5">
+          <table className="w-full text-xs min-w-[640px]">
+            <thead>
+              <tr className="text-[10px] uppercase tracking-wider text-[#718096]">
+                <th className="text-left font-semibold pb-2">Campanha</th>
+                {temDadosDeCusto ? (
+                  <>
+                    <th className="text-right font-semibold pb-2">Impressões</th>
+                    <th className="text-right font-semibold pb-2">Cliques</th>
+                    <th className="text-right font-semibold pb-2">CTR</th>
+                    <th className="text-right font-semibold pb-2">CPC</th>
+                    <th className="text-right font-semibold pb-2">Custo</th>
+                  </>
+                ) : (
+                  <th className="text-right font-semibold pb-2">Sessões</th>
+                )}
+                <th className="text-right font-semibold pb-2">Leads no CRM</th>
+              </tr>
+            </thead>
+            <tbody>
+              {dados.campanhas.map((c) => {
+                const st = c.status ? STATUS_CAMPANHA[c.status] : null
+                return (
+                  <tr key={c.id || c.nome} className="border-t border-[rgba(2,21,65,0.05)]">
+                    <td className="py-2.5 pr-3">
+                      <span className="font-medium text-[#021541] block truncate max-w-[220px]">{c.nome}</span>
+                      {st && (
+                        <span
+                          className="text-[9px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded-full inline-block mt-1"
+                          style={{ color: st.cor, background: st.fundo }}
+                        >
+                          {st.label}
+                        </span>
+                      )}
+                    </td>
+                    {temDadosDeCusto ? (
+                      <>
+                        <td className="text-right font-technical text-[#718096]">{num(c.impressoes)}</td>
+                        <td className="text-right font-technical text-[#718096]">{num(c.cliques)}</td>
+                        <td className="text-right font-technical text-[#718096]">
+                          {c.ctr === null ? '—' : `${c.ctr.toFixed(1)}%`}
+                        </td>
+                        <td className="text-right font-technical text-[#718096]">
+                          {c.cpc === null ? '—' : formatCurrency(c.cpc)}
+                        </td>
+                        <td className="text-right font-technical font-semibold text-[#021541]">
+                          {c.custo === null ? '—' : formatCurrency(c.custo)}
+                        </td>
+                      </>
+                    ) : (
+                      <td className="text-right font-technical text-[#718096]">{num(c.sessoes)}</td>
+                    )}
+                    <td className="text-right font-technical font-semibold text-[#00BCE4]">
+                      {leadsPorCampanha(c.nome)}
+                    </td>
+                  </tr>
+                )
+              })}
+            </tbody>
+          </table>
+        </div>
+      )}
+    </div>
+  )
+}
+
 export function TrafegoClient({
   googleStatus,
   leads,
+  campanhas,
+  adsConfig,
   firstPartyStats,
   chartData,
   gscData,
@@ -233,6 +550,10 @@ export function TrafegoClient({
           </p>
         </div>
       </div>
+
+      {/* 📌 CAMPANHAS ATIVAS NO GOOGLE ADS */}
+      <ConfiguracaoIntegracao googleStatus={googleStatus} adsConfig={adsConfig} />
+      <CampanhasAtivas dados={campanhas} leads={leads} />
 
       {/* 📌 PÁGINAS DE CONVERSÃO / CAMPANHAS DE TRÁFEGO */}
       <div className="rounded-2xl border border-[rgba(2,21,65,0.06)] bg-white p-5 shadow-sm space-y-4">

@@ -22,6 +22,9 @@ export const GOOGLE_SCOPES = [
   'https://www.googleapis.com/auth/analytics.readonly',
   'https://www.googleapis.com/auth/calendar',
   'https://www.googleapis.com/auth/calendar.events',
+  // Google Ads. Escopo novo: quem já conectou antes precisa RECONECTAR a conta
+  // para o consentimento passar a incluir o Ads.
+  'https://www.googleapis.com/auth/adwords',
   'openid',
   'email',
 ]
@@ -35,6 +38,11 @@ export const GKEYS = {
   ga4Property: 'google_ga4_property',
   clientId: 'google_client_id',
   clientSecret: 'google_client_secret',
+  // Google Ads. O developer token é emitido no API Center da conta de
+  // administrador (MCC) e não tem relação com client id/secret.
+  adsDeveloperToken: 'google_ads_developer_token',
+  adsCustomerId: 'google_ads_customer_id',
+  adsLoginCustomerId: 'google_ads_login_customer_id',
 } as const
 
 export async function obterGoogleCredentials(): Promise<{ clientId: string | null; clientSecret: string | null }> {
