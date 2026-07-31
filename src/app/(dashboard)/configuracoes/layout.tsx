@@ -18,6 +18,7 @@ const TABS = [
   { href: '/configuracoes/backup',        label: 'Backup',         icon: 'cloud_done' },
   { href: '/configuracoes/logs',          label: 'Logs',           icon: 'receipt_long' },
   { href: '/configuracoes/webhooks',      label: 'Webhooks',       icon: 'webhook' },
+  { href: '/configuracoes/atualizacoes',  label: 'Atualizações',   icon: 'update' },
 ]
 
 export default function ConfiguracoesLayout({ children }: { children: React.ReactNode }) {
