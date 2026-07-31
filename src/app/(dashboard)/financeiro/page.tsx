@@ -26,6 +26,14 @@ export default function FinanceiroPage() {
   const { data: session } = useSession()
   const isAdmin = session?.user?.role === 'admin'
   const [transactions, setTransactions] = useState<Transaction[]>([])
+  const [totais, setTotais] = useState<{
+    receitas: number
+    despesas: number
+    recebido: number
+    aReceber: number
+    total: number
+    naoListados: number
+  } | null>(null)
   const [loading, setLoading] = useState(true)
   const [typeFilter, setTypeFilter] = useState<string>('all')
   const [newDialog, setNewDialog] = useState(false)
@@ -61,8 +69,9 @@ export default function FinanceiroPage() {
       if (typeFilter !== 'all') params.set('type', typeFilter)
       const res = await fetch(`/api/financeiro?${params}`)
       if (res.ok) {
-        const { data } = await res.json()
+        const { data, totais } = await res.json()
         setTransactions(data)
+        setTotais(totais ?? null)
       }
     } finally {
       setLoading(false)
@@ -71,8 +80,15 @@ export default function FinanceiroPage() {
 
   useEffect(() => { fetchTransactions() }, [fetchTransactions])
 
-  const totalIncome = transactions.filter((t) => t.type === 'income').reduce((s, t) => s + parseFloat(t.amount), 0)
-  const totalExpense = transactions.filter((t) => t.type === 'expense').reduce((s, t) => s + parseFloat(t.amount), 0)
+  // Os totais vêm agregados do servidor (todos os lançamentos). A soma no
+  // cliente só é usada como fallback, e ela enxerga apenas as 100 linhas
+  // listadas — era daí que vinham os KPIs errados.
+  const totalIncome = totais
+    ? totais.receitas
+    : transactions.filter((t) => t.type === 'income').reduce((s, t) => s + parseFloat(t.amount), 0)
+  const totalExpense = totais
+    ? totais.despesas
+    : transactions.filter((t) => t.type === 'expense').reduce((s, t) => s + parseFloat(t.amount), 0)
   const netResult = totalIncome - totalExpense
 
   async function markPaid(id: string) {
@@ -223,6 +239,13 @@ export default function FinanceiroPage() {
             </tbody>
           </table>
         </div>
+      )}
+
+      {totais && totais.naoListados > 0 && (
+        <p className="text-[11px] text-[#718096] text-center">
+          Mostrando os {transactions.length} lançamentos mais recentes de {totais.total}.
+          Os totais acima consideram todos.
+        </p>
       )}
 
       <NewTransactionDialog open={newDialog} onOpenChange={setNewDialog} onCreated={fetchTransactions} />

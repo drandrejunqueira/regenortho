@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback } from 'react'
 import { toast } from 'sonner'
 import { cn } from '@/lib/utils'
+import { vencimentoParcela } from '@/lib/parcelas'
 
 // ── Types ────────────────────────────────────────────────
 interface TreatmentItem {
@@ -1088,7 +1089,7 @@ function ConcluirTratamentoDialog({ open, treatment, onClose, onCompleted }: Con
   const previewInstallments = Array.from({ length: installments }, (_, i) => {
     const cents = i === installments - 1 ? totalCents - baseCents * (installments - 1) : baseCents
     const amount = cents / 100
-    const due = new Date(today.getFullYear(), today.getMonth() + i, today.getDate())
+    const due = vencimentoParcela(today, i)
     const isPaid = paymentStatus === 'all_paid' || (paymentStatus === 'first_paid' && i === 0)
     return {
       num: i + 1,
@@ -1248,6 +1249,12 @@ const MASK = '•••••'
 export default function TratamentosPage() {
   const [tab, setTab] = useState<'tratamentos' | 'catalogo'>('tratamentos')
   const [treatments, setTreatments] = useState<Treatment[]>([])
+  const [serverStats, setServerStats] = useState<{
+    total: number
+    emAndamento: number
+    concluidos: number
+    receitaTotal: number
+  } | null>(null)
   const [loading, setLoading] = useState(true)
   const [drawerOpen, setDrawerOpen] = useState(false)
   const [statusFilter, setStatusFilter] = useState('')
@@ -1287,7 +1294,10 @@ export default function TratamentosPage() {
     setLoading(true)
     fetch(`/api/tratamentos${statusFilter ? `?status=${statusFilter}` : ''}`)
       .then(r => r.json())
-      .then(({ data }) => { if (data) setTreatments(data) })
+      .then(({ data, stats }) => {
+        if (data) setTreatments(data)
+        setServerStats(stats ?? null)
+      })
       .catch(() => {})
       .finally(() => setLoading(false))
   }, [statusFilter])
@@ -1312,12 +1322,21 @@ export default function TratamentosPage() {
     !search || t.name.toLowerCase().includes(search.toLowerCase()) || t.patient?.name.toLowerCase().includes(search.toLowerCase())
   )
 
-  const stats = {
-    total: treatments.length,
-    active: treatments.filter(t => t.status === 'in_progress').length,
-    completed: treatments.filter(t => t.status === 'completed').length,
-    revenue: treatments.filter(t => t.status === 'completed').reduce((s, t) => s + Number(t.totalSale), 0),
-  }
+  // Vem agregado do servidor sobre TODOS os tratamentos. A contagem local só
+  // serve de fallback e enxerga apenas os 50 carregados no kanban.
+  const stats = serverStats
+    ? {
+        total: serverStats.total,
+        active: serverStats.emAndamento,
+        completed: serverStats.concluidos,
+        revenue: serverStats.receitaTotal,
+      }
+    : {
+        total: treatments.length,
+        active: treatments.filter(t => t.status === 'in_progress').length,
+        completed: treatments.filter(t => t.status === 'completed').length,
+        revenue: treatments.filter(t => t.status === 'completed').reduce((s, t) => s + Number(t.totalSale), 0),
+      }
 
   const kpiCards = [
     { label: 'Total', value: stats.total, icon: 'vaccines', iconBg: 'bg-[rgba(2,21,65,0.06)]', iconColor: '#021541' },

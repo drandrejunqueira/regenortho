@@ -4,7 +4,7 @@ import { transactions } from '@/lib/db/schema'
 import { hasPermission } from '@/lib/permissions'
 import { logActivity } from '@/lib/db/logger'
 import { NextRequest, NextResponse } from 'next/server'
-import { and, gte, lte, eq, desc } from 'drizzle-orm'
+import { and, gte, lte, eq, desc, sql } from 'drizzle-orm'
 import { z } from 'zod'
 import type { UserRole } from '@/types'
 
@@ -53,14 +53,42 @@ export async function GET(req: NextRequest) {
   if (end) conditions.push(lte(transactions.date, end))
   if (patientId) conditions.push(eq(transactions.patientId, patientId))
 
-  const data = await db.query.transactions.findMany({
-    where: conditions.length ? and(...conditions) : undefined,
-    orderBy: [desc(transactions.date)],
-    with: { patient: { columns: { id: true, name: true } } },
-    limit: 100,
-  })
+  const where = conditions.length ? and(...conditions) : undefined
 
-  return NextResponse.json({ data })
+  // Os KPIs eram somados no cliente sobre a lista já cortada em 100 linhas: a
+  // partir do 101º lançamento "Receita total" e "Resultado líquido" ficavam
+  // silenciosamente errados. Os totais agora vêm agregados do banco, sem limite.
+  const [data, [totais]] = await Promise.all([
+    db.query.transactions.findMany({
+      where,
+      orderBy: [desc(transactions.date)],
+      with: { patient: { columns: { id: true, name: true } } },
+      limit: 100,
+    }),
+    db
+      .select({
+        receitas: sql<string>`coalesce(sum(case when ${transactions.type} = 'income' then ${transactions.amount} else 0 end), 0)`,
+        despesas: sql<string>`coalesce(sum(case when ${transactions.type} = 'expense' then ${transactions.amount} else 0 end), 0)`,
+        recebido: sql<string>`coalesce(sum(case when ${transactions.type} = 'income' and ${transactions.isPaid} then ${transactions.amount} else 0 end), 0)`,
+        aReceber: sql<string>`coalesce(sum(case when ${transactions.type} = 'income' and not ${transactions.isPaid} then ${transactions.amount} else 0 end), 0)`,
+        total: sql<number>`count(*)::int`,
+      })
+      .from(transactions)
+      .where(where),
+  ])
+
+  return NextResponse.json({
+    data,
+    totais: {
+      receitas: Number(totais.receitas),
+      despesas: Number(totais.despesas),
+      recebido: Number(totais.recebido),
+      aReceber: Number(totais.aReceber),
+      total: totais.total,
+      // Quantos lançamentos ficaram de fora da listagem.
+      naoListados: Math.max(0, totais.total - data.length),
+    },
+  })
 }
 
 export async function POST(req: NextRequest) {

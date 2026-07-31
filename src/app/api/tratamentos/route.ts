@@ -102,8 +102,29 @@ export async function GET(req: NextRequest) {
     return map
   }, {} as Record<string, typeof items>)
 
+  // Os KPIs da tela eram somados sobre este array, que vem cortado em `limit`
+  // (50 por padrão). A partir do 51º tratamento "Total", "Em andamento",
+  // "Concluídos" e "Receita total" ficavam errados sem nenhum aviso.
+  // Agregados aqui, sem limite, respeitando o mesmo filtro de paciente.
+  const filtroStats = patientId ? eq(treatments.patientId, patientId) : undefined
+  const [stats] = await db
+    .select({
+      total: sql<number>`count(*)::int`,
+      emAndamento: sql<number>`count(*) filter (where ${treatments.status} in ('approved', 'in_progress'))::int`,
+      concluidos: sql<number>`count(*) filter (where ${treatments.status} = 'completed')::int`,
+      receitaTotal: sql<string>`coalesce(sum(${treatments.totalSale}) filter (where ${treatments.status} = 'completed'), 0)`,
+    })
+    .from(treatments)
+    .where(filtroStats)
+
   return NextResponse.json({
     data: (data as Array<{ id: string }>).map(t => ({ ...t, items: itemsMap[t.id] ?? [] })),
+    stats: {
+      total: stats.total,
+      emAndamento: stats.emAndamento,
+      concluidos: stats.concluidos,
+      receitaTotal: Number(stats.receitaTotal),
+    },
   })
 }
 

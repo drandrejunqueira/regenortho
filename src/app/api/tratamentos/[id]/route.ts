@@ -5,8 +5,9 @@ import { treatments, treatmentItems, materials, stockMovements, patients, transa
 import { hasPermission } from '@/lib/permissions'
 import type { UserRole } from '@/types'
 import { z } from 'zod'
-import { eq, and, sql } from 'drizzle-orm'
+import { eq, and, ne, sql } from 'drizzle-orm'
 import { sendAndLog, tplTreatmentSummary } from '@/lib/whatsapp'
+import { vencimentoParcela } from '@/lib/parcelas'
 import { notify } from '@/lib/notifications'
 
 const TREATMENT_STATUS_LABELS: Record<string, string> = {
@@ -131,7 +132,24 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
         )
       }
 
-      updates.completedAt = new Date()
+      // Reivindica a conclusão ANTES de baixar estoque, lançar parcelas e
+      // creditar saldo. A guarda `existing.status !== 'completed'` só passava a
+      // valer depois do UPDATE final, lá embaixo: se a função expirasse no meio,
+      // o usuário via erro, reenviava e duplicava parcelas e crédito no saldo.
+      // Este UPDATE condicional é atômico — o segundo clique não retorna linha.
+      const [reivindicado] = await db
+        .update(treatments)
+        .set({ status: 'completed', completedAt: new Date(), updatedAt: new Date() })
+        .where(and(eq(treatments.id, id), ne(treatments.status, 'completed')))
+        .returning({ id: treatments.id })
+
+      if (!reivindicado) {
+        return NextResponse.json(
+          { error: 'Este tratamento já foi concluído.' },
+          { status: 409 }
+        )
+      }
+
       // Deduct materials from stock
       const items = await db.select().from(treatmentItems)
         .where(and(eq(treatmentItems.treatmentId, id), eq(treatmentItems.type, 'material')))
@@ -190,7 +208,7 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
       const rows = Array.from({ length: n }, (_, i) => {
         // a última parcela absorve o arredondamento
         const cents = i === n - 1 ? totalCents - baseCents * (n - 1) : baseCents
-        const due = new Date(today.getFullYear(), today.getMonth() + i, today.getDate())
+        const due = vencimentoParcela(today, i)
         const isPaid = paymentStatus === 'all_paid' || (paymentStatus === 'first_paid' && i === 0)
         if (isPaid) paidCents += cents
         return {

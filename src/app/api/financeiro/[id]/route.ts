@@ -4,7 +4,7 @@ import { transactions, bankAccounts } from '@/lib/db/schema'
 import { hasPermission } from '@/lib/permissions'
 import { logActivity } from '@/lib/db/logger'
 import { NextRequest, NextResponse } from 'next/server'
-import { eq, sql } from 'drizzle-orm'
+import { and, eq, isNotNull, sql } from 'drizzle-orm'
 import { z } from 'zod'
 import type { UserRole } from '@/types'
 
@@ -67,6 +67,39 @@ export async function PATCH(req: NextRequest, { params }: Params) {
   const willBePaid = parsed.data.isPaid ?? existing.isPaid
   if (willBePaid && !existing.isPaid && parsed.data.paidAt === undefined) updateData.paidAt = new Date()
   if (parsed.data.isPaid === false) updateData.paidAt = null
+
+  // O botão "Pagar" da listagem envia só { isPaid: true }. As parcelas 2..N de
+  // um tratamento nascem sem bankAccountId, e reconcileBalance só mexe no saldo
+  // quando há conta — então a baixa acontecia no financeiro e nunca chegava na
+  // conta bancária. Herda a conta da parcela já recebida do mesmo tratamento;
+  // se não houver, usa a conta padrão da clínica.
+  const virandoPaga = willBePaid && !existing.isPaid
+  const semConta = parsed.data.bankAccountId === undefined && !existing.bankAccountId
+  if (virandoPaga && semConta) {
+    let contaHerdada: string | null = null
+
+    if (existing.treatmentId) {
+      const irma = await db.query.transactions.findFirst({
+        where: and(
+          eq(transactions.treatmentId, existing.treatmentId),
+          eq(transactions.isPaid, true),
+          isNotNull(transactions.bankAccountId),
+        ),
+        columns: { bankAccountId: true },
+      })
+      contaHerdada = irma?.bankAccountId ?? null
+    }
+
+    if (!contaHerdada) {
+      const padrao = await db.query.bankAccounts.findFirst({
+        where: and(eq(bankAccounts.isDefault, true), eq(bankAccounts.isActive, true)),
+        columns: { id: true },
+      })
+      contaHerdada = padrao?.id ?? null
+    }
+
+    if (contaHerdada) updateData.bankAccountId = contaHerdada
+  }
 
   const [updated] = await db.update(transactions)
     .set(updateData)
