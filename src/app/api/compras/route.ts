@@ -1,8 +1,8 @@
 import { NextResponse } from 'next/server'
 import { auth } from '@/lib/auth/config'
 import { db } from '@/lib/db'
-import { purchaseOrders, purchaseOrderItems } from '@/lib/db/schema'
-import { desc, eq } from 'drizzle-orm'
+import { purchaseOrders, purchaseOrderItems, materials } from '@/lib/db/schema'
+import { desc, eq, inArray } from 'drizzle-orm'
 import { z } from 'zod'
 import { hasPermission } from '@/lib/permissions'
 import type { UserRole } from '@/types'
@@ -53,6 +53,23 @@ export async function POST(req: Request) {
 
   const { supplier, orderDate, expectedDate, notes, items } = parsed.data
   const totalAmount = items.reduce((sum, i) => sum + i.quantity * i.unitCost, 0)
+
+  // Sem transação, um material inexistente (ou excluído entre a montagem da
+  // tela e o envio) fazia o insert dos itens estourar por FK com o cabeçalho já
+  // gravado — sobrava um pedido sem item, que ao ser recebido lançava a despesa
+  // cheia sem creditar nada. Valida antes de escrever qualquer coisa.
+  const idsInformados = [...new Set(items.map((i) => i.materialId))]
+  const existentes = await db
+    .select({ id: materials.id })
+    .from(materials)
+    .where(inArray(materials.id, idsInformados))
+
+  if (existentes.length !== idsInformados.length) {
+    return NextResponse.json(
+      { error: 'Um dos materiais do pedido não existe mais. Recarregue a página e monte o pedido novamente.' },
+      { status: 409 }
+    )
+  }
 
   const [order] = await db
     .insert(purchaseOrders)

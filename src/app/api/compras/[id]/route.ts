@@ -5,7 +5,8 @@ import {
   purchaseOrders, purchaseOrderItems,
   materials, stockMovements, transactions,
 } from '@/lib/db/schema'
-import { eq } from 'drizzle-orm'
+import { and, eq, inArray } from 'drizzle-orm'
+import { darEntradaEstoque } from '@/lib/materials-stock'
 import { z } from 'zod'
 import { hasPermission } from '@/lib/permissions'
 import type { UserRole } from '@/types'
@@ -118,8 +119,26 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
     if (order.status !== 'ordered' && order.status !== 'draft') {
       return NextResponse.json({ error: 'Pedido não pode ser recebido neste status' }, { status: 409 })
     }
+    // Pedido sem item creditava zero no estoque mas lançava a despesa cheia.
+    if (order.items.length === 0) {
+      return NextResponse.json({ error: 'Pedido sem itens não pode ser recebido' }, { status: 409 })
+    }
 
     const receivedDate = data.receivedDate ?? new Date().toISOString().slice(0, 10)
+
+    // Reivindica o pedido ANTES de creditar qualquer coisa. A validação de
+    // status acontecia antes de todas as escritas e o botão não tinha estado de
+    // carregando: dois cliques passavam pela checagem e creditavam estoque e
+    // despesa em dobro. Este UPDATE condicional é atômico.
+    const [reivindicado] = await db
+      .update(purchaseOrders)
+      .set({ status: 'received', receivedDate, updatedAt: new Date() })
+      .where(and(eq(purchaseOrders.id, id), inArray(purchaseOrders.status, ['draft', 'ordered'])))
+      .returning({ id: purchaseOrders.id })
+
+    if (!reivindicado) {
+      return NextResponse.json({ error: 'Este pedido já foi recebido' }, { status: 409 })
+    }
 
     for (const item of order.items) {
       await db.insert(stockMovements).values({
@@ -130,15 +149,16 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
         userId:     session.user.id,
       })
 
-      const mat = await db.query.materials.findFirst({ where: eq(materials.id, item.materialId) })
-      if (mat) {
-        await db.update(materials).set({
-          currentStock: mat.currentStock + item.quantity,
-          unitCost:     item.unitCost,
-          supplier:     order.supplier,
-          updatedAt:    new Date(),
-        }).where(eq(materials.id, item.materialId))
-      }
+      // Entra pelos lotes quando o material é controlado por lote e recalcula o
+      // status — antes o material recebido continuava sinalizado como faltando
+      // e voltava para a lista de compras sugeridas.
+      await darEntradaEstoque(item.materialId, item.quantity)
+
+      await db.update(materials).set({
+        unitCost:  item.unitCost,
+        supplier:  order.supplier,
+        updatedAt: new Date(),
+      }).where(eq(materials.id, item.materialId))
     }
 
     const [tx] = await db.insert(transactions).values({
@@ -153,9 +173,8 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
       createdById: session.user.id,
     }).returning()
 
+    // O status já foi gravado na reivindicação; aqui só vincula a despesa.
     await db.update(purchaseOrders).set({
-      status:        'received',
-      receivedDate,
       transactionId: tx.id,
       updatedAt:     new Date(),
     }).where(eq(purchaseOrders.id, id))

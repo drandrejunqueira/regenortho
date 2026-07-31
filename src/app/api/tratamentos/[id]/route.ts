@@ -8,6 +8,7 @@ import { z } from 'zod'
 import { eq, and, ne, sql } from 'drizzle-orm'
 import { sendAndLog, tplTreatmentSummary } from '@/lib/whatsapp'
 import { vencimentoParcela } from '@/lib/parcelas'
+import { darBaixaEstoque } from '@/lib/materials-stock'
 import { notify } from '@/lib/notifications'
 
 const TREATMENT_STATUS_LABELS: Record<string, string> = {
@@ -157,23 +158,21 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
       for (const item of items) {
         if (item.materialId) {
           const qty = Math.round(Number(item.quantity))
-          // Atomic decrement using sql tag to avoid injection
-          const [material] = await db.update(materials)
-            .set({ currentStock: sql`GREATEST(0, current_stock - ${qty})` })
-            .where(eq(materials.id, item.materialId))
-            .returning({
-              name: materials.name,
-              currentStock: materials.currentStock,
-              minimumStock: materials.minimumStock,
-              unit: materials.unit,
-            })
-          // A baixa do tratamento é o momento em que o estoque realmente cai —
-          // avisa a equipe antes de faltar material no próximo procedimento.
-          if (material && material.currentStock <= material.minimumStock) {
+          // Consome os lotes (FEFO) quando o material é controlado por lote, e
+          // recalcula o status. Antes a baixa mexia só na coluna: o próximo
+          // recálculo por lotes restaurava o saldo já consumido, e o material
+          // podia cair abaixo do mínimo continuando marcado como 'ok'.
+          const saldo = await darBaixaEstoque(item.materialId, qty)
+          const material = await db.query.materials.findFirst({
+            where: eq(materials.id, item.materialId),
+            columns: { name: true, minimumStock: true, unit: true },
+          })
+
+          if (material && saldo <= material.minimumStock) {
             await notify({
               type: 'stock_low',
               title: `Estoque baixo: ${material.name}`,
-              body: `Restam ${material.currentStock} ${material.unit} (mínimo: ${material.minimumStock})`,
+              body: `Restam ${saldo} ${material.unit} (mínimo: ${material.minimumStock})`,
               link: '/materiais',
               entityId: item.materialId,
               priority: 'high',

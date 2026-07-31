@@ -1,10 +1,11 @@
 'use client'
 
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useMemo } from 'react'
 import { PageHeader } from '@/components/shared/PageHeader'
 import { KanbanBoard } from '@/components/leads/KanbanBoard'
 import { NewLeadDialog } from '@/components/leads/NewLeadDialog'
 import type { Lead } from '@/types'
+import { toast } from 'sonner'
 
 export default function LeadsPage() {
   const [leads, setLeads] = useState<Lead[]>([])
@@ -21,6 +22,9 @@ export default function LeadsPage() {
       if (res.ok) {
         const { data } = await res.json()
         setLeads(data)
+      } else {
+        // Sem isto, uma falha deixava o quadro vazio sem nenhuma explicação.
+        toast.error('Não foi possível carregar os leads. Recarregue a página.')
       }
     } finally {
       setLoading(false)
@@ -34,11 +38,17 @@ export default function LeadsPage() {
     new Set(leads.flatMap((lead) => lead.tags ?? []))
   ).sort()
 
-  // Filtragem de tags client-side para resposta instantânea
-  const filteredLeads = leads.filter((lead) => {
-    if (!selectedTag) return true
-    return lead.tags && lead.tags.includes(selectedTag)
-  })
+  // Filtragem de tags client-side para resposta instantânea.
+  // useMemo é necessário: sem ele este array tem identidade nova a cada render,
+  // o efeito de sincronização do KanbanBoard dispara e devolve o card à coluna
+  // antiga logo depois de um arraste bem-sucedido.
+  const filteredLeads = useMemo(
+    () => leads.filter((lead) => {
+      if (!selectedTag) return true
+      return lead.tags && lead.tags.includes(selectedTag)
+    }),
+    [leads, selectedTag]
+  )
 
   return (
     <div className="h-full flex flex-col">
