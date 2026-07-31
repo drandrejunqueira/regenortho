@@ -1,10 +1,10 @@
 import { auth } from '@/lib/auth/config'
 import { db } from '@/lib/db'
-import { patients } from '@/lib/db/schema'
+import { patients, clinicalRecords } from '@/lib/db/schema'
 import { hasPermission } from '@/lib/permissions'
 import { logActivity } from '@/lib/db/logger'
 import { NextRequest, NextResponse } from 'next/server'
-import { eq } from 'drizzle-orm'
+import { count, eq } from 'drizzle-orm'
 import { z } from 'zod'
 import type { UserRole } from '@/types'
 
@@ -65,8 +65,8 @@ export async function GET(_: NextRequest, { params }: Params) {
   const role = session.user.role as UserRole
   const result = {
     ...patient,
-    clinicalRecords: hasPermission(role, 'patients:view_clinical') ? patient.clinicalRecords : [],
-    transactions: hasPermission(role, 'financial:view') ? patient.transactions : [],
+    clinicalRecords: hasPermission(role, 'patients:view_clinical', session.user.customPermissions) ? patient.clinicalRecords : [],
+    transactions: hasPermission(role, 'financial:view', session.user.customPermissions) ? patient.transactions : [],
     leads: patient.leads || [],
   }
 
@@ -121,9 +121,25 @@ export async function DELETE(req: NextRequest, { params }: Params) {
   }
   const { id } = await params
 
-  // Agendamentos, tratamentos, prontuários e lançamentos referenciam o paciente
-  // sem cascata: se houver histórico, a FK bloqueia a exclusão. Nesse caso o
-  // caminho correto é inativar, preservando o histórico clínico e financeiro.
+  // Agendamentos, tratamentos e lançamentos referenciam o paciente sem cascata,
+  // então a FK bloqueia a exclusão. O PRONTUÁRIO é a exceção perigosa:
+  // clinical_records tem onDelete: 'cascade', ou seja, era apagado em silêncio
+  // junto com o paciente — o contrário do que a mensagem de erro promete.
+  // Por isso ele é checado explicitamente antes.
+  const [{ registros }] = await db
+    .select({ registros: count() })
+    .from(clinicalRecords)
+    .where(eq(clinicalRecords.patientId, id))
+
+  if (registros > 0) {
+    return NextResponse.json(
+      {
+        error: `Este paciente possui ${registros} registro(s) no prontuário e não pode ser excluído. Inative-o para ocultá-lo da lista, preservando o histórico clínico.`,
+      },
+      { status: 409 }
+    )
+  }
+
   let deleted
   try {
     ;[deleted] = await db.delete(patients).where(eq(patients.id, id)).returning()

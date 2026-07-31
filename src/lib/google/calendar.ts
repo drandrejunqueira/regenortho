@@ -211,8 +211,19 @@ export async function syncAppointment(appt: SyncableAppointment, displayName?: s
     const requestBody = buildEventBody(appt, displayName)
 
     if (appt.googleEventId) {
-      await calendar.events.update({ calendarId: ctx.calendarId, eventId: appt.googleEventId, requestBody })
-      return appt.googleEventId
+      try {
+        await calendar.events.update({ calendarId: ctx.calendarId, eventId: appt.googleEventId, requestBody })
+        return appt.googleEventId
+      } catch (e) {
+        // Evento apagado direto no Google devolve 404/410. Antes o erro era
+        // engolido e o agendamento ficava preso a um id inexistente: nenhuma
+        // edição posterior voltava a aparecer na agenda do médico.
+        const status = (e as { code?: number; status?: number })?.code ?? (e as { status?: number })?.status
+        if (status !== 404 && status !== 410) throw e
+        console.warn('[google/calendar] evento sumiu do Google, recriando', appt.googleEventId)
+        const recriado = await calendar.events.insert({ calendarId: ctx.calendarId, requestBody })
+        return recriado.data.id ?? null
+      }
     }
     const res = await calendar.events.insert({ calendarId: ctx.calendarId, requestBody })
     return res.data.id ?? null

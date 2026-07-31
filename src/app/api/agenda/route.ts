@@ -10,7 +10,7 @@ import { z } from 'zod'
 import type { UserRole } from '@/types'
 import { notify } from '@/lib/notifications'
 import { APPOINTMENT_TYPE_LABELS } from '@/lib/constants'
-import { formatDateTime } from '@/lib/utils'
+import { formatDateTime, toDateBR } from '@/lib/utils'
 
 const createSchema = z.object({
   patientId: z.string().uuid().nullable().optional(),
@@ -29,6 +29,9 @@ const createSchema = z.object({
   paymentTiming: z.enum(['antecipado', 'no_ato']).nullable().optional(),
   paymentStatus: z.enum(['pending', 'paid']).nullable().optional(),
   paymentReceiptUrl: z.string().nullable().optional(),
+}).refine((d) => new Date(d.endAt) > new Date(d.startAt), {
+  message: 'O término deve ser posterior ao início',
+  path: ['endAt'],
 })
 
 export async function GET(req: NextRequest) {
@@ -156,7 +159,7 @@ export async function POST(req: NextRequest) {
         category: 'consultation_fee',
         amount: apt.consultationPrice || '0.00',
         description: `Consulta: ${displayName || 'Paciente'}` + (apt.paymentStatus === 'paid' ? ' (Pago)' : ' (A receber)'),
-        date: new Date().toISOString().split('T')[0],
+        date: toDateBR(),
         dueDate: apt.startAt.toISOString().split('T')[0],
         isPaid: apt.paymentStatus === 'paid',
         paidAt: apt.paymentStatus === 'paid' ? new Date() : null,

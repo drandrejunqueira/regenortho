@@ -26,8 +26,10 @@ const TYPE_COLORS: Record<string, string> = {
 function getWeekDays(baseDate: Date) {
   const day = baseDate.getDay()
   const diff = day === 0 ? -6 : 1 - day
-  const monday = new Date(baseDate)
-  monday.setDate(baseDate.getDate() + diff)
+  // Zera a hora: a segunda-feira herdava o horário atual, então a grade começava
+  // às 14h de segunda e escondia todos os agendamentos da manhã daquele dia.
+  const monday = new Date(baseDate.getFullYear(), baseDate.getMonth(), baseDate.getDate())
+  monday.setDate(monday.getDate() + diff)
   return Array.from({ length: 5 }, (_, i) => {
     const d = new Date(monday)
     d.setDate(monday.getDate() + i)
