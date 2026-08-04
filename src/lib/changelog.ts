@@ -43,6 +43,19 @@ export const TIPO_COR: Record<TipoMudanca, { cor: string; fundo: string; icone: 
 
 export const VERSOES: Versao[] = [
   {
+    versao: '1.2.1',
+    data: '2026-08-04',
+    resumo: 'Recepção volta a escolher a forma de pagamento ao agendar',
+    mudancas: [
+      {
+        tipo: 'correcao',
+        titulo: 'Formas de pagamento aparecem para a recepção no agendamento',
+        detalhe:
+          'Ao marcar a consulta como paga — no CRM de leads ou na Agenda — a lista de formas de pagamento vinha vazia para quem não tem acesso ao financeiro, e a consulta não podia ser fechada. Agora quem pode agendar também enxerga as formas de pagamento.',
+      },
+    ],
+  },
+  {
     versao: '1.2.0',
     data: '2026-07-30',
     resumo: 'Correções de estoque, financeiro, prontuário e portal do paciente',
