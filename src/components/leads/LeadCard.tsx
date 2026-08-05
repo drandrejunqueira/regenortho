@@ -47,6 +47,8 @@ export function LeadCard({ lead, onClick, onSchedule }: Props) {
     onSchedule(lead)
   }
 
+  // @container: as colunas agora encolhem junto com a tela, então o card mede a
+  // si mesmo para decidir o que ainda cabe (ver os rótulos dos botões abaixo).
   return (
     <div
       ref={setNodeRef}
@@ -54,12 +56,13 @@ export function LeadCard({ lead, onClick, onSchedule }: Props) {
       {...attributes}
       {...listeners}
       onClick={onClick}
-      className="bg-white rounded-xl p-4 border border-[rgba(2,21,65,0.08)] shadow-[0_2px_8px_rgba(2,21,65,0.06)] hover:border-[#00BCE4]/30 hover:shadow-[0_4px_16px_rgba(2,21,65,0.08)] transition-all cursor-grab group"
+      className="@container bg-white rounded-xl p-3 border border-[rgba(2,21,65,0.08)] shadow-[0_2px_8px_rgba(2,21,65,0.06)] hover:border-[#00BCE4]/30 hover:shadow-[0_4px_16px_rgba(2,21,65,0.08)] transition-all cursor-grab group"
     >
-      {/* Header */}
-      <div className="flex items-start gap-3 mb-3">
+      {/* Header — o nome fica com a linha inteira; o "há quanto tempo" desce
+          para a linha da origem, onde sobra espaço mesmo na coluna estreita. */}
+      <div className="flex items-start gap-2.5 mb-2.5">
         <div
-          className="w-10 h-10 rounded-full flex items-center justify-center font-bold text-sm shrink-0 select-none"
+          className="w-9 h-9 rounded-full flex items-center justify-center font-bold text-xs shrink-0 select-none"
           style={{ backgroundColor: `${avatarColor}20`, color: avatarColor }}
         >
           {getInitials(lead.name)}
@@ -70,24 +73,26 @@ export function LeadCard({ lead, onClick, onSchedule }: Props) {
             <p className="text-xs text-[#718096] truncate">{lead.specialty}</p>
           )}
         </div>
-        <span className="font-technical text-[10px] text-[#718096] shrink-0">
+      </div>
+
+      {/* Origem + tempo */}
+      <div className="flex items-center gap-2 mb-2">
+        <span className="bg-[rgba(0,188,228,0.08)] text-[#00BCE4] text-[10px] px-2 py-1 rounded-full font-medium min-w-0 truncate">
+          {LEAD_SOURCE_LABELS[lead.source] ?? lead.source}
+        </span>
+        <span className="font-technical text-[10px] text-[#718096] shrink-0 ml-auto">
           {timeAgo(lead.createdAt)}
         </span>
       </div>
 
-      {/* Source + complaint */}
-      <div className="flex items-center justify-between gap-2 mb-3">
-        <span className="bg-[rgba(0,188,228,0.08)] text-[#00BCE4] text-[10px] px-2 py-1 rounded-full font-medium">
-          {LEAD_SOURCE_LABELS[lead.source] ?? lead.source}
-        </span>
-        {lead.complaint && (
-          <p className="text-xs text-[#718096] truncate flex-1 text-right">{lead.complaint}</p>
-        )}
-      </div>
+      {/* Queixa */}
+      {lead.complaint && (
+        <p className="text-xs text-[#718096] truncate mb-2.5">{lead.complaint}</p>
+      )}
 
       {/* Tags */}
       {lead.tags && lead.tags.length > 0 && (
-        <div className="flex flex-wrap gap-1 mb-3">
+        <div className="flex flex-wrap gap-1 mb-2.5">
           {lead.tags.map((tag) => (
             <span
               key={tag}
@@ -103,19 +108,19 @@ export function LeadCard({ lead, onClick, onSchedule }: Props) {
       <div className="flex items-center gap-2">
         <button
           onClick={openWhatsApp}
-          className="flex items-center justify-center gap-1.5 p-1.5 rounded-lg bg-[rgba(2,21,65,0.04)] text-[#16a34a] hover:bg-[rgba(22,163,74,0.08)] transition-all flex-1 text-xs font-medium"
+          className="flex items-center justify-center gap-1.5 p-1.5 rounded-lg bg-[rgba(2,21,65,0.04)] text-[#16a34a] hover:bg-[rgba(22,163,74,0.08)] transition-all flex-1 min-w-0 text-xs font-medium"
           aria-label="Abrir WhatsApp"
         >
           <span className="material-symbols-outlined" style={{ fontSize: '14px' }}>chat</span>
-          WhatsApp
+          <span className="hidden @[175px]:inline truncate">WhatsApp</span>
         </button>
         <button
           onClick={openSchedule}
-          className="flex items-center justify-center gap-1.5 p-1.5 rounded-lg bg-[rgba(0,188,228,0.08)] text-[#00BCE4] hover:bg-[rgba(0,188,228,0.15)] transition-all flex-1 text-xs font-medium"
+          className="flex items-center justify-center gap-1.5 p-1.5 rounded-lg bg-[rgba(0,188,228,0.08)] text-[#00BCE4] hover:bg-[rgba(0,188,228,0.15)] transition-all flex-1 min-w-0 text-xs font-medium"
           aria-label="Agendar"
         >
           <span className="material-symbols-outlined" style={{ fontSize: '14px' }}>calendar_today</span>
-          Agendar
+          <span className="hidden @[175px]:inline truncate">Agendar</span>
         </button>
       </div>
     </div>

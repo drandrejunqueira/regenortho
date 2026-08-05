@@ -12,9 +12,10 @@ import { ScheduleLeadDialog } from './ScheduleLeadDialog'
 import { toast } from 'sonner'
 import type { Lead, LeadStatus, LeadInteraction } from '@/types'
 
-// Todos os 6 estágios do funil. 'attended' e 'active_patient' antes ficavam de fora,
-// então leads convertidos sumiam do quadro sem coluna para onde ir.
-const STATUSES: LeadStatus[] = ['new', 'contacted', 'scheduled', 'attended', 'active_patient', 'lost']
+// Estágios exibidos no quadro. 'active_patient' continua existindo no banco
+// (o funil do dashboard ainda o soma), mas saiu do CRM: a recepção acompanha o
+// lead até "Compareceu" e dali em diante ele vira paciente na área de Pacientes.
+const STATUSES: LeadStatus[] = ['new', 'contacted', 'scheduled', 'attended', 'lost']
 
 interface Props {
   initialLeads: Lead[]
@@ -164,7 +165,9 @@ export function KanbanBoard({ initialLeads, onRefresh }: Props) {
         onDragStart={handleDragStart}
         onDragEnd={handleDragEnd}
       >
-        <div className="flex gap-4 overflow-x-auto pb-4 h-full items-start">
+        {/* Colunas em grade: dividem a largura disponível em vez de terem largura
+            fixa, então o quadro nunca precisa de scroll horizontal — só vertical. */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-3 items-start h-full overflow-y-auto overflow-x-hidden pb-4">
           {STATUSES.map((status) => (
             <KanbanColumn
               key={status}

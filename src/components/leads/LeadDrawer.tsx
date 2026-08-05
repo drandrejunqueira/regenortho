@@ -18,7 +18,9 @@ interface Props {
   onScheduleLead?: (lead: Lead) => void
 }
 
-const STATUSES: LeadStatus[] = ['new', 'contacted', 'scheduled', 'attended', 'active_patient', 'lost']
+// Mesmos estágios do quadro. 'active_patient' saiu daqui também: se ficasse,
+// marcar o lead com ele o faria sumir do CRM (não há mais coluna para exibi-lo).
+const STATUSES: LeadStatus[] = ['new', 'contacted', 'scheduled', 'attended', 'lost']
 
 const STATUS_STYLES: Record<string, string> = {
   new:            'bg-cyan-50 border-cyan-200 text-cyan-700',

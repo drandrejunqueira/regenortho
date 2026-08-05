@@ -26,15 +26,17 @@ export function KanbanColumn({ status, leads, onLeadClick, onSchedule }: Props) 
   const config = COLUMN_CONFIG[status]
   const { setNodeRef, isOver } = useDroppable({ id: status })
 
+  // min-w-0: sem isto o conteúdo de um card faz a faixa da grade crescer e o
+  // scroll horizontal volta.
   return (
-    <div className="flex flex-col w-[280px] min-w-[280px] shrink-0">
+    <div className="flex flex-col min-w-0">
       {/* Header */}
-      <div className="flex items-center gap-2 px-3 py-3 mb-2">
+      <div className="flex items-center gap-2 px-2 py-3 mb-2">
         <div
           className="w-2 h-2 rounded-full shrink-0"
           style={{ backgroundColor: config.color }}
         />
-        <span className="text-xs font-bold uppercase tracking-wider text-[#021541] flex-1">
+        <span className="text-xs font-bold uppercase tracking-wider text-[#021541] flex-1 min-w-0 truncate">
           {config.label}
         </span>
         <span

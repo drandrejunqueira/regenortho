@@ -43,6 +43,25 @@ export const TIPO_COR: Record<TipoMudanca, { cor: string; fundo: string; icone: 
 
 export const VERSOES: Versao[] = [
   {
+    versao: '1.2.2',
+    data: '2026-08-05',
+    resumo: 'Layout responsivo do Quadro Kanban de Leads e otimização do Funil',
+    mudancas: [
+      {
+        tipo: 'melhoria',
+        titulo: 'Quadro Kanban de Leads responsivo em colunas adaptativas',
+        detalhe:
+          'O quadro de leads agora ajusta as colunas dinamicamente na tela sem necessidade de scroll horizontal, com cards compactos e adaptáveis para qualquer tamanho de monitor.',
+      },
+      {
+        tipo: 'melhoria',
+        titulo: 'Fluxo de atendimento simplificado no CRM de Leads',
+        detalhe:
+          'Os estágios do Kanban agora acompanham a jornada até "Compareceu". A partir do comparecimento, o lead vira paciente e passa a ser acompanhado na área dedicada de Pacientes.',
+      },
+    ],
+  },
+  {
     versao: '1.2.1',
     data: '2026-08-04',
     resumo: 'Recepção volta a escolher a forma de pagamento ao agendar',
