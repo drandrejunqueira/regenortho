@@ -9,6 +9,10 @@ import { and, ilike, or, eq, desc, inArray, lt, gte } from 'drizzle-orm'
 import { z } from 'zod'
 import type { UserRole } from '@/types'
 
+const DEFAULT_PAGE = 1
+const DEFAULT_PAGE_SIZE = 20
+const MAX_PAGE_SIZE = 100
+
 const createSchema = z.object({
   name: z.string().min(2, 'Nome obrigatório'),
   phone: z.string().min(8, 'Telefone inválido'),
@@ -36,8 +40,14 @@ export async function GET(req: NextRequest) {
   const search = searchParams.get('search')
   const treatment = searchParams.get('treatment')
   const financialStatus = searchParams.get('financialStatus')
-  const page = parseInt(searchParams.get('page') ?? '1')
-  const limit = parseInt(searchParams.get('limit') ?? '20')
+  // `page`/`limit` são entrada crua: sem sanitizar, `?limit=999999` carrega a
+  // base inteira (com os `with:` junto), `?limit=abc` vira NaN e `?page=0`
+  // produz offset negativo. Teto de 100 segue /api/tratamentos.
+  const rawPage = Math.trunc(Number(searchParams.get('page')))
+  const rawLimit = Math.trunc(Number(searchParams.get('limit')))
+  const page = Number.isFinite(rawPage) && rawPage > 0 ? rawPage : DEFAULT_PAGE
+  const limit =
+    Number.isFinite(rawLimit) && rawLimit > 0 ? Math.min(rawLimit, MAX_PAGE_SIZE) : DEFAULT_PAGE_SIZE
   const offset = (page - 1) * limit
 
   const conditions = []

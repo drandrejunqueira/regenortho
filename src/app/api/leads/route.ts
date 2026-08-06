@@ -4,11 +4,16 @@ import { leads } from '@/lib/db/schema'
 import { hasPermission } from '@/lib/permissions'
 import { logActivity } from '@/lib/db/logger'
 import { NextRequest, NextResponse } from 'next/server'
-import { and, gte, lte, eq, ilike, or, desc, sql } from 'drizzle-orm'
+import { and, gte, lte, eq, ilike, or, desc, sql, isNull } from 'drizzle-orm'
 import { z } from 'zod'
 import type { UserRole } from '@/types'
 import { notify } from '@/lib/notifications'
 import { LEAD_SOURCE_LABELS } from '@/lib/constants'
+
+const LEAD_STATUSES = ['new', 'contacted', 'scheduled', 'attended', 'active_patient', 'lost'] as const
+const LEAD_SOURCES = ['google_ads', 'meta_ads', 'instagram_organic', 'facebook_organic', 'google_organic', 'referral', 'whatsapp', 'other'] as const
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
+const DATE_RE = /^\d{4}-\d{2}-\d{2}$/
 
 const createLeadSchema = z.object({
   name: z.string().min(2, 'Nome obrigatório'),
@@ -34,8 +39,6 @@ export async function GET(req: NextRequest) {
 
   const { searchParams } = new URL(req.url)
   const search = searchParams.get('search')
-  const status = searchParams.get('status')
-  const source = searchParams.get('source')
 
   const conditions = []
   if (search) {
@@ -44,12 +47,43 @@ export async function GET(req: NextRequest) {
       ilike(leads.phone, `%${search}%`),
     ))
   }
-  if (status) conditions.push(eq(leads.status, status as 'new' | 'contacted' | 'scheduled' | 'attended' | 'active_patient' | 'lost'))
-  if (source) conditions.push(eq(leads.source, source as 'google_ads' | 'meta_ads' | 'instagram_organic' | 'facebook_organic' | 'google_organic' | 'referral' | 'whatsapp' | 'other'))
 
-  const tag = searchParams.get('tag')
-  if (tag) {
-    conditions.push(sql`${leads.tags} @> ${JSON.stringify([tag])}::jsonb`)
+  // Validar contra o enum antes de comparar: um valor fora dele faria o Postgres
+  // abortar a query inteira com erro de cast, devolvendo 500 em vez de ignorar.
+  const status = searchParams.get('status')
+  if (status && (LEAD_STATUSES as readonly string[]).includes(status)) {
+    conditions.push(eq(leads.status, status as (typeof LEAD_STATUSES)[number]))
+  }
+  const source = searchParams.get('source')
+  if (source && (LEAD_SOURCES as readonly string[]).includes(source)) {
+    conditions.push(eq(leads.source, source as (typeof LEAD_SOURCES)[number]))
+  }
+
+  // Múltiplas tags com semântica E: o lead precisa ter todas as selecionadas.
+  // Uma única cláusula de containment resolve — `@>` aceita o array inteiro.
+  const selectedTags = searchParams.getAll('tag').map((t) => t.trim()).filter(Boolean)
+  if (selectedTags.length) {
+    conditions.push(sql`${leads.tags} @> ${JSON.stringify(selectedTags)}::jsonb`)
+  }
+
+  // 'none' filtra os leads sem responsável — é o recorte que a recepção usa para
+  // achar o que ninguém pegou ainda.
+  const assignedTo = searchParams.get('assignedTo')
+  if (assignedTo === 'none') {
+    conditions.push(isNull(leads.assignedToId))
+  } else if (assignedTo && UUID_RE.test(assignedTo)) {
+    conditions.push(eq(leads.assignedToId, assignedTo))
+  }
+
+  // Período de entrada (YYYY-MM-DD, fuso da clínica). `to` é inclusivo: o usuário
+  // escolhe "até 06/08" esperando que o dia 06 inteiro entre.
+  const from = searchParams.get('from')
+  if (from && DATE_RE.test(from)) {
+    conditions.push(gte(leads.createdAt, new Date(`${from}T00:00:00.000-03:00`)))
+  }
+  const to = searchParams.get('to')
+  if (to && DATE_RE.test(to)) {
+    conditions.push(lte(leads.createdAt, new Date(`${to}T23:59:59.999-03:00`)))
   }
 
   const data = await db.query.leads.findMany({

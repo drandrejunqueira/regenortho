@@ -62,7 +62,7 @@ export default async function EspecialidadesPage() {
       {/* Schema.org GEO Structured Data */}
       <script
         type="application/ld+json"
-        dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd).replace(/</g, '\\u003c') }}
       />
       <GSAPAnimations />
       <SiteNav />

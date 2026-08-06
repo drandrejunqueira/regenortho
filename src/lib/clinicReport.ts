@@ -226,6 +226,20 @@ export async function deliverClinicReport(
   const logTarget = opts.target.split('@')[0].slice(0, 20)
   try {
     const resp = await sendEvolutionText(opts.target, report.whatsappText)
+
+    // O webhook não ignora `fromMe`, então este relatório volta como mensagem
+    // recebida. A única guarda era `looksLikeBotReply`, que testa o prefixo 📋 —
+    // mas com `refine: true` a IA reescreve o texto e pode perder o emoji, e aí
+    // o bot gera OUTRO relatório. Marcar o id enviado é a guarda que não depende
+    // de o texto sobreviver à IA.
+    // Import dinâmico: whatsappBot já importa este módulo e o estático criaria
+    // ciclo.
+    const sentId = (resp as { key?: { id?: string } })?.key?.id
+    if (sentId) {
+      const { markSeen } = await import('@/lib/whatsappBot')
+      markSeen(String(sentId))
+    }
+
     await db.insert(whatsappMessages).values({
       type: 'weekly_report',
       targetNumber: logTarget,

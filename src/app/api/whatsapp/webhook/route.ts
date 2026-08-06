@@ -13,6 +13,7 @@ import {
   dispatchGroupMessage,
   sendGroupMessage,
 } from '@/lib/whatsappBot'
+import { secretEquals } from '@/lib/secrets'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
@@ -21,7 +22,7 @@ async function handle(body: any, token: string): Promise<void> {
   const secret = await getConfig('wa_webhook_token')
   // Fail-closed: with no configured token, reject everything instead of processing
   // forged payloads (which could leak patient PII / prontuário into the WhatsApp group).
-  if (!secret || token !== secret) return
+  if (!secret || !secretEquals(token, secret)) return
 
   const msg = parseWebhookMessage(body)
   if (!msg) return
@@ -53,7 +54,15 @@ async function handle(body: any, token: string): Promise<void> {
 
 export async function POST(req: NextRequest) {
   try {
-    const token = new URL(req.url).searchParams.get('token') || ''
+    // Preferência por header: query string vaza para access log, Referer e cache
+    // de proxy. A query segue aceita como fallback porque a URL já está
+    // registrada na Evolution — derrubar isso sem migrar quebraria o bot em
+    // produção. Remover o fallback depende de reconfigurar o webhook lá.
+    const token =
+      req.headers.get('x-webhook-token') ||
+      req.headers.get('authorization')?.replace(/^Bearer\s+/i, '') ||
+      new URL(req.url).searchParams.get('token') ||
+      ''
     const body = await req.json().catch(() => null)
     await handle(body, token)
   } catch (err) {

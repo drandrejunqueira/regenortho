@@ -3,7 +3,7 @@ import { db } from '@/lib/db'
 import { users } from '@/lib/db/schema'
 import { hasPermission } from '@/lib/permissions'
 import { NextRequest, NextResponse } from 'next/server'
-import { eq } from 'drizzle-orm'
+import { and, eq } from 'drizzle-orm'
 import { z } from 'zod'
 import bcrypt from 'bcryptjs'
 import type { UserRole } from '@/types'
@@ -16,6 +16,10 @@ const updateSchema = z.object({
   phone: z.string().nullable().optional(),
   customPermissions: z.array(z.string()).nullable().optional(),
   googleCalendarId: z.string().nullable().optional(),
+  // O resumo diário da agenda NÃO entra aqui de propósito: é autoatendimento,
+  // configurado pelo dono em /api/perfil. Aceitar `dailyAgendaWhatsapp` neste
+  // endpoint deixaria quem tem `users:edit` redirecionar a agenda de um médico
+  // — nome e horário de cada paciente — para outro número, sem o titular notar.
 })
 
 type Params = { params: Promise<{ id: string }> }
@@ -33,6 +37,32 @@ export async function PATCH(req: NextRequest, { params }: Params) {
   if (!parsed.success) return NextResponse.json({ error: 'Dados inválidos' }, { status: 400 })
 
   const { email, password, ...rest } = parsed.data
+
+  // Guarda do último admin: rebaixar ou desativar o único admin ativo deixaria
+  // a clínica sem ninguém capaz de gerenciar usuários e configurações, e não há
+  // caminho de recuperação pela interface.
+  const removesAdmin = (rest.role !== undefined && rest.role !== 'admin') || rest.isActive === false
+  if (removesAdmin) {
+    const [target] = await db
+      .select({ role: users.role, isActive: users.isActive })
+      .from(users)
+      .where(eq(users.id, id))
+
+    if (target?.role === 'admin' && target.isActive) {
+      const activeAdmins = await db
+        .select({ id: users.id })
+        .from(users)
+        .where(and(eq(users.role, 'admin'), eq(users.isActive, true)))
+
+      if (activeAdmins.every((u) => u.id === id)) {
+        return NextResponse.json(
+          { error: 'Este é o único admin ativo. Promova outro admin antes de rebaixar ou desativar este.' },
+          { status: 403 },
+        )
+      }
+    }
+  }
+
   const updates: Record<string, unknown> = { ...rest, updatedAt: new Date() }
 
   // E-mail: validar unicidade antes de alterar

@@ -758,7 +758,7 @@ export function ConfiguracoesClient({
                       <option value="daily">Todos os dias</option>
                       <option value="mon-fri">Segunda a sexta</option>
                     </select>
-                    <p className="text-[10px] text-[#718096]">Enviado por volta das 07h (horário de Brasília).</p>
+                    <p className="text-[10px] text-[#718096]">Enviado por volta das 08h (horário de Brasília).</p>
                   </div>
                   <div className="space-y-1.5">
                     <label className="text-[10px] font-bold text-[#718096] uppercase tracking-wider">Destino do relatório</label>

@@ -727,6 +727,25 @@ html.lenis body {
   overflow: hidden;
 }
 
+/* ─── CONTENÇÃO DO OVERFLOW HORIZONTAL ───────────────────────── */
+/* Os reveals GSAP (.gsap-reveal-3d / -left / -right / -stagger-child)
+   repousam num estado inicial com rotateX/rotateY + transformPerspective
+   enquanto o ScrollTrigger deles não dispara. A projeção em perspectiva
+   alarga a caixa desses elementos além da viewport e cria scroll
+   horizontal real nas seções ainda não reveladas.
+   `clip` e não `hidden`: `hidden` transformaria html/body em scroll container,
+   o que quebra o Lenis (smooth scroll da janela). `clip` recorta sem criar
+   scroll container, então o Lenis segue intacto.
+   Nos dois seletores: o Chromium não propaga `overflow-x: clip` do elemento
+   raiz para a viewport como faz com `hidden`. Só no `body` o conteúdo é
+   recortado mas o documento continua rolável na horizontal; só no `html` o
+   documento para de rolar mas o conteúdo ainda pinta para fora. Precisa dos
+   dois. */
+html,
+body {
+  overflow-x: clip;
+}
+
 /* ─── 3D SCROLL UTILITIES ────────────────────────────────────── */
 /* Preserve-3d wrapper — envolve seções com efeito de profundidade */
 .perspective-wrap {

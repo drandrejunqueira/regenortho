@@ -6,6 +6,7 @@ import { getConfig } from '@/lib/db/queries/configuracoes'
 import { getTermoById, updateTermo } from '@/lib/db/queries/glossario'
 import { notificarBuscadores } from '@/lib/seo/notificar'
 import { revalidatePath } from 'next/cache'
+import { sanitizeGlossaryHtml } from '@/lib/sanitizeHtml'
 
 const PROVIDER_BASES: Record<string, string> = {
   openai:       'https://api.openai.com/v1',
@@ -174,7 +175,9 @@ Retorne APENAS um objeto JSON válido (sem formatação markdown, sem comentári
 
     // Atualizar no banco com status 'publicado'
     const updated = await updateTermo(id, {
-      conteudo: conteudo.trim(),
+      // Sanitiza na gravação também: sem isto a defesa dependeria de todo
+      // consumidor futuro do campo lembrar de sanitizar na leitura.
+      conteudo: sanitizeGlossaryHtml(conteudo.trim()),
       seoTitle: seoTitle ? seoTitle.trim() : `${termo.termo} – Significado e Tratamento | REGENORTHO`,
       seoDescription: seoDescription ? seoDescription.trim() : `Entenda o significado de ${termo.termo} e conheça as alternativas de infiltrações e reabilitação regenerativa na REGENORTHO em SJC.`,
       status: 'publicado',

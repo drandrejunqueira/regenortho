@@ -8,9 +8,11 @@ import { deriveLeadSource } from '@/lib/tracking'
 import { notify } from '@/lib/notifications'
 import { LEAD_SOURCE_LABELS } from '@/lib/constants'
 import { rateLimit, getClientIp } from '@/lib/rate-limit'
+import { PERSON_NAME_RE } from '@/lib/promptSafety'
 
 const schema = z.object({
-  name: z.string().min(1).max(255),
+  // Mesmo motivo de public/leads: este nome chega ao contexto da IA.
+  name: z.string().min(2).max(120).regex(PERSON_NAME_RE, 'Nome inválido'),
   phone: z.string().min(8).max(30),
   email: z.string().email().optional().or(z.literal('')),
   procedure: z.string().min(1).max(255),

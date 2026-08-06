@@ -156,6 +156,7 @@ export const whatsappMessageTypeEnum = pgEnum('whatsapp_message_type', [
   'payment_reminder',
   'weekly_report',
   'monthly_report',
+  'daily_agenda',
 ])
 
 // ── TABELAS ────────────────────────────────────────────────
@@ -174,6 +175,12 @@ export const users = pgTable('users', {
   googleCalendarRefreshToken: text('google_calendar_refresh_token'),
   googleCalendarEmail:        text('google_calendar_email'),
   googleCalendarConnectedAt:  timestamp('google_calendar_connected_at'),
+  // Resumo diário da agenda no WhatsApp (perfil do médico). O número é separado
+  // de `phone` de propósito: o telefone de cadastro nem sempre é o WhatsApp.
+  dailyAgendaEnabled:  boolean('daily_agenda_enabled').notNull().default(false),
+  dailyAgendaWhatsapp: varchar('daily_agenda_whatsapp', { length: 30 }),
+  dailyAgendaHour:     varchar('daily_agenda_hour', { length: 5 }).notNull().default('08:00'),
+  dailyAgendaLastSent: varchar('daily_agenda_last_sent', { length: 10 }),
   lastLoginAt:       timestamp('last_login_at'),
   createdAt:         timestamp('created_at').defaultNow().notNull(),
   updatedAt:         timestamp('updated_at').defaultNow().notNull(),
@@ -285,6 +292,18 @@ export const patients = pgTable('patients', {
   nps:          integer('nps'),
   createdAt:    timestamp('created_at').defaultNow().notNull(),
   updatedAt:    timestamp('updated_at').defaultNow().notNull(),
+})
+
+// Vocabulário oficial de tags da clínica. `leads.tags` guarda os NOMES, não ids:
+// o filtro por containment jsonb e a leitura do banco continuam legíveis, e a
+// renomeação é resolvida em cascata na rota (uma UPDATE), não com join.
+export const tags = pgTable('tags', {
+  id:        uuid('id').defaultRandom().primaryKey(),
+  name:      varchar('name', { length: 40 }).notNull().unique(),
+  color:     varchar('color', { length: 7 }).notNull().default('#00BCE4'),
+  isActive:  boolean('is_active').notNull().default(true),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+  updatedAt: timestamp('updated_at').defaultNow().notNull(),
 })
 
 export const leads = pgTable('leads', {

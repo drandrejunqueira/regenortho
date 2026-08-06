@@ -38,6 +38,19 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ data: medicos })
   }
 
+  // O CRM precisa da lista de quem pode ser responsável por um lead, mas a
+  // recepção não tem users:view. Mesmo tratamento dado a ?role=doctor: quem já
+  // vê leads recebe só id e nome dos usuários ativos, sem e-mail, papel ou
+  // permissões.
+  if (new URL(req.url).searchParams.get('assignable') === '1' && hasPermission(role, 'leads:view', custom)) {
+    const atribuiveis = await db.query.users.findMany({
+      where: eq(users.isActive, true),
+      columns: { id: true, name: true },
+      orderBy: [users.name],
+    })
+    return NextResponse.json({ data: atribuiveis })
+  }
+
   if (!hasPermission(role, 'users:view', custom)) {
     return NextResponse.json({ error: 'Acesso negado' }, { status: 403 })
   }

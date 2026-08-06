@@ -6,7 +6,31 @@ const NOTE_A5 = 880
 const NOTE_D6 = 1174.7
 const NOTE_MS = 140
 
+// Sequência mais longa e insistente para lead novo: o aviso comum passa
+// despercebido quando a recepção está em outra aba.
+const LEAD_NOTES = [NOTE_A5, NOTE_D6, NOTE_A5, NOTE_D6]
+
+const PREF_KEY = 'regenortho:som-avisos'
+
 let audioCtx: AudioContext | null = null
+
+/** O som fica ligado por padrão; só desliga se o usuário optou por isso. */
+export function isSoundEnabled(): boolean {
+  if (typeof window === 'undefined') return false
+  try {
+    return window.localStorage.getItem(PREF_KEY) !== '0'
+  } catch {
+    return true // modo privado bloqueia storage — não é motivo para silenciar
+  }
+}
+
+export function setSoundEnabled(enabled: boolean): void {
+  try {
+    window.localStorage.setItem(PREF_KEY, enabled ? '1' : '0')
+  } catch {
+    /* sem storage: a preferência vale só para esta sessão */
+  }
+}
 
 function getContext(): AudioContext | null {
   if (typeof window === 'undefined') return null
@@ -36,8 +60,8 @@ function playNote(ctx: AudioContext, frequency: number, startAt: number) {
   osc.stop(end + 0.02)
 }
 
-/** Toca um "ding" curto de duas notas. Silencioso se o navegador bloquear áudio. */
-export function playNotificationChime(): void {
+function playSequence(notes: readonly number[], force: boolean): void {
+  if (!force && !isSoundEnabled()) return
   try {
     const ctx = getContext()
     if (!ctx) return
@@ -45,9 +69,23 @@ export function playNotificationChime(): void {
     // estiver suspenso o som simplesmente não sai — nunca lança.
     if (ctx.state === 'suspended') void ctx.resume()
     const now = ctx.currentTime
-    playNote(ctx, NOTE_A5, now)
-    playNote(ctx, NOTE_D6, now + NOTE_MS / 1000)
+    notes.forEach((freq, i) => playNote(ctx, freq, now + (i * NOTE_MS) / 1000))
   } catch {
     /* sem áudio disponível — o aviso visual no sino já cobre */
   }
+}
+
+/** Toca um "ding" curto de duas notas. Silencioso se o navegador bloquear áudio. */
+export function playNotificationChime(): void {
+  playSequence([NOTE_A5, NOTE_D6], false)
+}
+
+/** Aviso de lead novo: mais longo, para ser ouvido de outra aba. */
+export function playLeadChime(): void {
+  playSequence(LEAD_NOTES, false)
+}
+
+/** Toca ignorando a preferência — usado no botão "testar som" das configurações. */
+export function playSoundTest(): void {
+  playSequence([NOTE_A5, NOTE_D6], true)
 }

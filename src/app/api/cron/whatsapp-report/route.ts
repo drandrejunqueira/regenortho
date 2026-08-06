@@ -5,6 +5,8 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getConfig, setConfig } from '@/lib/db/queries/configuracoes'
 import { deliverClinicReport, parseSections } from '@/lib/clinicReport'
+import { rateLimit } from '@/lib/rate-limit'
+import { secretEquals } from '@/lib/secrets'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
@@ -32,18 +34,35 @@ function dayMatches(cfg: string, wd: number): boolean {
     .some((t) => DAY_TOKENS[t] === wd)
 }
 
+const CRON_CALLS_PER_MINUTE = 2
+
 export async function GET(req: NextRequest) {
   // Fail-closed: without CRON_SECRET the endpoint must NOT be callable, otherwise
   // anyone can trigger the daily clinic report (revenue/agenda/leads) and burn AI credits.
   const secret = process.env.CRON_SECRET
   const authz = req.headers.get('authorization') || ''
-  if (!secret || authz !== `Bearer ${secret}`) {
+  if (!secret || !secretEquals(authz, `Bearer ${secret}`)) {
     return NextResponse.json({ error: 'Não autorizado.' }, { status: 401 })
   }
 
-  const force = new URL(req.url).searchParams.get('force') === '1'
+  const rl = rateLimit('cron:whatsapp-report', CRON_CALLS_PER_MINUTE, 60_000)
+  if (!rl.ok) {
+    return NextResponse.json(
+      { error: 'Muitas chamadas. Tente novamente em instantes.' },
+      { status: 429, headers: { 'Retry-After': String(rl.retryAfterSec) } },
+    )
+  }
+
+  // O interruptor administrativo vem ANTES do force, e o force não o sobrepõe:
+  // desligamento pelo admin é inegociável. Cada envio roda o motor de IA e
+  // publica no grupo — `force` sobre uma funcionalidade desligada seria um
+  // caminho para disparar relatório à revelia de quem desligou.
   const enabled = (await getConfig('wa_report_enabled')) === '1'
-  if (!enabled && !force) return NextResponse.json({ ok: true, skipped: 'disabled' })
+  if (!enabled) return NextResponse.json({ ok: true, skipped: 'disabled' })
+
+  // `force` pula dia-da-semana e dedupe. Ferramenta de teste: nunca em produção.
+  const force =
+    new URL(req.url).searchParams.get('force') === '1' && process.env.VERCEL_ENV !== 'production'
 
   const days = (await getConfig('wa_report_days')) || 'daily'
   if (!force && !dayMatches(days, brWeekday())) {

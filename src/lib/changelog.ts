@@ -43,6 +43,62 @@ export const TIPO_COR: Record<TipoMudanca, { cor: string; fundo: string; icone: 
 
 export const VERSOES: Versao[] = [
   {
+    versao: '1.4.0',
+    data: '2026-08-06',
+    resumo: 'Filtros no CRM de Leads e tags cadastradas do sistema',
+    mudancas: [
+      {
+        tipo: 'novidade',
+        titulo: 'Tags do sistema, cadastradas em Configurações',
+        detalhe:
+          'As tags agora são cadastradas em Configurações → Tags, com nome e cor, e no lead você escolhe da lista em vez de digitar. Isso acaba com "Convênio", "convenio" e "convênío" virando três marcações diferentes no funil. Renomear uma tag atualiza automaticamente todos os leads que a usam.',
+      },
+      {
+        tipo: 'novidade',
+        titulo: 'Filtros no CRM de Leads',
+        detalhe:
+          'A barra do CRM ganhou filtro por tags (várias ao mesmo tempo), origem do lead, responsável pelo atendimento e período de entrada. Os filtros rodam no servidor, então alcançam todos os leads da clínica e não só os que já estavam na tela.',
+      },
+      {
+        tipo: 'novidade',
+        titulo: 'Responsável pelo lead',
+        detalhe:
+          'Agora dá para definir quem é o responsável por cada lead, direto no painel dele. O filtro "Sem responsável" mostra de uma vez tudo o que ainda ninguém assumiu.',
+      },
+      {
+        tipo: 'seguranca',
+        titulo: 'Auditoria de segurança do sistema',
+        detalhe:
+          'Rodada completa de revisão: correções em exposição de dados de paciente, limites de envio no WhatsApp, política de senha, proteção do glossário público e validação dos formulários públicos do site.',
+      },
+    ],
+  },
+  {
+    versao: '1.3.0',
+    data: '2026-08-06',
+    resumo: 'Alerta sonoro de lead novo e resumo diário da agenda no WhatsApp do médico',
+    mudancas: [
+      {
+        tipo: 'novidade',
+        titulo: 'Resumo diário da agenda no WhatsApp do médico',
+        detalhe:
+          'Cada médico pode ativar, no próprio perfil (aba "Agenda do dia"), o envio automático da agenda dele às 8h no WhatsApp. A mesma tela mostra a prévia dos atendimentos de hoje e tem o botão "Enviar agora" para testar. Dias sem consulta não geram mensagem.',
+      },
+      {
+        tipo: 'melhoria',
+        titulo: 'Aviso sonoro reforçado quando entra um lead novo',
+        detalhe:
+          'Lead novo passa a ter um toque próprio, mais longo, para ser ouvido mesmo com o sistema em outra aba. O sino agora tem um botão de som que liga e desliga o aviso, e a lista atualiza a cada 20 segundos.',
+      },
+      {
+        tipo: 'melhoria',
+        titulo: 'Resumo geral da clínica no grupo passou para as 8h',
+        detalhe:
+          'O relatório automático enviado ao grupo do WhatsApp saía por volta das 7h e agora sai às 8h, junto com o resumo individual dos médicos.',
+      },
+    ],
+  },
+  {
     versao: '1.2.2',
     data: '2026-08-05',
     resumo: 'Layout responsivo do Quadro Kanban de Leads e otimização do Funil',

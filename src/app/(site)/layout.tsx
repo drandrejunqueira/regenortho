@@ -64,7 +64,7 @@ export default async function SiteLayout({ children }: { children: React.ReactNo
       {/* Schema.org GEO Structured Data */}
       <script
         type="application/ld+json"
-        dangerouslySetInnerHTML={{ __html: JSON.stringify(clinicSchema) }}
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(clinicSchema).replace(/</g, '\\u003c') }}
       />
       {/* Google Fonts — Clinical Atelier Design System */}
       <link rel="preconnect" href="https://fonts.googleapis.com" />

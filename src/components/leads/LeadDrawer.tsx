@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useSession } from 'next-auth/react'
 import { Sheet, SheetContent } from '@/components/ui/sheet'
 import { toast } from 'sonner'
@@ -8,6 +8,7 @@ import { getInitials, timeAgo } from '@/lib/utils'
 import { hasPermission } from '@/lib/permissions'
 import { LEAD_STATUS_LABELS, LEAD_SOURCE_LABELS } from '@/lib/constants'
 import type { Lead, LeadInteraction, LeadStatus, UserRole } from '@/types'
+import type { PersonOption, TagOption } from '@/components/leads/LeadFilters'
 
 interface Props {
   lead: Lead | null
@@ -59,8 +60,26 @@ export function LeadDrawer({ lead, interactions, open, onOpenChange, onUpdate, o
   const [deleting, setDeleting] = useState(false)
 
   // Estados para Tags
-  const [newTagInput, setNewTagInput] = useState('')
   const [updatingTags, setUpdatingTags] = useState(false)
+  // Vocabulário oficial (Configurações → Tags) e lista de responsáveis.
+  const [registryTags, setRegistryTags] = useState<TagOption[]>([])
+  const [people, setPeople] = useState<PersonOption[]>([])
+  const [updatingOwner, setUpdatingOwner] = useState(false)
+
+  useEffect(() => {
+    let cancelled = false
+    async function load() {
+      const [t, p] = await Promise.allSettled([
+        fetch('/api/tags'),
+        fetch('/api/usuarios?assignable=1'),
+      ])
+      if (cancelled) return
+      if (t.status === 'fulfilled' && t.value.ok) setRegistryTags((await t.value.json()).data ?? [])
+      if (p.status === 'fulfilled' && p.value.ok) setPeople((await p.value.json()).data ?? [])
+    }
+    load()
+    return () => { cancelled = true }
+  }, [])
 
   if (!lead) return null
 
@@ -155,12 +174,30 @@ export function LeadDrawer({ lead, interactions, open, onOpenChange, onUpdate, o
       })
       if (!res.ok) throw new Error()
       toast.success('Tag adicionada!')
-      setNewTagInput('')
       onUpdate()
     } catch {
       toast.error('Erro ao adicionar tag.')
     } finally {
       setUpdatingTags(false)
+    }
+  }
+
+  async function updateOwner(userId: string | null) {
+    if (!lead) return
+    setUpdatingOwner(true)
+    try {
+      const res = await fetch(`/api/leads/${lead.id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ assignedToId: userId }),
+      })
+      if (!res.ok) throw new Error()
+      toast.success(userId ? 'Responsável definido!' : 'Responsável removido.')
+      onUpdate()
+    } catch {
+      toast.error('Erro ao definir responsável.')
+    } finally {
+      setUpdatingOwner(false)
     }
   }
 
@@ -314,29 +351,54 @@ export function LeadDrawer({ lead, interactions, open, onOpenChange, onUpdate, o
               )}
             </div>
 
-            <div className="flex gap-2">
-              <input
-                placeholder="Nova tag..."
-                value={newTagInput}
-                onChange={(e) => setNewTagInput(e.target.value)}
-                onKeyDown={(e) => {
-                  if (e.key === 'Enter') {
-                    e.preventDefault()
-                    addTag(newTagInput)
-                  }
-                }}
-                disabled={updatingTags}
-                className="flex-1 bg-[#f5f6f8] border border-[rgba(2,21,65,0.10)] rounded-xl px-3 py-1.5 text-xs text-[#021541] placeholder:text-[#CBD5E0] focus:outline-none focus:ring-2 focus:ring-[rgba(0,188,228,0.25)] focus:border-[#00BCE4] transition-all"
-              />
-              <button
-                type="button"
-                disabled={updatingTags || !newTagInput.trim()}
-                onClick={() => addTag(newTagInput)}
-                className="px-3 py-1.5 rounded-xl bg-[rgba(0,188,228,0.08)] text-[#00BCE4] hover:bg-[rgba(0,188,228,0.15)] text-xs font-bold transition-all disabled:opacity-50 cursor-pointer"
-              >
-                + Adicionar
-              </button>
-            </div>
+            {/* Escolha do vocabulário oficial, não texto livre: é o que impede
+                "Convênio" e "convenio" de virarem duas marcações no funil. */}
+            {(() => {
+              const disponiveis = registryTags.filter(
+                (t) => t.isActive && !(lead?.tags ?? []).includes(t.name),
+              )
+              if (registryTags.length === 0) {
+                return (
+                  <p className="text-[11px] text-[#718096]">
+                    Nenhuma tag cadastrada. Crie em <span className="font-semibold">Configurações → Tags</span>.
+                  </p>
+                )
+              }
+              if (disponiveis.length === 0) {
+                return <p className="text-[11px] text-[#718096]">Todas as tags disponíveis já foram aplicadas.</p>
+              }
+              return (
+                <select
+                  value=""
+                  disabled={updatingTags}
+                  onChange={(e) => { if (e.target.value) addTag(e.target.value) }}
+                  aria-label="Adicionar tag ao lead"
+                  className="w-full bg-[#f5f6f8] border border-[rgba(2,21,65,0.10)] rounded-xl px-3 py-1.5 text-xs text-[#021541] focus:outline-none focus:ring-2 focus:ring-[rgba(0,188,228,0.25)] focus:border-[#00BCE4] transition-all cursor-pointer disabled:opacity-50"
+                >
+                  <option value="">+ Adicionar tag...</option>
+                  {disponiveis.map((t) => (
+                    <option key={t.id} value={t.name}>{t.name}</option>
+                  ))}
+                </select>
+              )
+            })()}
+          </div>
+
+          {/* Responsável pelo atendimento */}
+          <div className="bg-white px-5 py-4 border-b border-[rgba(2,21,65,0.06)] mt-2">
+            <p className="text-[9px] font-bold text-[#718096] uppercase tracking-widest mb-2.5">Responsável</p>
+            <select
+              value={lead.assignedToId ?? ''}
+              disabled={updatingOwner}
+              onChange={(e) => updateOwner(e.target.value || null)}
+              aria-label="Responsável pelo lead"
+              className="w-full bg-[#f5f6f8] border border-[rgba(2,21,65,0.10)] rounded-xl px-3 py-2 text-xs text-[#021541] focus:outline-none focus:ring-2 focus:ring-[rgba(0,188,228,0.25)] focus:border-[#00BCE4] transition-all cursor-pointer disabled:opacity-50"
+            >
+              <option value="">Sem responsável</option>
+              {people.map((p) => (
+                <option key={p.id} value={p.id}>{p.name}</option>
+              ))}
+            </select>
           </div>
 
           {/* Contact info */}

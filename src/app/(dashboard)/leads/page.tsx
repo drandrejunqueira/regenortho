@@ -1,24 +1,56 @@
 'use client'
 
-import { useState, useEffect, useCallback, useMemo } from 'react'
+import { useState, useEffect, useCallback, useRef } from 'react'
 import { PageHeader } from '@/components/shared/PageHeader'
 import { KanbanBoard } from '@/components/leads/KanbanBoard'
 import { NewLeadDialog } from '@/components/leads/NewLeadDialog'
+import {
+  LeadFilters,
+  EMPTY_FILTERS,
+  countActiveFilters,
+  type LeadFilterState,
+  type PersonOption,
+  type TagOption,
+} from '@/components/leads/LeadFilters'
 import type { Lead } from '@/types'
 import { toast } from 'sonner'
 
+// Digitar dispara uma busca por tecla sem isto. O filtro roda no servidor agora,
+// então cada tecla seria uma consulta ao banco.
+const SEARCH_DEBOUNCE_MS = 350
+
+function buildQuery(f: LeadFilterState): string {
+  const params = new URLSearchParams()
+  if (f.search.trim()) params.set('search', f.search.trim())
+  // Repetido, não separado por vírgula: nome de tag pode conter vírgula.
+  f.tags.forEach((t) => params.append('tag', t))
+  if (f.source) params.set('source', f.source)
+  if (f.assignedTo) params.set('assignedTo', f.assignedTo)
+  if (f.from) params.set('from', f.from)
+  if (f.to) params.set('to', f.to)
+  return params.toString()
+}
+
 export default function LeadsPage() {
   const [leads, setLeads] = useState<Lead[]>([])
-  const [search, setSearch] = useState('')
-  const [selectedTag, setSelectedTag] = useState('')
+  const [filters, setFilters] = useState<LeadFilterState>(EMPTY_FILTERS)
+  const [tags, setTags] = useState<TagOption[]>([])
+  const [people, setPeople] = useState<PersonOption[]>([])
   const [newDialogOpen, setNewDialogOpen] = useState(false)
   const [loading, setLoading] = useState(true)
 
+  // Só a busca textual precisa de espera; mexer num select deve responder na hora.
+  const [debouncedSearch, setDebouncedSearch] = useState('')
+  useEffect(() => {
+    const id = setTimeout(() => setDebouncedSearch(filters.search), SEARCH_DEBOUNCE_MS)
+    return () => clearTimeout(id)
+  }, [filters.search])
+
+  const query = buildQuery({ ...filters, search: debouncedSearch })
+
   const fetchLeads = useCallback(async () => {
     try {
-      const params = new URLSearchParams()
-      if (search) params.set('search', search)
-      const res = await fetch(`/api/leads?${params}`)
+      const res = await fetch(`/api/leads?${query}`)
       if (res.ok) {
         const { data } = await res.json()
         setLeads(data)
@@ -29,26 +61,31 @@ export default function LeadsPage() {
     } finally {
       setLoading(false)
     }
-  }, [search])
+  }, [query])
 
   useEffect(() => { fetchLeads() }, [fetchLeads])
 
-  // Extrair todas as tags únicas dos leads carregados
-  const allTags = Array.from(
-    new Set(leads.flatMap((lead) => lead.tags ?? []))
-  ).sort()
+  // Vocabulário de tags e lista de responsáveis vêm do servidor, não dos leads
+  // carregados: uma tag usada só num lead fora da página apareceria no filtro.
+  const loadOptions = useCallback(async () => {
+    const [tagsRes, peopleRes] = await Promise.allSettled([
+      fetch('/api/tags'),
+      fetch('/api/usuarios?assignable=1'),
+    ])
+    if (tagsRes.status === 'fulfilled' && tagsRes.value.ok) {
+      const { data } = await tagsRes.value.json()
+      setTags(data)
+    }
+    if (peopleRes.status === 'fulfilled' && peopleRes.value.ok) {
+      const { data } = await peopleRes.value.json()
+      setPeople(data)
+    }
+  }, [])
 
-  // Filtragem de tags client-side para resposta instantânea.
-  // useMemo é necessário: sem ele este array tem identidade nova a cada render,
-  // o efeito de sincronização do KanbanBoard dispara e devolve o card à coluna
-  // antiga logo depois de um arraste bem-sucedido.
-  const filteredLeads = useMemo(
-    () => leads.filter((lead) => {
-      if (!selectedTag) return true
-      return lead.tags && lead.tags.includes(selectedTag)
-    }),
-    [leads, selectedTag]
-  )
+  useEffect(() => { loadOptions() }, [loadOptions])
+
+  const activeCount = countActiveFilters(filters)
+  const isFiltered = activeCount > 0
 
   return (
     <div className="h-full flex flex-col">
@@ -66,52 +103,38 @@ export default function LeadsPage() {
         }
       />
 
-      {/* Barra de Filtros */}
-      <div className="mb-4 flex items-center gap-3">
-        {/* Busca por Texto */}
-        <div className="relative flex-1 max-w-xs">
-          <span className="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-[#718096]" style={{ fontSize: '18px' }}>search</span>
-          <input
-            placeholder="Buscar por nome ou telefone..."
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            className="w-full bg-[#f5f6f8] border border-[rgba(2,21,65,0.10)] rounded-full pl-10 pr-4 py-2.5 text-sm text-[#021541] placeholder:text-[#718096] focus:outline-none focus:ring-2 focus:ring-[#00BCE4]/30"
-          />
-        </div>
-
-        {/* Filtro por Tags */}
-        <div className="relative">
-          <select
-            value={selectedTag}
-            onChange={(e) => setSelectedTag(e.target.value)}
-            className="bg-[#f5f6f8] border border-[rgba(2,21,65,0.10)] rounded-full pl-4 pr-10 py-2.5 text-sm text-[#021541] focus:outline-none focus:ring-2 focus:ring-[#00BCE4]/30 cursor-pointer appearance-none font-medium min-w-[150px]"
-          >
-            <option value="">Todas as Tags</option>
-            {allTags.map((tag) => (
-              <option key={tag} value={tag}>
-                {tag}
-              </option>
-            ))}
-          </select>
-          <span className="material-symbols-outlined absolute right-3 top-1/2 -translate-y-1/2 text-[#718096] pointer-events-none select-none" style={{ fontSize: '18px' }}>arrow_drop_down</span>
-        </div>
-      </div>
+      <LeadFilters value={filters} onChange={setFilters} tags={tags} people={people} />
 
       {loading ? (
         <div className="flex-1 flex items-center justify-center text-[#718096] text-sm">
           <span className="material-symbols-outlined animate-spin mr-2" style={{ fontSize: '18px' }}>refresh</span>
           Carregando leads...
         </div>
+      ) : leads.length === 0 && isFiltered ? (
+        // Quadro vazio com filtro ativo é ambíguo — sem esta mensagem parece que
+        // a clínica não tem lead nenhum.
+        <div className="flex-1 flex flex-col items-center justify-center gap-2 text-center">
+          <span className="material-symbols-outlined text-[#718096]/40" style={{ fontSize: '40px' }}>
+            filter_alt_off
+          </span>
+          <p className="text-sm font-semibold text-[#021541]">Nenhum lead com esses filtros</p>
+          <button
+            onClick={() => setFilters(EMPTY_FILTERS)}
+            className="text-xs font-bold text-[#00BCE4] hover:underline"
+          >
+            Limpar filtros
+          </button>
+        </div>
       ) : (
         <div className="flex-1 overflow-hidden">
-          <KanbanBoard initialLeads={filteredLeads} onRefresh={fetchLeads} />
+          <KanbanBoard initialLeads={leads} onRefresh={fetchLeads} />
         </div>
       )}
 
       <NewLeadDialog
         open={newDialogOpen}
         onOpenChange={setNewDialogOpen}
-        onCreated={fetchLeads}
+        onCreated={() => { fetchLeads(); loadOptions() }}
       />
     </div>
   )

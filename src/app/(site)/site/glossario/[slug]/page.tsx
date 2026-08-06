@@ -13,6 +13,7 @@ import { db } from '@/lib/db'
 import { clinicSettings } from '@/lib/db/schema'
 import { eq } from 'drizzle-orm'
 import { getGlossarioTermoJsonLd } from '@/lib/seo/jsonld'
+import { sanitizeGlossaryHtml } from '@/lib/sanitizeHtml'
 
 interface Props {
   params: { slug: string }
@@ -58,7 +59,9 @@ export default async function VerbetePage({ params }: Props) {
   const jsonLd = getGlossarioTermoJsonLd(termo, clinic ?? null, configs)
 
   // Conteúdo: com anúncio injetado no meio (se ativo)
-  const conteudo = termo.conteudo ?? ''
+  // Sanitiza aqui além da gravação: o conteúdo já persistido antes desta
+  // defesa continua cru no banco.
+  const conteudo = sanitizeGlossaryHtml(termo.conteudo)
   const [parteInicial, parteFinal] = adsAtivo ? dividirConteudo(conteudo) : [conteudo, '']
 
   return (
@@ -66,7 +69,7 @@ export default async function VerbetePage({ params }: Props) {
       {/* Schema.org GEO Structured Data para este verbete */}
       <script
         type="application/ld+json"
-        dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd).replace(/</g, '\\u003c') }}
       />
       <SiteNav />
       

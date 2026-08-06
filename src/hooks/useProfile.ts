@@ -9,6 +9,9 @@ export interface Profile {
   phone: string | null
   avatar: string | null
   role: string
+  dailyAgendaEnabled: boolean
+  dailyAgendaWhatsapp: string | null
+  dailyAgendaHour: string
 }
 
 /**

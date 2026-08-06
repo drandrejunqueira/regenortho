@@ -13,6 +13,7 @@ import { toast } from 'sonner'
 import { useClinicSettings } from '@/hooks/useClinicSettings'
 import { useProfile, type Profile } from '@/hooks/useProfile'
 import { processImageToDataUrl } from '@/lib/upload'
+import { DailyAgendaCard } from '@/components/layout/DailyAgendaCard'
 
 interface NavItem {
   href: string
@@ -103,7 +104,7 @@ function ProfileSheet({ open, onClose, profile, onSaved }: {
   onSaved: () => void
 }) {
   const { data: session, update } = useSession()
-  const [tab, setTab] = useState<'info' | 'senha'>('info')
+  const [tab, setTab] = useState<'info' | 'agenda' | 'senha'>('info')
   const [saving, setSaving] = useState(false)
   const [uploadingPhoto, setUploadingPhoto] = useState(false)
   const fileInputRef = useRef<HTMLInputElement>(null)
@@ -111,6 +112,9 @@ function ProfileSheet({ open, onClose, profile, onSaved }: {
     name: '', email: '', phone: '', avatar: '',
     currentPassword: '', newPassword: '', confirmPassword: '',
   })
+  // Resumo diário fica num state próprio: o card salva sozinho, sem depender do
+  // botão "Salvar alterações" da aba de dados pessoais.
+  const [agendaCfg, setAgendaCfg] = useState({ enabled: false, whatsapp: '', hour: '08:00' })
 
   // Popula o formulário com os dados do banco quando o painel abre
   useEffect(() => {
@@ -121,6 +125,12 @@ function ProfileSheet({ open, onClose, profile, onSaved }: {
       phone:           profile.phone ?? '',
       avatar:          profile.avatar ?? '',
       currentPassword: '', newPassword: '', confirmPassword: '',
+    })
+    setAgendaCfg({
+      enabled:  profile.dailyAgendaEnabled ?? false,
+      // Cai para o telefone de cadastro só como sugestão inicial.
+      whatsapp: profile.dailyAgendaWhatsapp ?? profile.phone ?? '',
+      hour:     profile.dailyAgendaHour ?? '08:00',
     })
     setTab('info')
   }, [open, profile])
@@ -172,7 +182,7 @@ function ProfileSheet({ open, onClose, profile, onSaved }: {
 
   async function savePassword() {
     if (!form.currentPassword) { toast.error('Informe a senha atual'); return }
-    if (form.newPassword.length < 6) { toast.error('Nova senha precisa ter ao menos 6 caracteres'); return }
+    if (form.newPassword.length < 8) { toast.error('Nova senha precisa ter ao menos 8 caracteres'); return }
     if (!passwordsMatch) { toast.error('Senhas não coincidem'); return }
     setSaving(true)
     try {
@@ -243,8 +253,9 @@ function ProfileSheet({ open, onClose, profile, onSaved }: {
           {/* tabs dentro do header */}
           <div className="flex gap-px px-4 pb-0">
             {([
-              { id: 'info',  label: 'Dados Pessoais', icon: 'person' },
-              { id: 'senha', label: 'Alterar Senha',  icon: 'lock' },
+              { id: 'info',   label: 'Dados',       icon: 'person' },
+              { id: 'agenda', label: 'Agenda do dia', icon: 'event_note' },
+              { id: 'senha',  label: 'Senha',       icon: 'lock' },
             ] as const).map(t => (
               <button
                 key={t.id}
@@ -376,6 +387,16 @@ function ProfileSheet({ open, onClose, profile, onSaved }: {
             </div>
           )}
 
+          {tab === 'agenda' && (
+            <DailyAgendaCard
+              enabled={agendaCfg.enabled}
+              whatsapp={agendaCfg.whatsapp}
+              hour={agendaCfg.hour}
+              onChange={patch => setAgendaCfg(p => ({ ...p, ...patch }))}
+              onSaved={onSaved}
+            />
+          )}
+
           {tab === 'senha' && (
             <div className="p-5 space-y-4">
 
@@ -394,7 +415,7 @@ function ProfileSheet({ open, onClose, profile, onSaved }: {
                     label="Nova senha"
                     value={form.newPassword}
                     onChange={v => set('newPassword', v)}
-                    placeholder="Mínimo 6 caracteres"
+                    placeholder="Mínimo 8 caracteres"
                   />
                   <PasswordStrength password={form.newPassword} />
                 </div>
@@ -423,7 +444,7 @@ function ProfileSheet({ open, onClose, profile, onSaved }: {
               <div className="bg-[rgba(0,188,228,0.06)] border border-[rgba(0,188,228,0.15)] rounded-xl p-3 flex gap-2">
                 <span className="material-symbols-outlined text-[#00BCE4] shrink-0 mt-0.5" style={{ fontSize: '14px' }}>info</span>
                 <p className="text-[11px] text-[#021541]/50 leading-relaxed">
-                  Use ao menos 6 caracteres. Combine letras maiúsculas, números e símbolos para uma senha mais forte.
+                  Use ao menos 8 caracteres. Combine letras maiúsculas, números e símbolos para uma senha mais forte.
                 </p>
               </div>
 

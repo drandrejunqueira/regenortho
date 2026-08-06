@@ -42,12 +42,12 @@ robusto, bonito, rápido e pronto para produção.
 
 **Connection string:**
 ```
-postgresql://neondb_owner:npg_eRK2Clar7uoT@ep-small-sun-acxxkcw1.sa-east-1.aws.neon.tech/neondb?sslmode=require
+<sua-connection-string-do-neon>
 ```
 
 Salve em `.env.local`:
 ```env
-DATABASE_URL="postgresql://neondb_owner:npg_eRK2Clar7uoT@ep-small-sun-acxxkcw1.sa-east-1.aws.neon.tech/neondb?sslmode=require"
+DATABASE_URL="<sua-connection-string-do-neon>"
 NEXTAUTH_SECRET="gere-um-secret-aleatorio-forte-aqui"
 NEXTAUTH_URL="http://localhost:3000"
 ```

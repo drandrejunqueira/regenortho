@@ -6,9 +6,12 @@ import { deriveLeadSource } from '@/lib/tracking'
 import { notify } from '@/lib/notifications'
 import { rateLimit, getClientIp } from '@/lib/rate-limit'
 import { LEAD_SOURCE_LABELS } from '@/lib/constants'
+import { PERSON_NAME_RE } from '@/lib/promptSafety'
 
 const publicLeadSchema = z.object({
-  name: z.string().min(2, 'Nome obrigatório'),
+  // O nome é persistido e depois entra no contexto da IA do bot do WhatsApp.
+  // Nome de pessoa não precisa de quebra de linha nem de `=`.
+  name: z.string().min(2, 'Nome obrigatório').max(120).regex(PERSON_NAME_RE, 'Nome inválido'),
   phone: z.string().min(8, 'Telefone inválido'),
   email: z.string().email().optional().or(z.literal('')),
   complaint: z.string().optional(),

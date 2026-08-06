@@ -3,9 +3,15 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { timeAgo } from '@/lib/utils'
-import { playNotificationChime } from '@/lib/sound'
+import {
+  isSoundEnabled,
+  playLeadChime,
+  playNotificationChime,
+  playSoundTest,
+  setSoundEnabled,
+} from '@/lib/sound'
 
-const POLL_MS = 30_000
+const POLL_MS = 20_000
 
 interface NotificationItem {
   id: string
@@ -44,6 +50,9 @@ export function NotificationBell() {
   const [unread, setUnread] = useState(0)
   const [open, setOpen] = useState(false)
   const [canPush, setCanPush] = useState(false)
+  // Lido do localStorage só no cliente: no SSR não existe window e a hidratação
+  // quebraria se o valor inicial divergisse.
+  const [soundOn, setSoundOn] = useState(true)
   const panelRef = useRef<HTMLDivElement>(null)
   // Guarda o último id visto para alertar só quando chega algo realmente novo —
   // sem isso o som tocaria a cada ciclo de polling.
@@ -76,7 +85,10 @@ export function NotificationBell() {
   }, [])
 
   function alertUser(n: NotificationItem) {
-    playNotificationChime()
+    // Lead novo tem toque próprio, mais longo — é o aviso que a recepção não
+    // pode perder.
+    if (n.type === 'lead_new') playLeadChime()
+    else playNotificationChime()
     try {
       if ('Notification' in window && Notification.permission === 'granted') {
         const push = new Notification(n.title, {
@@ -97,6 +109,7 @@ export function NotificationBell() {
 
   useEffect(() => {
     if ('Notification' in window) setCanPush(Notification.permission !== 'granted')
+    setSoundOn(isSoundEnabled())
     fetchNotifications()
     const id = setInterval(fetchNotifications, POLL_MS)
     // Ao voltar para a aba, atualiza na hora em vez de esperar o próximo ciclo.
@@ -130,6 +143,15 @@ export function NotificationBell() {
     } catch {
       /* usuário bloqueou — nada a fazer */
     }
+  }
+
+  function toggleSound() {
+    const next = !soundOn
+    setSoundOn(next)
+    setSoundEnabled(next)
+    // Ao ligar, toca na hora: confirma que o áudio funciona e destrava o
+    // AudioContext (browsers exigem um gesto do usuário para liberar som).
+    if (next) playSoundTest()
   }
 
   async function markRead(payload: { id?: string; all?: boolean }) {
@@ -195,14 +217,28 @@ export function NotificationBell() {
             >
               Notificações
             </span>
-            {unread > 0 && (
+            <div className="flex items-center gap-2.5">
+              {unread > 0 && (
+                <button
+                  onClick={() => markRead({ all: true })}
+                  className="text-[10px] font-semibold text-[#00BCE4] hover:underline"
+                >
+                  Marcar todas como lidas
+                </button>
+              )}
               <button
-                onClick={() => markRead({ all: true })}
-                className="text-[10px] font-semibold text-[#00BCE4] hover:underline"
+                onClick={toggleSound}
+                role="switch"
+                aria-checked={soundOn}
+                aria-label={soundOn ? 'Desativar som dos avisos' : 'Ativar som dos avisos'}
+                title={soundOn ? 'Som ligado — clique para silenciar' : 'Som desligado — clique para ativar'}
+                className="p-1 rounded-md text-[#021541]/35 hover:text-[#00BCE4] hover:bg-[#021541]/5 transition-colors"
               >
-                Marcar todas como lidas
+                <span className="material-symbols-outlined" style={{ fontSize: '17px' }}>
+                  {soundOn ? 'volume_up' : 'volume_off'}
+                </span>
               </button>
-            )}
+            </div>
           </div>
 
           {canPush && (
