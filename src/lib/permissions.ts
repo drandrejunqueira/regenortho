@@ -192,7 +192,10 @@ export const ROLE_PRESETS: Record<UserRole, Permission[]> = {
   ],
   doctor: [
     'dashboard:view',
-    'agenda:view',
+    // 'agenda:edit' sem 'agenda:create'/'agenda:delete': finalizar a consulta começa por um
+    // PATCH na agenda, e sem essa permissão o médico levava 403 antes de gravar evolução e
+    // tratamento. Marcar e cancelar consulta continua sendo da recepção.
+    'agenda:view', 'agenda:edit',
     'patients:view', 'patients:view_clinical', 'patients:create_clinical',
     'treatments:view', 'treatments:create', 'treatments:edit',
     'exams:view', 'exams:create', 'exams:edit',

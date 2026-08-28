@@ -5,7 +5,7 @@ import { patients } from '@/lib/db/schema'
 import { hasPermission } from '@/lib/permissions'
 import { logActivity } from '@/lib/db/logger'
 import { NextRequest, NextResponse } from 'next/server'
-import { and, ilike, or, eq, desc, inArray, lt, gte } from 'drizzle-orm'
+import { and, ilike, or, eq, desc, inArray, lt, gte, sql } from 'drizzle-orm'
 import { z } from 'zod'
 import type { UserRole } from '@/types'
 
@@ -135,6 +135,30 @@ export async function POST(req: NextRequest) {
   const parsed = createSchema.safeParse(body)
   if (!parsed.success) {
     return NextResponse.json({ error: 'Dados inválidos', details: parsed.error.flatten() }, { status: 400 })
+  }
+
+  // Deduplicação por telefone: a tabela `patients` não tem nenhuma constraint UNIQUE,
+  // então nada no banco impede que a mesma pessoa (landing page hoje, WhatsApp amanhã)
+  // ganhe dois prontuários — e prontuário duplicado racha histórico clínico e
+  // financeiro em dois. Comparamos só os dígitos, porque '(12) 98176-7896' e
+  // '12981767896' são o mesmo número. Mesmo padrão do POST /api/usuarios, que já
+  // devolve 409 para e-mail repetido.
+  const phoneDigits = parsed.data.phone.replace(/\D/g, '')
+  if (phoneDigits.length >= 8) {
+    const [duplicate] = await db
+      .select()
+      .from(patients)
+      .where(sql`regexp_replace(${patients.phone}, '[^0-9]', '', 'g') = ${phoneDigits}`)
+      .limit(1)
+
+    if (duplicate) {
+      // A ficha existente vai junto para a tela poder oferecer "usar esta ficha"
+      // em vez de forçar o usuário a procurar o cadastro na mão.
+      return NextResponse.json(
+        { error: 'Já existe um paciente cadastrado com este telefone', data: duplicate },
+        { status: 409 },
+      )
+    }
   }
 
   const [patient] = await db.insert(patients).values(parsed.data).returning()

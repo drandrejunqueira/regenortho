@@ -7,10 +7,24 @@ import type { UserRole } from '@/types'
 import { z } from 'zod'
 import { eq, desc, sql, inArray } from 'drizzle-orm'
 import { notify } from '@/lib/notifications'
+import { logActivity } from '@/lib/db/logger'
+
+/**
+ * UUID opcional que também aceita string vazia.
+ *
+ * Os <select> da tela ("Selecione...", "Começar do zero...") mandam '' quando
+ * nada é escolhido, e o campo é opcional lá. Com `z.string().uuid()` puro o
+ * drawer "Novo Tratamento" devolvia 400 em TODA criação — a tela só mostrava
+ * "Erro ao criar tratamento", sem dizer qual campo.
+ */
+const uuidOpcional = z.preprocess(
+  v => (v === '' ? null : v),
+  z.string().uuid().nullable().optional(),
+)
 
 const itemSchema = z.object({
   type: z.enum(['procedure', 'material', 'fee']),
-  materialId: z.string().uuid().optional().nullable(),
+  materialId: uuidOpcional,
   description: z.string().min(1),
   quantity: z.number().positive().default(1),
   unitCost: z.number().min(0).default(0),
@@ -26,10 +40,10 @@ const CATEGORIES = [
 
 const createSchema = z.object({
   patientId: z.string().uuid(),
-  appointmentId: z.string().uuid().optional().nullable(),
-  doctorId: z.string().uuid().optional().nullable(),
-  paymentMethodId: z.string().uuid().optional().nullable(),
-  templateId: z.string().uuid().optional().nullable(),
+  appointmentId: uuidOpcional,
+  doctorId: uuidOpcional,
+  paymentMethodId: uuidOpcional,
+  templateId: uuidOpcional,
   category: z.enum(CATEGORIES).default('consultation_fee'),
   name: z.string().min(1).max(255),
   discount: z.number().min(0).default(0),
@@ -168,19 +182,45 @@ export async function POST(req: NextRequest) {
     createdById: session.user.id,
   }).returning()
 
-  const insertedItems = await db.insert(treatmentItems).values(
-    itemsWithTotals.map((item, i) => ({
-      treatmentId: treatment.id,
-      type: item.type,
-      materialId: item.materialId ?? null,
-      description: item.description,
-      quantity: String(item.quantity),
-      unitCost: String(item.unitCost),
-      unitPrice: String(item.unitPrice),
-      total: String(item.total),
-      sortOrder: item.sortOrder ?? i,
-    }))
-  ).returning()
+  // O diálogo da ficha do paciente abre o tratamento sem itens ("A definir").
+  // `db.insert(...).values([])` faz o Drizzle lançar "values() must be called
+  // with at least one value" — 500 em produção numa criação perfeitamente
+  // válida. Sem itens o tratamento nasce com totais zero e ganha os itens na
+  // edição.
+  const insertedItems = itemsWithTotals.length > 0
+    ? await db.insert(treatmentItems).values(
+        itemsWithTotals.map((item, i) => ({
+          treatmentId: treatment.id,
+          type: item.type,
+          materialId: item.materialId ?? null,
+          description: item.description,
+          quantity: String(item.quantity),
+          unitCost: String(item.unitCost),
+          unitPrice: String(item.unitPrice),
+          total: String(item.total),
+          sortOrder: item.sortOrder ?? i,
+        }))
+      ).returning()
+    : []
+
+  // Tratamento é o documento que vira cobrança: quem abriu, para quem e por
+  // quanto precisa ficar registrado como já acontece em leads e agenda.
+  const ip = req.headers.get('x-forwarded-for') || req.headers.get('x-real-ip')
+  await logActivity({
+    userId: session.user.id,
+    userName: session.user.name || session.user.email || null,
+    action: 'tratamento:create',
+    module: 'tratamentos',
+    targetId: treatment.id,
+    targetName: treatment.name,
+    ip,
+    details: {
+      patientId: d.patientId,
+      totalSale: treatment.totalSale,
+      installments: treatment.installments,
+      itens: insertedItems.length,
+    },
+  })
 
   await notify({
     type: 'treatment_new',

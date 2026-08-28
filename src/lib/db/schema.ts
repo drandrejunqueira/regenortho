@@ -14,6 +14,7 @@ import {
   type AnyPgColumn,
 } from 'drizzle-orm/pg-core'
 import { relations } from 'drizzle-orm'
+import { TRACKED_KEYS } from '../tracking'
 
 // ── ENUMS ──────────────────────────────────────────────────
 
@@ -322,10 +323,56 @@ export const leads = pgTable('leads', {
   lostReason:   text('lost_reason'),
   utmSource:    varchar('utm_source', { length: 100 }),
   utmCampaign:  varchar('utm_campaign', { length: 100 }),
+  // Atribuição bruta. utm_source/utm_campaign continuam em coluna própria porque
+  // filtro e relatório dependem delas; aqui fica o resto que a captação recebia e
+  // jogava fora — fbclid/gclid/gbraid, medium/content/term e o referrer. Sem isso
+  // não dá para devolver a conversão offline ao Meta/Google nem auditar de onde a
+  // origem gravada foi derivada.
+  trackingData: jsonb('tracking_data').$type<Record<string, string>>(),
   tags:         jsonb('tags').$type<string[]>().default([]),
   createdAt:    timestamp('created_at').defaultNow().notNull(),
   updatedAt:    timestamp('updated_at').defaultNow().notNull(),
-})
+}, (t) => ({
+  // O Kanban e o relatório de canais sempre ordenam por entrada, e o filtro de
+  // período recorta por createdAt: sem índice cada abertura do funil varria a
+  // tabela inteira.
+  createdIdx:       index('leads_created_at_idx').on(t.createdAt),
+  // Composto porque a coluna do funil faz as duas coisas na mesma query: filtra
+  // um status e ordena por entrada. Serve também ao filtro só por status.
+  statusCreatedIdx: index('leads_status_created_at_idx').on(t.status, t.createdAt),
+}))
+
+/** Teto por valor gravado em `leads.tracking_data`. */
+const TRACKING_VALUE_MAX = 300
+
+/** Chaves aceitas no jsonb de atribuição: as que a captação persiste na sessão
+ *  (lib/tracking) mais o referrer de primeiro toque. */
+const TRACKING_STORED_KEYS: readonly string[] = [...TRACKED_KEYS, 'referrer']
+
+/**
+ * Normaliza o objeto de atribuição antes de gravar em `leads.tracking_data`.
+ *
+ * A origem é formulário público e anônimo: sem allowlist, qualquer chave e
+ * qualquer tamanho entram no jsonb e a coluna vira depósito de payload — barato
+ * de abusar e caro de limpar. Descarta o que não está na lista, corta o valor e
+ * devolve null quando não sobra nada (para não gravar `{}` e sujar a auditoria).
+ *
+ * Mora junto do schema porque é o contrato da coluna, e as duas rotas públicas
+ * de captação precisam gravar exatamente o mesmo formato.
+ */
+export function sanitizeTrackingData(
+  t: Record<string, string> | null | undefined
+): Record<string, string> | null {
+  if (!t) return null
+  const out: Record<string, string> = {}
+  for (const key of TRACKING_STORED_KEYS) {
+    const raw = t[key]
+    if (typeof raw !== 'string') continue
+    const value = raw.trim().slice(0, TRACKING_VALUE_MAX)
+    if (value) out[key] = value
+  }
+  return Object.keys(out).length ? out : null
+}
 
 export const leadInteractions = pgTable('lead_interactions', {
   id:        uuid('id').defaultRandom().primaryKey(),
@@ -372,7 +419,16 @@ export const appointments = pgTable('appointments', {
   createdById:  uuid('created_by_id').references(() => users.id),
   createdAt:    timestamp('created_at').defaultNow().notNull(),
   updatedAt:    timestamp('updated_at').defaultNow().notNull(),
-})
+}, (t) => ({
+  // Agenda, dashboard, relatório da clínica e lembretes recortam sempre por
+  // janela de start_at — era a varredura mais cara do sistema.
+  startIdx:         index('appointments_start_at_idx').on(t.startAt),
+  // A agenda do médico é sempre "este médico, nesta janela": o composto evita
+  // varrer a agenda inteira da clínica só para filtrar o dono depois.
+  doctorStartIdx:   index('appointments_doctor_start_idx').on(t.doctorId, t.startAt),
+  // Histórico do paciente: filtra pelo paciente e ordena por start_at.
+  patientStartIdx:  index('appointments_patient_start_idx').on(t.patientId, t.startAt),
+}))
 
 export const clinicalRecords = pgTable('clinical_records', {
   id:            uuid('id').defaultRandom().primaryKey(),
@@ -383,7 +439,10 @@ export const clinicalRecords = pgTable('clinical_records', {
   content:       text('content').notNull(),
   attachments:   jsonb('attachments'),
   createdAt:     timestamp('created_at').defaultNow().notNull(),
-})
+}, (t) => ({
+  // O prontuário abre sempre por paciente, do mais recente para o mais antigo.
+  patientCreatedIdx: index('clinical_records_patient_created_idx').on(t.patientId, t.createdAt),
+}))
 
 export const transactions = pgTable('transactions', {
   id:            uuid('id').defaultRandom().primaryKey(),
@@ -407,7 +466,14 @@ export const transactions = pgTable('transactions', {
   createdById:   uuid('created_by_id').references(() => users.id),
   createdAt:     timestamp('created_at').defaultNow().notNull(),
   updatedAt:     timestamp('updated_at').defaultNow().notNull(),
-})
+}, (t) => ({
+  // Aba Financeiro da ficha: filtra pelo paciente e ordena por data.
+  patientDateIdx:  index('transactions_patient_date_idx').on(t.patientId, t.date),
+  // O lançamento da consulta é buscado/estornado pelo agendamento.
+  appointmentIdx:  index('transactions_appointment_idx').on(t.appointmentId),
+  // DRE e cancelamento de tratamento varrem os lançamentos do tratamento.
+  treatmentIdx:    index('transactions_treatment_idx').on(t.treatmentId),
+}))
 
 // Categorias de materiais em 2 níveis (auto-referência via parentId).
 // parentId nulo = categoria raiz; parentId preenchido = subcategoria.
@@ -573,7 +639,11 @@ export const treatments = pgTable('treatments', {
   createdById:     uuid('created_by_id').references(() => users.id),
   createdAt:       timestamp('created_at').defaultNow().notNull(),
   updatedAt:       timestamp('updated_at').defaultNow().notNull(),
-})
+}, (t) => ({
+  // Tratamentos são listados por paciente e, na tela de tratamentos, já com o
+  // status junto — o composto atende os dois recortes com um índice só.
+  patientStatusIdx: index('treatments_patient_status_idx').on(t.patientId, t.status),
+}))
 
 export const treatmentItems = pgTable('treatment_items', {
   id:          uuid('id').defaultRandom().primaryKey(),
@@ -603,7 +673,10 @@ export const examOrders = pgTable('exam_orders', {
   validUntil:    date('valid_until'),
   notes:         text('notes'),
   createdAt:     timestamp('created_at').defaultNow().notNull(),
-})
+}, (t) => ({
+  // Exames abrem por paciente, do mais recente para o mais antigo.
+  patientCreatedIdx: index('exam_orders_patient_created_idx').on(t.patientId, t.createdAt),
+}))
 
 export const patientAccessTokens = pgTable('patient_access_tokens', {
   id:         uuid('id').defaultRandom().primaryKey(),

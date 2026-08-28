@@ -26,8 +26,13 @@ function buildQuery(f: LeadFilterState): string {
   f.tags.forEach((t) => params.append('tag', t))
   if (f.source) params.set('source', f.source)
   if (f.assignedTo) params.set('assignedTo', f.assignedTo)
-  if (f.from) params.set('from', f.from)
-  if (f.to) params.set('to', f.to)
+  // Sempre explícito: sem `period` a rota cai no contrato antigo e carrega o
+  // funil inteiro, que é justamente o que o recorte evita.
+  params.set('period', f.period)
+  if (f.period === 'custom') {
+    if (f.from) params.set('from', f.from)
+    if (f.to) params.set('to', f.to)
+  }
   return params.toString()
 }
 
@@ -38,6 +43,9 @@ export default function LeadsPage() {
   const [people, setPeople] = useState<PersonOption[]>([])
   const [newDialogOpen, setNewDialogOpen] = useState(false)
   const [loading, setLoading] = useState(true)
+  // A rota devolve no máximo `meta.limit` cards. Sem este aviso o corte é
+  // invisível e os leads mais antigos parecem ter sumido do funil.
+  const [truncated, setTruncated] = useState(false)
 
   // Só a busca textual precisa de espera; mexer num select deve responder na hora.
   const [debouncedSearch, setDebouncedSearch] = useState('')
@@ -52,8 +60,9 @@ export default function LeadsPage() {
     try {
       const res = await fetch(`/api/leads?${query}`)
       if (res.ok) {
-        const { data } = await res.json()
+        const { data, meta } = await res.json()
         setLeads(data)
+        setTruncated(Boolean(meta?.truncated))
       } else {
         // Sem isto, uma falha deixava o quadro vazio sem nenhuma explicação.
         toast.error('Não foi possível carregar os leads. Recarregue a página.')
@@ -104,6 +113,18 @@ export default function LeadsPage() {
       />
 
       <LeadFilters value={filters} onChange={setFilters} tags={tags} people={people} />
+
+      {truncated && !loading && (
+        <div className="mb-3 flex items-center gap-2 rounded-2xl border border-[#F5A623]/30 bg-[#F5A623]/[0.08] px-4 py-2.5">
+          <span className="material-symbols-outlined text-[#B26A00]" style={{ fontSize: '18px' }}>
+            filter_list
+          </span>
+          <p className="text-xs font-semibold text-[#021541]">
+            Há mais leads do que cabe no quadro. Estreite o período ou refine os filtros
+            para ver os mais antigos.
+          </p>
+        </div>
+      )}
 
       {loading ? (
         <div className="flex-1 flex items-center justify-center text-[#718096] text-sm">

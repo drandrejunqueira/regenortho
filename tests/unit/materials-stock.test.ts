@@ -15,7 +15,7 @@ vi.mock('@/lib/db', () => ({
 }))
 
 import { db } from '@/lib/db'
-import { darBaixaEstoque, darEntradaEstoque, recomputeStockFromBatches } from '@/lib/materials-stock'
+import { darBaixaEstoque, darEntradaEstoque, recomputeStockFromBatches, unidadesDeBaixa } from '@/lib/materials-stock'
 
 // Captura cada chamada a db.update em ordem, para inspecionar o `.set(...)`
 // que cada uma recebeu (o mock de db.update não persiste nada de verdade).
@@ -79,19 +79,55 @@ describe('recomputeStockFromBatches', () => {
   })
 })
 
+// A quantidade do item é numeric(8,3), mas estoque/lotes/movimentações são
+// colunas integer. O arredondamento para o mais próximo que existia antes fazia
+// "0,4 frasco" virar 0: o frasco saía do armário e nada era baixado.
+describe('unidadesDeBaixa', () => {
+  it('fração vira ao menos uma unidade — nunca zero', () => {
+    expect(unidadesDeBaixa(0.4)).toBe(1)
+    expect(unidadesDeBaixa(0.001)).toBe(1)
+    expect(unidadesDeBaixa(1.2)).toBe(2)
+  })
+
+  it('quantidade já inteira não ganha unidade extra por ruído de ponto flutuante', () => {
+    expect(unidadesDeBaixa(2)).toBe(2)
+    expect(unidadesDeBaixa(0.1 + 0.2 + 1.7)).toBe(2) // 2.0000000000000004
+  })
+
+  it('quantidade inválida ou não-positiva não gera baixa', () => {
+    expect(unidadesDeBaixa(0)).toBe(0)
+    expect(unidadesDeBaixa(-3)).toBe(0)
+    expect(unidadesDeBaixa(Number.NaN)).toBe(0)
+  })
+})
+
 describe('darBaixaEstoque', () => {
   it('quantidade zero ou negativa não mexe no estoque, só devolve o saldo atual', async () => {
     ;(db.query.materials.findFirst as unknown as Mock).mockResolvedValue({ currentStock: 12 })
 
-    expect(await darBaixaEstoque('mat-1', 0)).toBe(12)
-    expect(await darBaixaEstoque('mat-1', -3)).toBe(12)
+    expect(await darBaixaEstoque('mat-1', 0)).toEqual({ saldo: 12, baixado: 0, faltou: 0 })
+    expect(await darBaixaEstoque('mat-1', -3)).toEqual({ saldo: 12, baixado: 0, faltou: 0 })
     expect(db.update).not.toHaveBeenCalled()
     expect(db.select).not.toHaveBeenCalled()
   })
 
   it('material sem saldo conhecido (findFirst vazio) devolve 0 para quantidade não-positiva', async () => {
     ;(db.query.materials.findFirst as unknown as Mock).mockResolvedValue(undefined)
-    expect(await darBaixaEstoque('mat-1', 0)).toBe(0)
+    expect(await darBaixaEstoque('mat-1', 0)).toEqual({ saldo: 0, baixado: 0, faltou: 0 })
+  })
+
+  // 0,4 frasco arredondava para 0 e o material sumia do armário sem baixa.
+  it('fração de material consome uma unidade inteira do lote, não zero', async () => {
+    ;(db.select as unknown as Mock).mockReturnValueOnce(chain([{ n: 1 }]))
+    ;(db.select as unknown as Mock).mockReturnValueOnce(chain([{ id: 'lote-1', quantity: 5, expiresAt: null }]))
+    const updates = spyUpdates([undefined, undefined])
+    ;(db.query.materialBatches.findMany as unknown as Mock).mockResolvedValue([{ quantity: 4 }])
+    ;(db.query.materials.findFirst as unknown as Mock).mockResolvedValue({ minimumStock: 5 })
+
+    const result = await darBaixaEstoque('mat-1', 0.4)
+
+    expect(updates[0].set).toHaveBeenCalledWith(expect.objectContaining({ quantity: 4 }))
+    expect(result).toEqual({ saldo: 4, baixado: 1, faltou: 0 })
   })
 
   it('com lotes, consome no critério FEFO (lote mais próximo do vencimento primeiro)', async () => {
@@ -113,28 +149,56 @@ describe('darBaixaEstoque', () => {
     // consome os 3 do lote-1 inteiro, depois 2 do lote-2 — nada sobra para o resto.
     expect(updates[0].set).toHaveBeenCalledWith(expect.objectContaining({ quantity: 0 }))
     expect(updates[1].set).toHaveBeenCalledWith(expect.objectContaining({ quantity: 8 }))
-    expect(result).toBe(8) // saldo pós-recompute: 0 + 8
+    expect(result).toEqual({ saldo: 8, baixado: 5, faltou: 0 }) // saldo pós-recompute: 0 + 8
+  })
+
+  // O loop FEFO zerava todos os lotes e simplesmente ignorava o que faltou: a
+  // rota respondia sucesso e o inventário ficava divergente para sempre.
+  it('com lotes insuficientes, sinaliza o que faltou em vez de descartar em silêncio', async () => {
+    ;(db.select as unknown as Mock).mockReturnValueOnce(chain([{ n: 1 }]))
+    ;(db.select as unknown as Mock).mockReturnValueOnce(chain([{ id: 'lote-1', quantity: 2, expiresAt: null }]))
+    const updates = spyUpdates([undefined, undefined])
+    ;(db.query.materialBatches.findMany as unknown as Mock).mockResolvedValue([{ quantity: 0 }])
+    ;(db.query.materials.findFirst as unknown as Mock).mockResolvedValue({ minimumStock: 5 })
+
+    const result = await darBaixaEstoque('mat-1', 7)
+
+    expect(updates[0].set).toHaveBeenCalledWith(expect.objectContaining({ quantity: 0 }))
+    expect(result).toEqual({ saldo: 0, baixado: 2, faltou: 5 })
   })
 
   it('sem lotes, debita a coluna direto e recalcula o status', async () => {
     ;(db.select as unknown as Mock).mockReturnValueOnce(chain([{ n: 0 }])) // temLotes → false
+    ;(db.query.materials.findFirst as unknown as Mock).mockResolvedValue({ currentStock: 10 }) // saldo antes
     const updates = spyUpdates([
       [{ currentStock: 2, minimumStock: 5 }], // update com GREATEST + .returning()
       undefined, // update de status
     ])
 
     const result = await darBaixaEstoque('mat-1', 8)
-    expect(result).toBe(2)
+    expect(result).toEqual({ saldo: 2, baixado: 8, faltou: 0 })
     // 2 <= 5 => critical — e esse update de status era o bug histórico esquecido.
     expect(updates[1].set).toHaveBeenCalledWith(expect.objectContaining({ status: 'critical' }))
   })
 
-  it('sem lotes e material não encontrado no update devolve 0', async () => {
+  // Sem lotes o GREATEST(0, ...) impedia o saldo negativo e, de quebra, apagava
+  // o rastro da falta: 8 pedidos sobre 3 disponíveis "davam certo".
+  it('sem lotes e sem saldo suficiente, reporta baixado e faltou', async () => {
     ;(db.select as unknown as Mock).mockReturnValueOnce(chain([{ n: 0 }]))
+    ;(db.query.materials.findFirst as unknown as Mock).mockResolvedValue({ currentStock: 3 })
+    spyUpdates([[{ currentStock: 0, minimumStock: 5 }], undefined])
+
+    const result = await darBaixaEstoque('mat-1', 8)
+    expect(result).toEqual({ saldo: 0, baixado: 3, faltou: 5 })
+  })
+
+  it('sem lotes e material não encontrado no update devolve baixa vazia', async () => {
+    ;(db.select as unknown as Mock).mockReturnValueOnce(chain([{ n: 0 }]))
+    ;(db.query.materials.findFirst as unknown as Mock).mockResolvedValue({ currentStock: 10 })
     spyUpdates([[]]) // .returning() devolve array vazio → destructure [m] = undefined
 
     const result = await darBaixaEstoque('mat-1', 8)
-    expect(result).toBe(0)
+    expect(result).toEqual({ saldo: 0, baixado: 0, faltou: 8 })
   })
 })
 

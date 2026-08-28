@@ -39,6 +39,45 @@ function getWeekDays(baseDate: Date) {
 
 interface Doctor { id: string; name: string; googleCalendarId: string | null }
 
+interface ItemTratamento {
+  type: 'procedure' | 'material' | 'fee'
+  materialId: string | null
+  description: string
+  quantity: number
+  unitCost: number
+  unitPrice: number
+  sortOrder: number
+}
+
+/**
+ * Converte um modelo do catálogo nos itens do tratamento.
+ *
+ * A agenda copiava só nome e preço do modelo e mandava UM item de procedimento
+ * com unitCost 0: um "PRP Joelho" com R$ 320 de insumo virava tratamento de
+ * custo zero — nenhuma baixa de estoque na conclusão, margem bruta de 100% no
+ * DRE e o material saindo do armário sem registro.
+ *
+ * O custo unitário é relido do estoque ATUAL (o modelo guarda só preço de
+ * venda), mesma lógica do applyTemplate da tela de tratamentos.
+ */
+function itensDoModelo(tpl: any, materials: any[]): ItemTratamento[] {
+  return ((tpl?.items ?? []) as any[]).map((it, i) => {
+    const mat = it.materialId ? materials.find(m => m.id === it.materialId) : null
+    return {
+      type: it.type,
+      materialId: it.materialId ?? null,
+      description: it.description,
+      quantity: Number(it.quantity),
+      unitCost: mat ? Number(mat.unitCost ?? 0) : 0,
+      unitPrice: Number(it.unitPrice),
+      sortOrder: it.sortOrder ?? i,
+    }
+  })
+}
+
+const totalDosItens = (itens: ItemTratamento[]) =>
+  itens.reduce((s, it) => s + it.quantity * it.unitPrice, 0)
+
 export default function AgendaPage() {
   const [baseDate, setBaseDate] = useState(new Date())
   const [appointments, setAppointments] = useState<Appointment[]>([])
@@ -56,6 +95,9 @@ export default function AgendaPage() {
   const [quickTreatmentOpen, setQuickTreatmentOpen] = useState(false)
   const [paymentMethods, setPaymentMethods] = useState<any[]>([])
   const [templates, setTemplates] = useState<any[]>([])
+  // Necessário para custear os itens do modelo com o custo unitário atual do
+  // estoque — o modelo do catálogo só guarda preço de venda.
+  const [materials, setMaterials] = useState<any[]>([])
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false)
   const [deleteReason, setDeleteReason] = useState('')
   const [deletingId, setDeletingId] = useState<string | null>(null)
@@ -95,6 +137,12 @@ export default function AgendaPage() {
       .then((r) => r.json())
       .then(({ data }) => {
         if (data) setTemplates(data)
+      })
+      .catch(() => {})
+    fetch('/api/materiais')
+      .then((r) => r.json())
+      .then(({ data }) => {
+        if (data) setMaterials(data)
       })
       .catch(() => {})
     loadGcalStatus()
@@ -757,6 +805,7 @@ export default function AgendaPage() {
         appointment={selectedApt}
         paymentMethods={paymentMethods}
         templates={templates}
+        materials={materials}
         onCompleted={fetchAppointments}
       />
 
@@ -766,6 +815,7 @@ export default function AgendaPage() {
         patient={selectedApt?.patient ? { id: selectedApt.patientId!, name: selectedApt.patient.name } : null}
         doctor={selectedApt?.doctor ? { id: selectedApt.doctorId!, name: selectedApt.doctor.name } : null}
         templates={templates}
+        materials={materials}
         onCompleted={fetchAppointments}
       />
 
@@ -1323,6 +1373,7 @@ function FinalizarConsultaDialog({
   appointment,
   paymentMethods,
   templates,
+  materials,
   onCompleted,
 }: {
   open: boolean
@@ -1330,6 +1381,7 @@ function FinalizarConsultaDialog({
   appointment: Appointment | null
   paymentMethods: any[]
   templates: any[]
+  materials: any[]
   onCompleted: () => void
 }) {
   const [loading, setLoading] = useState(false)
@@ -1354,12 +1406,19 @@ function FinalizarConsultaDialog({
   const [treatmentTemplateId, setTreatmentTemplateId] = useState('')
   const [treatmentPrice, setTreatmentPrice] = useState('1500.00')
   const [treatmentInstallments, setTreatmentInstallments] = useState(1)
+  const [treatmentItems, setTreatmentItems] = useState<ItemTratamento[]>([])
+
+  // Consulta paga marcada no agendamento já gerou a cobrança naquele momento.
+  const jaCobrada = !!appointment?.isPaidConsultation
 
   // Reset states on open
   useEffect(() => {
     if (open && appointment) {
       const isReturn = appointment.type === 'return'
-      setGenerateFee(!isReturn)
+      // Não vir marcado quando a consulta JÁ foi cobrada no agendamento: era
+      // uma segunda consultation_fee para o mesmo atendimento, cobrada duas
+      // vezes do paciente e contada duas vezes na receita.
+      setGenerateFee(!isReturn && !appointment.isPaidConsultation)
       setFeeAmount('350.00')
       setPaymentMethodId(paymentMethods[0]?.id || '')
       setIsPaid(true)
@@ -1374,6 +1433,7 @@ function FinalizarConsultaDialog({
       setTreatmentTemplateId('')
       setTreatmentPrice('1500.00')
       setTreatmentInstallments(1)
+      setTreatmentItems([])
     }
   }, [open, appointment, paymentMethods])
 
@@ -1381,10 +1441,16 @@ function FinalizarConsultaDialog({
   function applyTemplate(id: string) {
     setTreatmentTemplateId(id)
     const tpl = templates.find(t => t.id === id)
-    if (tpl) {
-      setTreatmentName(tpl.name)
-      setTreatmentPrice(Number(tpl.defaultPrice).toFixed(2))
+    if (!tpl) {
+      setTreatmentItems([])
+      return
     }
+    setTreatmentName(tpl.name)
+    // Itens do modelo (com materiais e custo atual) em vez de um procedimento
+    // solto de custo zero.
+    const itens = itensDoModelo(tpl, materials)
+    setTreatmentItems(itens)
+    setTreatmentPrice((itens.length > 0 ? totalDosItens(itens) : Number(tpl.defaultPrice)).toFixed(2))
   }
 
   async function submit() {
@@ -1471,7 +1537,9 @@ function FinalizarConsultaDialog({
             category: 'consultation_fee',
             discount: 0,
             installments: Number(treatmentInstallments),
-            items: [{
+            // Com modelo escolhido vão os itens dele (materiais inclusos, com
+            // custo); sem modelo, o item único de procedimento como antes.
+            items: treatmentItems.length > 0 ? treatmentItems : [{
               type: 'procedure',
               description: treatmentName.trim(),
               quantity: 1,
@@ -1536,6 +1604,18 @@ function FinalizarConsultaDialog({
                   className="rounded border-[rgba(2,21,65,0.2)] text-[#00BCE4] focus:ring-[#00BCE4]"
                 />
               </div>
+
+              {jaCobrada && (
+                <div className="p-2.5 bg-[#e6c364]/10 border border-[#e6c364]/40 rounded-xl text-[11px] text-[#7a6000] flex items-start gap-2">
+                  <span className="material-symbols-outlined" style={{ fontSize: '16px' }}>info</span>
+                  <span>
+                    Esta consulta já foi cobrada no agendamento
+                    {appointment?.consultationPrice ? ` (${BRL(appointment.consultationPrice)})` : ''}
+                    {appointment?.paymentStatus === 'paid' ? ' e está marcada como paga' : ' e está pendente de recebimento'}.
+                    Só marque acima se for uma cobrança adicional — senão o paciente é cobrado duas vezes.
+                  </span>
+                </div>
+              )}
 
               {generateFee && (
                 <div className="grid grid-cols-2 gap-2.5 pt-1.5">
@@ -1677,6 +1757,9 @@ function FinalizarConsultaDialog({
                   />
                 </div>
                 <div className="grid grid-cols-2 gap-2.5">
+                  {/* Com modelo aplicado o valor é a soma dos itens: deixar
+                      editável faria o preço digitado brigar com o total que o
+                      servidor recalcula a partir deles. */}
                   <div className="space-y-1">
                     <label className={labelCls}>Preço Venda (R$)</label>
                     <input
@@ -1684,7 +1767,8 @@ function FinalizarConsultaDialog({
                       step="0.01"
                       value={treatmentPrice}
                       onChange={(e) => setTreatmentPrice(e.target.value)}
-                      className={inputCls}
+                      readOnly={treatmentItems.length > 0}
+                      className={cn(inputCls, treatmentItems.length > 0 && 'opacity-60')}
                     />
                   </div>
                   <div className="space-y-1">
@@ -1699,6 +1783,12 @@ function FinalizarConsultaDialog({
                     />
                   </div>
                 </div>
+                {treatmentItems.length > 0 && (
+                  <p className="text-[10px] text-[#718096]">
+                    {treatmentItems.length} {treatmentItems.length === 1 ? 'item' : 'itens'} do modelo
+                    {treatmentItems.some(it => it.materialId) && ' (materiais inclusos, com baixa de estoque na conclusão)'}
+                  </p>
+                )}
               </div>
             )}
           </div>
@@ -1732,6 +1822,7 @@ function QuickTreatmentDialog({
   patient,
   doctor,
   templates,
+  materials,
   onCompleted,
 }: {
   open: boolean
@@ -1739,6 +1830,7 @@ function QuickTreatmentDialog({
   patient: { id: string; name: string } | null
   doctor: { id: string; name: string } | null
   templates: any[]
+  materials: any[]
   onCompleted: () => void
 }) {
   const [loading, setLoading] = useState(false)
@@ -1747,6 +1839,7 @@ function QuickTreatmentDialog({
   const [price, setPrice] = useState('1500.00')
   const [installments, setInstallments] = useState(1)
   const [notes, setNotes] = useState('')
+  const [items, setItems] = useState<ItemTratamento[]>([])
 
   useEffect(() => {
     if (open) {
@@ -1755,16 +1848,23 @@ function QuickTreatmentDialog({
       setPrice('1500.00')
       setInstallments(1)
       setNotes('')
+      setItems([])
     }
   }, [open])
 
   function applyTemplate(id: string) {
     setTemplateId(id)
     const tpl = templates.find(t => t.id === id)
-    if (tpl) {
-      setTreatmentName(tpl.name)
-      setPrice(Number(tpl.defaultPrice).toFixed(2))
+    if (!tpl) {
+      setItems([])
+      return
     }
+    setTreatmentName(tpl.name)
+    // Mesma correção do diálogo de finalização: sem os itens do modelo o
+    // tratamento nasce com custo zero e o material sai do armário sem baixa.
+    const itens = itensDoModelo(tpl, materials)
+    setItems(itens)
+    setPrice((itens.length > 0 ? totalDosItens(itens) : Number(tpl.defaultPrice)).toFixed(2))
   }
 
   async function submit() {
@@ -1785,7 +1885,7 @@ function QuickTreatmentDialog({
           discount: 0,
           installments: Number(installments),
           notes: notes || null,
-          items: [{
+          items: items.length > 0 ? items : [{
             type: 'procedure',
             description: treatmentName.trim(),
             quantity: 1,
@@ -1855,12 +1955,14 @@ function QuickTreatmentDialog({
           <div className="grid grid-cols-2 gap-3">
             <div className="space-y-1">
               <label className={labelCls}>Preço Venda (R$)</label>
+              {/* Valor vem da soma dos itens quando há modelo aplicado. */}
               <input
                 type="number"
                 step="0.01"
                 value={price}
                 onChange={(e) => setPrice(e.target.value)}
-                className={inputCls}
+                readOnly={items.length > 0}
+                className={cn(inputCls, items.length > 0 && 'opacity-60')}
               />
             </div>
             <div className="space-y-1">
@@ -1875,6 +1977,13 @@ function QuickTreatmentDialog({
               />
             </div>
           </div>
+
+          {items.length > 0 && (
+            <p className="text-[10px] text-[#718096]">
+              {items.length} {items.length === 1 ? 'item' : 'itens'} do modelo
+              {items.some(it => it.materialId) && ' (materiais inclusos, com baixa de estoque na conclusão)'}
+            </p>
+          )}
 
           <div className="space-y-1">
             <label className={labelCls}>Observações</label>

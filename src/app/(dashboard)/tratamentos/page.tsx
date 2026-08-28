@@ -210,7 +210,16 @@ function DrawerCreateTreatment({
       const res = await fetch('/api/tratamentos', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ ...form, items }),
+        // Forma de pagamento e modelo são opcionais na tela ("Selecione..."),
+        // mas os selects devolvem '' — que o uuid do zod recusa. Sem converter
+        // para null TODA criação voltava 400 com o toast genérico de erro.
+        body: JSON.stringify({
+          ...form,
+          paymentMethodId: form.paymentMethodId || null,
+          templateId: form.templateId || null,
+          notes: form.notes || null,
+          items,
+        }),
       })
       const data = await res.json()
       if (!res.ok) throw new Error()
@@ -1068,12 +1077,18 @@ function ConcluirTratamentoDialog({ open, treatment, onClose, onCompleted }: Con
           paymentStatus
         })
       })
-      if (!res.ok) throw new Error()
+      const payload = await res.json().catch(() => null)
+      if (!res.ok) throw new Error(payload?.error || 'Erro ao concluir tratamento')
       toast.success('Tratamento concluído e faturamento lançado com sucesso!')
+      // A conclusão pode dar certo com o estoque não cobrindo a baixa. Engolir
+      // esse aviso deixa o inventário divergente sem ninguém saber.
+      for (const aviso of (payload?.avisos ?? []) as string[]) {
+        toast.error(aviso, { duration: 10000 })
+      }
       onCompleted()
       onClose()
-    } catch {
-      toast.error('Erro ao concluir tratamento')
+    } catch (e) {
+      toast.error(e instanceof Error && e.message ? e.message : 'Erro ao concluir tratamento')
     } finally {
       setLoading(false)
     }

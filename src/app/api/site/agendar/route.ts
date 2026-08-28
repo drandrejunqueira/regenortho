@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { db } from '@/lib/db'
-import { leads, clinicSettings } from '@/lib/db/schema'
+import { leads, clinicSettings, sanitizeTrackingData } from '@/lib/db/schema'
 import { z } from 'zod'
 import { eq } from 'drizzle-orm'
 import { sendAndLog, tplNewLead } from '@/lib/whatsapp'
@@ -49,6 +49,9 @@ export async function POST(req: NextRequest) {
     complaint: d.message || null,
     utmSource: t.utm_source ? t.utm_source.slice(0, 100) : null,
     utmCampaign: t.utm_campaign ? t.utm_campaign.slice(0, 100) : null,
+    // Mesmo motivo de /api/public/leads: guarda a atribuição inteira, mas só o
+    // que está na allowlist e truncado — o formulário é aberto na internet.
+    trackingData: sanitizeTrackingData(t),
   }).returning()
 
   await notify({

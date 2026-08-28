@@ -6,6 +6,12 @@
 import { useEffect, useRef, useState } from 'react'
 import { cn } from '@/lib/utils'
 import { LEAD_SOURCE_LABELS } from '@/lib/constants'
+import {
+  DEFAULT_LEAD_PERIOD,
+  LEAD_PERIODS,
+  LEAD_PERIOD_LABELS,
+  type LeadPeriod,
+} from '@/lib/leadPeriod'
 
 export interface TagOption {
   id: string
@@ -24,6 +30,7 @@ export interface LeadFilterState {
   tags: string[]
   source: string
   assignedTo: string
+  period: LeadPeriod
   from: string
   to: string
 }
@@ -33,11 +40,20 @@ export const EMPTY_FILTERS: LeadFilterState = {
   tags: [],
   source: '',
   assignedTo: '',
+  period: DEFAULT_LEAD_PERIOD,
   from: '',
   to: '',
 }
 
 export function countActiveFilters(f: LeadFilterState): number {
+  // O recorte de tempo conta uma vez só: pelas datas quando é personalizado,
+  // pelo preset nos demais casos. Somar os dois marcaria "2" para um único
+  // filtro na cabeça do usuário.
+  const periodo =
+    f.period === 'custom'
+      ? (f.from || f.to ? 1 : 0)
+      : (f.period !== DEFAULT_LEAD_PERIOD ? 1 : 0)
+
   return (
     // `trim` para casar com buildQuery, que descarta busca só de espaços: sem
     // isso o botão "Limpar (1)" apareceria sem haver filtro aplicado.
@@ -45,7 +61,7 @@ export function countActiveFilters(f: LeadFilterState): number {
     f.tags.length +
     (f.source ? 1 : 0) +
     (f.assignedTo ? 1 : 0) +
-    (f.from || f.to ? 1 : 0)
+    periodo
   )
 }
 
@@ -79,6 +95,16 @@ export function LeadFilters({ value, onChange, tags, people }: LeadFiltersProps)
 
   const set = <K extends keyof LeadFilterState>(key: K, v: LeadFilterState[K]) =>
     onChange({ ...value, [key]: v })
+
+  // Sair do personalizado precisa zerar as datas: senão elas continuariam na
+  // query string e voltariam a valer ao reentrar no modo.
+  function selectPeriod(period: LeadPeriod) {
+    onChange(
+      period === 'custom'
+        ? { ...value, period }
+        : { ...value, period, from: '', to: '' },
+    )
+  }
 
   function toggleTag(name: string) {
     const next = value.tags.includes(name)
@@ -211,26 +237,56 @@ export function LeadFilters({ value, onChange, tags, people }: LeadFiltersProps)
         ))}
       </select>
 
-      {/* Período de entrada */}
-      <div className="flex items-center gap-1.5">
-        <input
-          type="date"
-          value={value.from}
-          max={value.to || undefined}
-          onChange={(e) => set('from', e.target.value)}
-          aria-label="Entrada a partir de"
-          className={cn(controlCls, 'font-technical text-xs', value.from && 'border-[#00BCE4]')}
-        />
-        <span className="text-xs text-[#718096]">até</span>
-        <input
-          type="date"
-          value={value.to}
-          min={value.from || undefined}
-          onChange={(e) => set('to', e.target.value)}
-          aria-label="Entrada até"
-          className={cn(controlCls, 'font-technical text-xs', value.to && 'border-[#00BCE4]')}
-        />
+      {/* Período de entrada — o quadro abre em 30 dias para não carregar o
+          funil inteiro; "Tudo" continua disponível para quem precisa do
+          histórico completo. */}
+      <div
+        role="group"
+        aria-label="Filtrar por período de entrada"
+        className="flex items-center gap-0.5 rounded-full bg-[#f5f6f8] p-1 border border-[rgba(2,21,65,0.10)]"
+      >
+        {LEAD_PERIODS.map((p) => {
+          const selected = value.period === p
+          return (
+            <button
+              key={p}
+              type="button"
+              onClick={() => selectPeriod(p)}
+              aria-pressed={selected}
+              className={cn(
+                'px-3 py-1.5 rounded-full text-xs font-bold whitespace-nowrap transition-colors cursor-pointer',
+                selected
+                  ? 'bg-[#021541] text-white'
+                  : 'text-[#718096] hover:text-[#021541] hover:bg-[#021541]/[0.06]',
+              )}
+            >
+              {LEAD_PERIOD_LABELS[p]}
+            </button>
+          )
+        })}
       </div>
+
+      {value.period === 'custom' && (
+        <div className="flex items-center gap-1.5">
+          <input
+            type="date"
+            value={value.from}
+            max={value.to || undefined}
+            onChange={(e) => set('from', e.target.value)}
+            aria-label="Entrada a partir de"
+            className={cn(controlCls, 'font-technical text-xs', value.from && 'border-[#00BCE4]')}
+          />
+          <span className="text-xs text-[#718096]">até</span>
+          <input
+            type="date"
+            value={value.to}
+            min={value.from || undefined}
+            onChange={(e) => set('to', e.target.value)}
+            aria-label="Entrada até"
+            className={cn(controlCls, 'font-technical text-xs', value.to && 'border-[#00BCE4]')}
+          />
+        </div>
+      )}
 
       {activeCount > 0 && (
         <button

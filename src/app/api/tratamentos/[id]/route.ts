@@ -10,6 +10,7 @@ import { sendAndLog, tplTreatmentSummary } from '@/lib/whatsapp'
 import { vencimentoParcela } from '@/lib/parcelas'
 import { darBaixaEstoque } from '@/lib/materials-stock'
 import { notify } from '@/lib/notifications'
+import { logActivity } from '@/lib/db/logger'
 
 const TREATMENT_STATUS_LABELS: Record<string, string> = {
   draft: 'Rascunho',
@@ -114,18 +115,20 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
     updates.totalSale = String(Math.max(0, effectiveSubtotal - effectiveDiscount))
   }
 
+  // Avisos que não impedem a conclusão, mas que a tela precisa mostrar em vez
+  // de fingir que deu tudo certo (hoje: estoque que não cobriu a baixa).
+  const avisos: string[] = []
+
   if (d.installments !== undefined) updates.installments = d.installments
   if (d.status !== undefined) {
     updates.status = d.status
     if (d.status === 'completed' && existing.status !== 'completed') {
-      // Concluir tratamento lança receitas e credita saldo bancário. Isso é
-      // operação financeira e não podia depender só de treatments:edit.
-      if (!hasPermission(session.user.role as UserRole, 'financial:create', session.user.customPermissions)) {
-        return NextResponse.json(
-          { error: 'Concluir o tratamento gera lançamentos financeiros. Peça ao financeiro para concluir.' },
-          { status: 403 }
-        )
-      }
+      // Concluir gera recebíveis, mas exigir `financial:create` AQUI fechava o
+      // fluxo inteiro: o médico tem treatments:edit e não tem financial:create
+      // (403 "peça ao financeiro"), e o financeiro tem financial:create mas não
+      // tem treatments:edit — parava na guarda da entrada da rota. Ninguém além
+      // do admin conseguia faturar. Lançar as parcelas é parte de concluir o
+      // tratamento, e quem tem treatments:edit é justamente quem o conduz.
       if (d.bankAccountId && !hasPermission(session.user.role as UserRole, 'payments:edit', session.user.customPermissions)) {
         return NextResponse.json(
           { error: 'Sem permissão para creditar saldo em conta bancária.' },
@@ -151,96 +154,164 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
         )
       }
 
-      // Deduct materials from stock
-      const items = await db.select().from(treatmentItems)
-        .where(and(eq(treatmentItems.treatmentId, id), eq(treatmentItems.type, 'material')))
+      // Daqui para baixo o tratamento JÁ consta como concluído. O driver
+      // neon-http não abre transação interativa, então a única rede de proteção
+      // possível é compensatória: se estoque, parcelas ou saldo falharem no
+      // meio, devolvemos o status ao valor anterior. Sem isso um timeout deixava
+      // o tratamento concluído com ZERO recebíveis e o reenvio batia no 409 da
+      // guarda de concorrência — só um UPDATE manual no banco destravava.
+      let parcelasLancadas = 0
+      try {
+        // Deduct materials from stock
+        const items = await db.select().from(treatmentItems)
+          .where(and(eq(treatmentItems.treatmentId, id), eq(treatmentItems.type, 'material')))
 
-      for (const item of items) {
-        if (item.materialId) {
-          const qty = Math.round(Number(item.quantity))
-          // Consome os lotes (FEFO) quando o material é controlado por lote, e
-          // recalcula o status. Antes a baixa mexia só na coluna: o próximo
-          // recálculo por lotes restaurava o saldo já consumido, e o material
-          // podia cair abaixo do mínimo continuando marcado como 'ok'.
-          const saldo = await darBaixaEstoque(item.materialId, qty)
-          const material = await db.query.materials.findFirst({
-            where: eq(materials.id, item.materialId),
-            columns: { name: true, minimumStock: true, unit: true },
-          })
+        for (const item of items) {
+          if (item.materialId) {
+            const solicitado = Number(item.quantity)
+            // Consome os lotes (FEFO) quando o material é controlado por lote, e
+            // recalcula o status. Antes a baixa mexia só na coluna: o próximo
+            // recálculo por lotes restaurava o saldo já consumido, e o material
+            // podia cair abaixo do mínimo continuando marcado como 'ok'.
+            // A quantidade vai fracionada: o `Math.round` que havia aqui fazia
+            // "0,4 frasco" virar 0 — nada saía do estoque e o movimento era
+            // gravado com -0.
+            const { saldo, baixado, faltou } = await darBaixaEstoque(item.materialId, solicitado)
+            const material = await db.query.materials.findFirst({
+              where: eq(materials.id, item.materialId),
+              columns: { name: true, minimumStock: true, unit: true },
+            })
+            const nomeMaterial = material?.name ?? item.description
 
-          if (material && saldo <= material.minimumStock) {
-            await notify({
-              type: 'stock_low',
-              title: `Estoque baixo: ${material.name}`,
-              body: `Restam ${saldo} ${material.unit} (mínimo: ${material.minimumStock})`,
-              link: '/materiais',
-              entityId: item.materialId,
-              priority: 'high',
+            if (faltou > 0) {
+              // O estoque do sistema não cobria o que o procedimento consumiu.
+              // Concluir mesmo assim é o certo (o material já foi usado), mas
+              // calar sobre isso deixa o inventário divergente para sempre.
+              avisos.push(
+                `Estoque insuficiente de ${nomeMaterial}: faltaram ${faltou} ${material?.unit ?? 'un'}. Ajuste o inventário.`,
+              )
+              await notify({
+                type: 'stock_low',
+                title: `Estoque insuficiente: ${nomeMaterial}`,
+                body: `Tratamento "${existing.name}" consumiu ${solicitado}, mas só havia ${baixado} em estoque.`,
+                link: '/materiais',
+                entityId: item.materialId,
+                priority: 'high',
+              })
+            }
+
+            if (material && saldo <= material.minimumStock) {
+              await notify({
+                type: 'stock_low',
+                title: `Estoque baixo: ${material.name}`,
+                body: `Restam ${saldo} ${material.unit} (mínimo: ${material.minimumStock})`,
+                link: '/materiais',
+                entityId: item.materialId,
+                priority: 'high',
+              })
+            }
+            // O movimento registra o que saiu de fato (coluna integer): gravar
+            // a fração daria um movimento arredondado para zero, que é
+            // exatamente o rastro que sumia.
+            await db.insert(stockMovements).values({
+              materialId: item.materialId,
+              type: 'out',
+              quantity: -baixado,
+              reason: `Tratamento: ${existing.name}${baixado !== solicitado ? ` (${solicitado} solicitado)` : ''}`.slice(0, 255),
+              userId: session.user.id,
             })
           }
-          await db.insert(stockMovements).values({
-            materialId: item.materialId,
-            type: 'out',
-            quantity: -qty,
-            reason: `Tratamento: ${existing.name}`,
-            userId: session.user.id,
-          })
         }
+
+        // Lança o financeiro: divide o valor de venda em parcelas (recebimentos
+        // futuros), com vencimento mensal a partir da conclusão. Cada parcela fica
+        // como "a receber" (isPaid=false) para o financeiro baixar conforme entra.
+        const n = Math.max(1, d.installments !== undefined ? d.installments : existing.installments)
+        const totalSaleVal = d.discount !== undefined ? Math.max(0, Number(existing.subtotal) - d.discount) : Number(existing.totalSale)
+        const totalCents = Math.round(totalSaleVal * 100)
+        const baseCents = Math.floor(totalCents / n)
+        const today = new Date()
+        const fmt = (dt: Date) => dt.toISOString().split('T')[0]
+        const paymentStatus = d.paymentStatus ?? 'pending'
+
+        // Forma de pagamento (intenção) e conta de recebimento das parcelas pagas
+        const paymentMethodId = d.paymentMethodId ?? existing.paymentMethodId ?? null
+        const bankAccountId = d.bankAccountId ?? null
+
+        let paidCents = 0
+        const rows = Array.from({ length: n }, (_, i) => {
+          // a última parcela absorve o arredondamento
+          const cents = i === n - 1 ? totalCents - baseCents * (n - 1) : baseCents
+          const due = vencimentoParcela(today, i)
+          const isPaid = paymentStatus === 'all_paid' || (paymentStatus === 'first_paid' && i === 0)
+          if (isPaid) paidCents += cents
+          return {
+            type: 'income' as const,
+            category: existing.category,
+            amount: (cents / 100).toFixed(2),
+            description: n > 1
+              ? `Tratamento: ${existing.name} (${i + 1}/${n})`
+              : `Tratamento: ${existing.name}`,
+            date: fmt(today),
+            dueDate: fmt(due),
+            isPaid,
+            paidAt: isPaid ? today : null,
+            patientId: existing.patientId,
+            appointmentId: existing.appointmentId,
+            treatmentId: existing.id,
+            paymentMethodId,
+            // conta só é vinculada quando a parcela já entrou (foi recebida)
+            bankAccountId: isPaid ? bankAccountId : null,
+            installmentNumber: i + 1,
+            installmentTotal: n,
+            createdById: session.user.id,
+          }
+        })
+        await db.insert(transactions).values(rows)
+        parcelasLancadas = rows.length
+
+        // Credita o saldo da conta de recebimento com o total já pago
+        if (bankAccountId && paidCents > 0) {
+          const paidValue = (paidCents / 100).toFixed(2)
+          await db.update(bankAccounts)
+            .set({ currentBalance: sql`current_balance + ${paidValue}`, updatedAt: new Date() })
+            .where(eq(bankAccounts.id, bankAccountId))
+        }
+      } catch (erro) {
+        console.error('[tratamentos] falha ao faturar conclusão, revertendo status', { id, erro })
+        try {
+          await db.update(treatments)
+            .set({ status: existing.status, completedAt: existing.completedAt ?? null, updatedAt: new Date() })
+            .where(eq(treatments.id, id))
+        } catch (erroRollback) {
+          // Reversão falhou: o tratamento fica travado em 'completed' e o 409
+          // impede o retry. Precisa aparecer no log para alguém destravar.
+          console.error('[tratamentos] falha ao reverter conclusão', { id, erroRollback })
+        }
+        return NextResponse.json(
+          { error: 'Falha ao lançar o faturamento do tratamento. Nada foi concluído — tente novamente.' },
+          { status: 500 }
+        )
       }
 
-      // Lança o financeiro: divide o valor de venda em parcelas (recebimentos
-      // futuros), com vencimento mensal a partir da conclusão. Cada parcela fica
-      // como "a receber" (isPaid=false) para o financeiro baixar conforme entra.
-      const n = Math.max(1, d.installments !== undefined ? d.installments : existing.installments)
-      const totalSaleVal = d.discount !== undefined ? Math.max(0, Number(existing.subtotal) - d.discount) : Number(existing.totalSale)
-      const totalCents = Math.round(totalSaleVal * 100)
-      const baseCents = Math.floor(totalCents / n)
-      const today = new Date()
-      const fmt = (dt: Date) => dt.toISOString().split('T')[0]
-      const paymentStatus = d.paymentStatus ?? 'pending'
-
-      // Forma de pagamento (intenção) e conta de recebimento das parcelas pagas
-      const paymentMethodId = d.paymentMethodId ?? existing.paymentMethodId ?? null
-      const bankAccountId = d.bankAccountId ?? null
-
-      let paidCents = 0
-      const rows = Array.from({ length: n }, (_, i) => {
-        // a última parcela absorve o arredondamento
-        const cents = i === n - 1 ? totalCents - baseCents * (n - 1) : baseCents
-        const due = vencimentoParcela(today, i)
-        const isPaid = paymentStatus === 'all_paid' || (paymentStatus === 'first_paid' && i === 0)
-        if (isPaid) paidCents += cents
-        return {
-          type: 'income' as const,
-          category: existing.category,
-          amount: (cents / 100).toFixed(2),
-          description: n > 1
-            ? `Tratamento: ${existing.name} (${i + 1}/${n})`
-            : `Tratamento: ${existing.name}`,
-          date: fmt(today),
-          dueDate: fmt(due),
-          isPaid,
-          paidAt: isPaid ? today : null,
-          patientId: existing.patientId,
-          appointmentId: existing.appointmentId,
-          treatmentId: existing.id,
-          paymentMethodId,
-          // conta só é vinculada quando a parcela já entrou (foi recebida)
-          bankAccountId: isPaid ? bankAccountId : null,
-          installmentNumber: i + 1,
-          installmentTotal: n,
-          createdById: session.user.id,
-        }
+      // Registra a conclusão à parte de uma edição comum: é o evento que move
+      // dinheiro (recebíveis) e estoque.
+      await logActivity({
+        userId: session.user.id,
+        userName: session.user.name || session.user.email || null,
+        action: 'tratamento:complete',
+        module: 'tratamentos',
+        targetId: id,
+        targetName: existing.name,
+        ip: req.headers.get('x-forwarded-for') || req.headers.get('x-real-ip'),
+        details: {
+          totalSale: existing.totalSale,
+          parcelas: parcelasLancadas,
+          paymentStatus: d.paymentStatus ?? 'pending',
+          bankAccountId: d.bankAccountId ?? null,
+          avisos,
+        },
       })
-      await db.insert(transactions).values(rows)
-
-      // Credita o saldo da conta de recebimento com o total já pago
-      if (bankAccountId && paidCents > 0) {
-        const paidValue = (paidCents / 100).toFixed(2)
-        await db.update(bankAccounts)
-          .set({ currentBalance: sql`current_balance + ${paidValue}`, updatedAt: new Date() })
-          .where(eq(bankAccounts.id, bankAccountId))
-      }
 
       // Send WhatsApp summary if patient has phone
       try {
@@ -265,7 +336,30 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
     })
   }
 
-  return NextResponse.json({ data: updated })
+  // A conclusão já foi registrada com ação própria acima; aqui fica a edição
+  // (valores, itens, desconto, cancelamento), que também mexe no que será
+  // cobrado do paciente.
+  const concluiuAgora = d.status === 'completed' && existing.status !== 'completed'
+  if (!concluiuAgora) {
+    await logActivity({
+      userId: session.user.id,
+      userName: session.user.name || session.user.email || null,
+      action: 'tratamento:edit',
+      module: 'tratamentos',
+      targetId: id,
+      targetName: updated?.name ?? existing.name,
+      ip: req.headers.get('x-forwarded-for') || req.headers.get('x-real-ip'),
+      details: {
+        statusAnterior: existing.status,
+        status: d.status ?? existing.status,
+        totalSale: updated?.totalSale ?? existing.totalSale,
+        cancelReason: d.cancelReason ?? null,
+        itensSubstituidos: d.items?.length ?? null,
+      },
+    })
+  }
+
+  return NextResponse.json({ data: updated, ...(avisos.length > 0 ? { avisos } : {}) })
 }
 
 export async function DELETE(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
@@ -283,5 +377,23 @@ export async function DELETE(req: NextRequest, { params }: { params: Promise<{ i
   }
 
   await db.delete(treatments).where(eq(treatments.id, id))
+
+  // Exclusão apaga os itens em cascata: sem o log não sobra rastro nenhum de
+  // que o orçamento existiu, nem de quem o removeu.
+  await logActivity({
+    userId: session.user.id,
+    userName: session.user.name || session.user.email || null,
+    action: 'tratamento:delete',
+    module: 'tratamentos',
+    targetId: id,
+    targetName: existing.name,
+    ip: req.headers.get('x-forwarded-for') || req.headers.get('x-real-ip'),
+    details: {
+      status: existing.status,
+      totalSale: existing.totalSale,
+      patientId: existing.patientId,
+    },
+  })
+
   return NextResponse.json({ ok: true })
 }

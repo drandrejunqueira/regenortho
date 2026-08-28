@@ -1,5 +1,5 @@
 import { db } from '@/lib/db'
-import { leads } from '@/lib/db/schema'
+import { leads, sanitizeTrackingData } from '@/lib/db/schema'
 import { NextRequest, NextResponse } from 'next/server'
 import { z } from 'zod'
 import { deriveLeadSource } from '@/lib/tracking'
@@ -58,6 +58,10 @@ export async function POST(req: NextRequest) {
       status: 'new',
       utmSource: utmSource || null,
       utmCampaign: utmCampaign || null,
+      // Atribuição completa (fbclid/gclid/medium/content/referrer). Passa pelo
+      // sanitizador porque o corpo é público: chave fora da allowlist e valor
+      // gigante não podem virar carga arbitrária no jsonb.
+      trackingData: sanitizeTrackingData(t),
       specialty: p.specialty || 'Articulações e Dor',
     }).returning()
 

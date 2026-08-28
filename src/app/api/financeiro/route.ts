@@ -4,7 +4,7 @@ import { transactions } from '@/lib/db/schema'
 import { hasPermission } from '@/lib/permissions'
 import { logActivity } from '@/lib/db/logger'
 import { NextRequest, NextResponse } from 'next/server'
-import { and, gte, lte, eq, desc, sql } from 'drizzle-orm'
+import { and, gte, lte, eq, desc, sql, isNull } from 'drizzle-orm'
 import { z } from 'zod'
 import type { UserRole } from '@/types'
 
@@ -106,14 +106,70 @@ export async function POST(req: NextRequest) {
 
   // paidAt chega como string ISO e a coluna é timestamp.
   const { paidAt, ...rest } = parsed.data
-  const [tx] = await db.insert(transactions).values({
+  const valores = {
     ...rest,
     paidAt: paidAt ? new Date(paidAt) : null,
+  }
+  const ip = req.headers.get('x-forwarded-for') || req.headers.get('x-real-ip')
+
+  // A taxa da consulta JÁ entra no contas a receber no momento do agendamento
+  // (POST /api/agenda). Ao clicar "Compareceu" a tela postava aqui uma SEGUNDA
+  // transação com o mesmo appointmentId e a receita dobrava: R$ 350 viravam
+  // R$ 700 a receber. A guarda tem que ser no servidor — a tela não é a única
+  // porta de entrada. O filtro `treatmentId IS NULL` é obrigatório: as parcelas
+  // de tratamento herdam o mesmo appointmentId e não são a taxa da consulta.
+  if (parsed.data.category === 'consultation_fee' && parsed.data.appointmentId) {
+    const [existente] = await db
+      .select()
+      .from(transactions)
+      .where(
+        and(
+          eq(transactions.appointmentId, parsed.data.appointmentId),
+          eq(transactions.category, 'consultation_fee'),
+          isNull(transactions.treatmentId),
+        ),
+      )
+
+    if (existente) {
+      // Atualiza em vez de duplicar: a baixa e a forma de pagamento vindas da
+      // tela de "Finalizar consulta" são justamente o que precisa ser gravado.
+      // paidAt só entra quando veio no corpo — senão um POST sem a data apagaria
+      // a data de recebimento que já estava lá.
+      const [atualizada] = await db
+        .update(transactions)
+        .set({
+          ...rest,
+          ...(paidAt === undefined ? {} : { paidAt: paidAt ? new Date(paidAt) : null }),
+          updatedAt: new Date(),
+        })
+        .where(eq(transactions.id, existente.id))
+        .returning()
+
+      await logActivity({
+        userId: session.user.id,
+        userName: session.user.name || session.user.email || null,
+        action: 'financial:update',
+        module: 'financial',
+        targetId: existente.id,
+        targetName: `R$ ${parseFloat(rest.amount).toFixed(2)} - ${rest.description}`,
+        ip,
+        details: {
+          motivo: 'taxa de consulta já lançada no agendamento — atualizada em vez de duplicada',
+          appointmentId: parsed.data.appointmentId,
+          isPaid: rest.isPaid,
+        },
+      })
+
+      return NextResponse.json({ data: atualizada ?? existente })
+    }
+  }
+
+  const [tx] = await db.insert(transactions).values({
+    ...valores,
     createdById: session.user.id,
   }).returning()
 
   // Registra no log de auditoria
-  const ip = req.headers.get('x-forwarded-for') || req.headers.get('x-real-ip')
   await logActivity({
     userId: session.user.id,
     userName: session.user.name || session.user.email || null,

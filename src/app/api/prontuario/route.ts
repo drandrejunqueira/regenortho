@@ -3,6 +3,7 @@ import { auth } from '@/lib/auth/config'
 import { db } from '@/lib/db'
 import { clinicalRecords, users } from '@/lib/db/schema'
 import { hasPermission } from '@/lib/permissions'
+import { logActivity } from '@/lib/db/logger'
 import type { UserRole } from '@/types'
 import { z } from 'zod'
 import { eq, desc, and } from 'drizzle-orm'
@@ -68,6 +69,25 @@ export async function POST(req: NextRequest) {
     type: parsed.data.type,
     content: parsed.data.content,
   }).returning()
+
+  // Registra no log de auditoria: evolução clínica é o dado mais sensível do sistema e era
+  // o único gravado sem rastro de autoria. O conteúdo do registro não entra em `details` —
+  // duplicá-lo no log espalharia PHI para fora do prontuário.
+  const ip = req.headers.get('x-forwarded-for') || req.headers.get('x-real-ip')
+  await logActivity({
+    userId: session.user.id,
+    userName: session.user.name || session.user.email || null,
+    action: 'prontuario:create',
+    module: 'prontuario',
+    targetId: record.id,
+    targetName: record.type,
+    ip,
+    details: {
+      patientId: record.patientId,
+      appointmentId: record.appointmentId,
+      doctorId: record.doctorId
+    }
+  })
 
   return NextResponse.json({ data: record }, { status: 201 })
 }

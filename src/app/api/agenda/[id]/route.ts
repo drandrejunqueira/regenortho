@@ -5,11 +5,12 @@ import { hasPermission } from '@/lib/permissions'
 import { syncAppointment, removeAppointment } from '@/lib/google/calendar'
 import { logActivity } from '@/lib/db/logger'
 import { NextRequest, NextResponse } from 'next/server'
-import { and, eq, isNull } from 'drizzle-orm'
+import { and, eq, isNull, notInArray } from 'drizzle-orm'
 import { z } from 'zod'
 import type { UserRole } from '@/types'
 import { notify } from '@/lib/notifications'
 import { formatDateTime, toDateBR } from '@/lib/utils'
+import { buscarConflitos, mensagemDeConflito } from '../conflitos'
 
 const updateSchema = z.object({
   status: z.enum(['scheduled', 'confirmed', 'attended', 'no_show', 'rescheduled', 'cancelled']).optional(),
@@ -47,13 +48,19 @@ export async function PATCH(req: NextRequest, { params }: Params) {
     return NextResponse.json({ error: 'Dados inválidos' }, { status: 400 })
   }
 
-  // No PATCH os dois campos são opcionais, então a validação precisa comparar o
-  // resultado final (o que veio no corpo mesclado com o que já está no banco).
-  // Sem isto era possível salvar um agendamento que termina antes de começar.
-  if (parsed.data.startAt || parsed.data.endAt) {
+  // No PATCH os campos são opcionais, então validação de horário e checagem de
+  // conflito precisam comparar o resultado final (o que veio no corpo mesclado
+  // com o que já está no banco). Sem isto era possível salvar um agendamento que
+  // termina antes de começar — ou remarcar por cima de outro paciente.
+  const mexeuEmHorarioOuSala =
+    parsed.data.startAt !== undefined ||
+    parsed.data.endAt !== undefined ||
+    parsed.data.roomId !== undefined
+
+  if (mexeuEmHorarioOuSala) {
     const atual = await db.query.appointments.findFirst({
       where: eq(appointments.id, id),
-      columns: { startAt: true, endAt: true },
+      columns: { startAt: true, endAt: true, doctorId: true, roomId: true },
     })
     if (!atual) return NextResponse.json({ error: 'Agendamento não encontrado' }, { status: 404 })
     const inicio = parsed.data.startAt ? new Date(parsed.data.startAt) : atual.startAt
@@ -63,6 +70,27 @@ export async function PATCH(req: NextRequest, { params }: Params) {
         { error: 'O término deve ser posterior ao início' },
         { status: 400 }
       )
+    }
+
+    // Cancelar libera o horário, então um cancelamento nunca pode ser barrado
+    // por conflito — seria impossível desfazer uma marcação duplicada.
+    if (parsed.data.status !== 'cancelled') {
+      const roomId = parsed.data.roomId !== undefined ? parsed.data.roomId : atual.roomId
+      const conflitos = await buscarConflitos({
+        inicio,
+        fim,
+        doctorId: atual.doctorId,
+        roomId,
+        // O próprio agendamento sempre se sobrepõe a si mesmo: ignorá-lo é o que
+        // permite mexer só na sala ou esticar o fim sem tomar 409 de si próprio.
+        ignorarId: id,
+      })
+      if (conflitos.length > 0) {
+        return NextResponse.json(
+          { error: mensagemDeConflito(conflitos, atual.doctorId, roomId), conflitos },
+          { status: 409 },
+        )
+      }
     }
   }
 
@@ -113,9 +141,14 @@ export async function PATCH(req: NextRequest, { params }: Params) {
       amount: updated.consultationPrice || '0.00',
       description: `Consulta: ${displayName || 'Paciente'}` + (isPaid ? ' (Pago)' : ' (A receber)'),
       date: toDateBR(),
-      dueDate: updated.startAt.toISOString().split('T')[0],
+      // Em UTC a consulta das 21h de 28/08 vencia dia 29 — o recebível caía no
+      // dia seguinte e o contas a receber do dia nascia furado.
+      dueDate: toDateBR(updated.startAt),
       isPaid,
       paidAt: pagamentoMudou ? (isPaid ? new Date() : null) : (existingTx?.paidAt ?? null),
+      // Sem propagar a forma de pagamento, o relatório por meio de recebimento
+      // perdia 100% das taxas de consulta — o campo parava em appointments.
+      paymentMethodId: updated.paymentMethodId,
       patientId: updated.patientId,
       appointmentId: updated.id,
       notes: updated.paymentReceiptUrl ? `Comprovante: ${updated.paymentReceiptUrl}` : null,
@@ -131,6 +164,25 @@ export async function PATCH(req: NextRequest, { params }: Params) {
     // Só remove quando a PRÓPRIA requisição desmarcou a cobrança da consulta.
     // Um PATCH de status ou de horário não pode encostar no financeiro.
     await db.delete(transactions).where(somenteTaxaDeConsulta)
+  }
+
+  // O funil morria em "Agendado": o PATCH mexia só no agendamento e o card do
+  // lead ficava preso no Kanban para sempre, mesmo com o paciente já atendido.
+  // Comparecer é justamente o evento que promove o lead.
+  if (parsed.data.status === 'attended') {
+    const alvo = updated.leadId
+      ? eq(leads.id, updated.leadId)
+      : updated.patientId
+        ? eq(leads.patientId, updated.patientId)
+        : null
+
+    if (alvo) {
+      // Nunca regride quem já é 'active_patient': é etapa ADIANTE de 'attended'
+      // e voltar apagaria avanço comercial já conquistado.
+      await db.update(leads)
+        .set({ status: 'attended', updatedAt: new Date() })
+        .where(and(alvo, notInArray(leads.status, ['attended', 'active_patient'])))
+    }
   }
 
   // Reflete na Google Agenda do médico (não-bloqueante)

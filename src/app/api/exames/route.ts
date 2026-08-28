@@ -3,6 +3,7 @@ import { auth } from '@/lib/auth/config'
 import { db } from '@/lib/db'
 import { examOrders, patients, users } from '@/lib/db/schema'
 import { hasPermission } from '@/lib/permissions'
+import { logActivity } from '@/lib/db/logger'
 import type { UserRole } from '@/types'
 import { z } from 'zod'
 import { eq, desc } from 'drizzle-orm'
@@ -35,8 +36,15 @@ export async function GET(req: NextRequest) {
 
   const url = new URL(req.url)
   const patientId = url.searchParams.get('patientId')
+  // Exige patientId. Sem ele a listagem devolvia os 100 pedidos mais recentes de QUALQUER
+  // paciente, com hipótese diagnóstica e CID-10 (vazamento de PHI / violação de LGPD) —
+  // ainda mais grave porque 'exams:view' está no preset da recepção. Toda leitura fica
+  // restrita a um paciente.
+  if (!patientId) {
+    return NextResponse.json({ error: 'patientId é obrigatório' }, { status: 400 })
+  }
 
-  const query = db
+  const data = await db
     .select({
       id: examOrders.id,
       exams: examOrders.exams,
@@ -55,12 +63,9 @@ export async function GET(req: NextRequest) {
     .from(examOrders)
     .leftJoin(patients, eq(examOrders.patientId, patients.id))
     .leftJoin(users, eq(examOrders.doctorId, users.id))
+    .where(eq(examOrders.patientId, patientId))
     .orderBy(desc(examOrders.createdAt))
     .limit(100)
-
-  const data = patientId
-    ? await query.where(eq(examOrders.patientId, patientId))
-    : await query
 
   return NextResponse.json({ data })
 }
@@ -88,6 +93,24 @@ export async function POST(req: NextRequest) {
     validUntil: d.validUntil ?? null,
     notes: d.notes ?? null,
   }).returning()
+
+  // Registra no log de auditoria. `details` guarda só o que identifica o pedido — hipótese
+  // e CID-10 ficam fora para não replicar dado clínico numa tabela de acesso mais amplo.
+  const ip = req.headers.get('x-forwarded-for') || req.headers.get('x-real-ip')
+  await logActivity({
+    userId: session.user.id,
+    userName: session.user.name || session.user.email || null,
+    action: 'exame:create',
+    module: 'exames',
+    targetId: order.id,
+    targetName: d.exams.map(e => e.name).join(', '),
+    ip,
+    details: {
+      patientId: order.patientId,
+      urgency: order.urgency,
+      examCount: d.exams.length
+    }
+  })
 
   return NextResponse.json({ data: order }, { status: 201 })
 }

@@ -136,55 +136,17 @@ export function ScheduleLeadDialog({ open, onOpenChange, lead, onScheduled }: Pr
 
     setLoading(true)
     try {
-      let patientId = lead.patientId
-
-      // 1. Converter lead em paciente se ainda não tiver patientId
-      if (!patientId) {
-        const patientRes = await fetch('/api/pacientes', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            name: lead.name,
-            phone: lead.phone,
-            email: lead.email,
-            notes: `Convertido do CRM Lead. Queixa: ${lead.complaint || 'Não informada'}`
-          })
-        })
-        const patientData = await patientRes.json()
-        if (!patientRes.ok) throw new Error(patientData.error || 'Erro ao criar paciente')
-        patientId = patientData.data.id
-
-        // Vincular lead ao paciente recém-criado
-        const updateLeadRes = await fetch(`/api/leads/${lead.id}`, {
-          method: 'PATCH',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            patientId,
-            convertedAt: new Date().toISOString(),
-            status: 'scheduled'
-          })
-        })
-        if (!updateLeadRes.ok) throw new Error('Erro ao vincular paciente ao lead')
-      } else {
-        // Se já tiver patientId, apenas atualiza o status do lead para scheduled
-        const updateLeadRes = await fetch(`/api/leads/${lead.id}`, {
-          method: 'PATCH',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ status: 'scheduled' })
-        })
-        if (!updateLeadRes.ok) throw new Error('Erro ao atualizar status do lead')
-      }
-
-      // 2. Criar o agendamento
       const selectedRoom = roomId ? rooms.find(r => r.id === roomId) : null
-      const agendaRes = await fetch('/api/agenda', {
+
+      // Uma requisição só. Antes eram três (POST /api/pacientes, PATCH /api/leads/[id],
+      // POST /api/agenda) orquestradas aqui no navegador, sem rollback: se a última
+      // falhasse, a ficha já existia e o lead já constava "Agendado" sem consulta nenhuma.
+      const res = await fetch(`/api/leads/${lead.id}/converter`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           type: 'consultation',
           doctorId: selectedDoctor || null,
-          patientId,
-          leadId: lead.id,
           startAt: new Date(startAt).toISOString(),
           endAt: new Date(endAt).toISOString(),
           roomId: roomId || null,
@@ -196,11 +158,13 @@ export function ScheduleLeadDialog({ open, onOpenChange, lead, onScheduled }: Pr
           paymentMethodId: isPaid ? paymentMethodId : null,
           paymentTiming: isPaid ? paymentTiming : null,
           paymentStatus: isPaid ? paymentStatus : null,
-          paymentReceiptUrl: (isPaid && paymentTiming === 'antecipado') ? (paymentReceiptUrl || null) : null
+          paymentReceiptUrl: (isPaid && paymentTiming === 'antecipado') ? (paymentReceiptUrl || null) : null,
         })
       })
-      const agendaData = await agendaRes.json()
-      if (!agendaRes.ok) throw new Error(agendaData.error || 'Erro ao agendar consulta')
+      const data = await res.json()
+      // O servidor descreve em pt-BR o que foi e o que não foi criado quando algo
+      // quebra no meio — repassar essa mensagem é o que evita a repetição às cegas.
+      if (!res.ok) throw new Error(data.error || 'Erro ao agendar consulta')
 
       toast.success('Consulta agendada e paciente cadastrado com sucesso!')
       onScheduled()

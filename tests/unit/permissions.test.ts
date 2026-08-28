@@ -14,6 +14,12 @@ describe('presets por papel', () => {
     expect(hasPermission('doctor', 'patients:view_clinical')).toBe(true)
   })
 
+  it('médico altera a própria consulta, mas marcar e cancelar continua da recepção', () => {
+    expect(hasPermission('doctor', 'agenda:edit')).toBe(true)
+    expect(hasPermission('doctor', 'agenda:create')).toBe(false)
+    expect(hasPermission('doctor', 'agenda:delete')).toBe(false)
+  })
+
   it('recepcionista não tem acesso a prontuário clínico nem financeiro', () => {
     expect(hasPermission('receptionist', 'patients:view_clinical')).toBe(false)
     expect(hasPermission('receptionist', 'financial:view')).toBe(false)

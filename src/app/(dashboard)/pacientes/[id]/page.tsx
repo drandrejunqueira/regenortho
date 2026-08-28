@@ -2,10 +2,13 @@
 
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
+import { useSession } from 'next-auth/react'
 import { toast } from 'sonner'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import ImageUploader from '@/components/shared/ImageUploader'
+import { hasPermission } from '@/lib/permissions'
+import type { UserRole } from '@/types'
 import { cn } from '@/lib/utils'
 
 // ── Types ────────────────────────────────────────────────
@@ -326,6 +329,85 @@ function NovoExameDialog({ open, onOpenChange, patientId, doctors, onCreated }: 
   )
 }
 
+// ── Atualizar Exame ──────────────────────────────────────
+// Sem esta tela o PATCH de /api/exames/[id] não tinha quem chamasse: o pedido ficava preso
+// em "Emitido" e o link "Ver resultado" nunca aparecia, por mais que o laudo já tivesse voltado.
+const EXAM_UPDATE_STATUSES = ['scheduled', 'collected', 'result_available', 'archived']
+
+function AtualizarExameDialog({ exam, onOpenChange, onUpdated }: {
+  exam: ExamOrder; onOpenChange: (v: boolean) => void; onUpdated: () => void
+}) {
+  const [status, setStatus] = useState(EXAM_UPDATE_STATUSES.includes(exam.status) ? exam.status : 'scheduled')
+  const [resultUrl, setResultUrl] = useState(exam.resultUrl ?? '')
+  const [loading, setLoading] = useState(false)
+
+  async function submit() {
+    const url = resultUrl.trim()
+    // Marcar como "Resultado disponível" sem link deixaria a ficha exibindo o status novo e
+    // "Aguardando resultado" ao mesmo tempo.
+    if (status === 'result_available' && !url) { toast.error('Informe a URL do resultado'); return }
+    setLoading(true)
+    try {
+      const res = await fetch(`/api/exames/${exam.id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ status, resultUrl: url || null }),
+      })
+      if (!res.ok) throw new Error()
+      toast.success('Pedido atualizado!')
+      onOpenChange(false)
+      onUpdated()
+    } catch { toast.error('Erro ao atualizar pedido') } finally { setLoading(false) }
+  }
+
+  return (
+    <Dialog open onOpenChange={onOpenChange}>
+      <DialogContent className="max-w-lg bg-white border border-[rgba(2,21,65,0.06)] shadow-[0_2px_12px_rgba(2,21,65,0.04)]">
+        <DialogHeader>
+          <DialogTitle className="text-[#021541] font-bold flex items-center gap-2">
+            <span className="material-symbols-outlined text-[#e6c364]" style={{ fontSize: '18px' }}>biotech</span>
+            Atualizar Pedido de Exame
+          </DialogTitle>
+        </DialogHeader>
+        <div className="space-y-3">
+          <p className="text-xs text-[#718096]">{exam.exams.map(e => e.name).join(', ')}</p>
+          <div className="space-y-1.5">
+            <label className={labelCls}>Situação</label>
+            <Select value={status} onValueChange={v => setStatus(v ?? 'scheduled')}>
+              <SelectTrigger className="bg-[#f5f6f8] border border-[rgba(2,21,65,0.12)] rounded-xl text-sm text-[#021541] h-10">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent className="bg-white border border-[rgba(2,21,65,0.08)]">
+                {EXAM_UPDATE_STATUSES.map(st => (
+                  <SelectItem key={st} value={st} className="text-[#021541] text-sm">{EXAM_STATUS[st] ?? st}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+          <div className="space-y-1.5">
+            <label className={labelCls}>URL do resultado</label>
+            <input
+              value={resultUrl}
+              onChange={e => setResultUrl(e.target.value)}
+              placeholder="https://laboratorio.com.br/laudo/123"
+              className={inputCls}
+            />
+          </div>
+        </div>
+        <DialogFooter className="gap-2">
+          <button onClick={() => onOpenChange(false)} disabled={loading} className="px-4 py-2.5 rounded-xl text-sm font-medium text-[#718096] bg-[#f5f6f8] hover:bg-[rgba(2,21,65,0.06)] transition-colors">
+            Cancelar
+          </button>
+          <button onClick={submit} disabled={loading} className="flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-bold bg-gradient-to-br from-[#021541] to-[#032170] text-white hover:opacity-90 disabled:opacity-50">
+            <span className="material-symbols-outlined" style={{ fontSize: '16px' }}>save</span>
+            {loading ? 'Salvando...' : 'Salvar'}
+          </button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  )
+}
+
 // ── Novo Tratamento ──────────────────────────────────────
 function NovoTratamentoDialog({ open, onOpenChange, patientId, doctors, onCreated }: {
   open: boolean; onOpenChange: (v: boolean) => void
@@ -538,7 +620,12 @@ export default function PacienteDetailPage({ params }: { params: { id: string } 
   // Dialogs
   const [registroDialog, setRegistroDialog] = useState(false)
   const [exameDialog, setExameDialog] = useState(false)
+  const [exameUpdate, setExameUpdate] = useState<ExamOrder | null>(null)
   const [tratamentoDialog, setTratamentoDialog] = useState(false)
+
+  const { data: session } = useSession()
+  const role = session?.user?.role as UserRole | undefined
+  const canEditExams = role ? hasPermission(role, 'exams:edit', session?.user?.customPermissions) : false
 
   // Edit mode (Dados tab)
   const [editMode, setEditMode] = useState(false)
@@ -883,14 +970,22 @@ export default function PacienteDetailPage({ params }: { params: { id: string } 
                     <span className="text-[10px] text-[#718096]">{EXAM_STATUS[ex.status] ?? ex.status}</span>
                   </div>
                 </div>
-                {ex.resultUrl ? (
-                  <a href={ex.resultUrl} target="_blank" rel="noopener noreferrer" className="flex items-center gap-1 text-xs text-[#00BCD4] hover:underline mt-2">
-                    <span className="material-symbols-outlined" style={{ fontSize: '14px' }}>open_in_new</span>
-                    Ver resultado {ex.resultDate ? `(${fDate(ex.resultDate)})` : ''}
-                  </a>
-                ) : (
-                  <p className="text-xs text-[#718096]/40 mt-2">Aguardando resultado</p>
-                )}
+                <div className="flex items-center justify-between gap-3 mt-2">
+                  {ex.resultUrl ? (
+                    <a href={ex.resultUrl} target="_blank" rel="noopener noreferrer" className="flex items-center gap-1 text-xs text-[#00BCD4] hover:underline">
+                      <span className="material-symbols-outlined" style={{ fontSize: '14px' }}>open_in_new</span>
+                      Ver resultado {ex.resultDate ? `(${fDate(ex.resultDate)})` : ''}
+                    </a>
+                  ) : (
+                    <p className="text-xs text-[#718096]/40">Aguardando resultado</p>
+                  )}
+                  {canEditExams && (
+                    <button onClick={() => setExameUpdate(ex)} className="flex items-center gap-1 text-xs font-medium text-[#00BCD4] hover:text-[#0097a7] shrink-0">
+                      <span className="material-symbols-outlined" style={{ fontSize: '14px' }}>edit_note</span>
+                      Atualizar
+                    </button>
+                  )}
+                </div>
                 {ex.validUntil && !ex.resultUrl && (
                   <p className="text-xs text-[#718096]/60">Válido até: {fDate(ex.validUntil)}</p>
                 )}
@@ -1105,6 +1200,14 @@ export default function PacienteDetailPage({ params }: { params: { id: string } 
       <NovoRegistroDialog open={registroDialog} onOpenChange={setRegistroDialog} patientId={id} doctors={doctors} onCreated={loadAll} />
       <NovoExameDialog open={exameDialog} onOpenChange={setExameDialog} patientId={id} doctors={doctors} onCreated={loadAll} />
       <NovoTratamentoDialog open={tratamentoDialog} onOpenChange={setTratamentoDialog} patientId={id} doctors={doctors} onCreated={loadAll} />
+      {exameUpdate && (
+        <AtualizarExameDialog
+          key={exameUpdate.id}
+          exam={exameUpdate}
+          onOpenChange={() => setExameUpdate(null)}
+          onUpdated={loadAll}
+        />
+      )}
     </div>
   )
 }

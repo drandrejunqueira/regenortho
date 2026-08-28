@@ -11,6 +11,7 @@ import type { UserRole } from '@/types'
 import { notify } from '@/lib/notifications'
 import { APPOINTMENT_TYPE_LABELS } from '@/lib/constants'
 import { formatDateTime, toDateBR } from '@/lib/utils'
+import { buscarConflitos, mensagemDeConflito } from './conflitos'
 
 const createSchema = z.object({
   patientId: z.string().uuid().nullable().optional(),
@@ -135,7 +136,39 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'Dados inválidos', details: parsed.error.flatten() }, { status: 400 })
   }
 
+  // Consulta paga sem ficha de paciente não gera receita nenhuma: o preço fica
+  // gravado no agendamento e o financeiro nunca vê o dinheiro. Falhar alto aqui
+  // é melhor que perder R$ 350 em silêncio (a transação exige patientId).
+  if (parsed.data.isPaidConsultation && !parsed.data.patientId) {
+    return NextResponse.json(
+      {
+        error:
+          'Consulta paga exige um paciente com ficha cadastrada. Crie a ficha do paciente (converta o lead) antes de cobrar a consulta.',
+      },
+      { status: 400 },
+    )
+  }
+
   try {
+    const inicio = new Date(parsed.data.startAt)
+    const fim = new Date(parsed.data.endAt)
+
+    // Sem esta checagem duas recepcionistas marcavam o mesmo médico às 14h e as
+    // duas recebiam 201 — o choque só aparecia quando os dois pacientes batiam
+    // na porta do consultório.
+    const conflitos = await buscarConflitos({
+      inicio,
+      fim,
+      doctorId: parsed.data.doctorId,
+      roomId: parsed.data.roomId,
+    })
+    if (conflitos.length > 0) {
+      return NextResponse.json(
+        { error: mensagemDeConflito(conflitos, parsed.data.doctorId, parsed.data.roomId), conflitos },
+        { status: 409 },
+      )
+    }
+
     let displayName: string | null = null
     if (parsed.data.patientId) {
       const [p] = await db.select({ name: patients.name }).from(patients).where(eq(patients.id, parsed.data.patientId))
@@ -147,12 +180,13 @@ export async function POST(req: NextRequest) {
 
     const [apt] = await db.insert(appointments).values({
       ...parsed.data,
-      startAt: new Date(parsed.data.startAt),
-      endAt: new Date(parsed.data.endAt),
+      startAt: inicio,
+      endAt: fim,
       createdById: session.user.id,
     }).returning()
 
-    // Lança financeiro da consulta se marcada como paga
+    // Lança financeiro da consulta se marcada como paga. O patientId aqui já é
+    // garantido pela validação acima — o teste continua só para estreitar o tipo.
     if (apt.isPaidConsultation && apt.patientId) {
       await db.insert(transactions).values({
         type: 'income',
@@ -160,9 +194,14 @@ export async function POST(req: NextRequest) {
         amount: apt.consultationPrice || '0.00',
         description: `Consulta: ${displayName || 'Paciente'}` + (apt.paymentStatus === 'paid' ? ' (Pago)' : ' (A receber)'),
         date: toDateBR(),
-        dueDate: apt.startAt.toISOString().split('T')[0],
+        // Em UTC a consulta das 21h de 28/08 vencia dia 29: o recebível caía no
+        // dia seguinte e o relatório de contas a receber do dia ficava furado.
+        dueDate: toDateBR(apt.startAt),
         isPaid: apt.paymentStatus === 'paid',
         paidAt: apt.paymentStatus === 'paid' ? new Date() : null,
+        // Sem a forma de pagamento aqui o relatório por meio de recebimento
+        // perdia 100% das taxas de consulta — o campo só ia para appointments.
+        paymentMethodId: apt.paymentMethodId,
         patientId: apt.patientId,
         appointmentId: apt.id,
         notes: apt.paymentReceiptUrl ? `Comprovante: ${apt.paymentReceiptUrl}` : null,

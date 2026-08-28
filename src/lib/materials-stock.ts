@@ -57,12 +57,51 @@ async function temLotes(materialId: string): Promise<boolean> {
 }
 
 /**
+ * Resultado de uma baixa.
+ *
+ * `faltou > 0` é o sinal de que o armário não tinha o que o tratamento
+ * consumiu. Antes a função devolvia só o saldo e o excedente era descartado em
+ * silêncio (o loop FEFO zerava os lotes e ignorava o resto; sem lotes, o
+ * `GREATEST(0, ...)` clampava): a rota respondia sucesso como se a baixa
+ * tivesse saído inteira e a divergência do estoque físico só aparecia no dia em
+ * que faltasse insumo no procedimento.
+ */
+export interface ResultadoBaixa {
+  /** Saldo do material depois da baixa. */
+  saldo: number
+  /** Unidades que realmente saíram do estoque. */
+  baixado: number
+  /** Unidades pedidas que não tinham lastro — 0 quando havia saldo. */
+  faltou: number
+}
+
+/**
+ * Converte a quantidade do item (numeric(8,3), a tela aceita passo 0,001) nas
+ * unidades inteiras que as colunas de estoque comportam (`current_stock`,
+ * `material_batches.quantity` e `stock_movements.quantity` são `integer`).
+ *
+ * Arredonda PARA CIMA de propósito: "0,4 frasco" arredondado para o mais
+ * próximo virava 0 — o frasco saía do armário e nada era registrado. Frasco
+ * aberto pela metade já deixou a prateleira; errar para cima mantém o saldo
+ * conservador, errar para baixo faz o insumo sumir do sistema.
+ */
+export function unidadesDeBaixa(quantidade: number): number {
+  if (!Number.isFinite(quantidade) || quantidade <= 0) return 0
+  // toFixed(3) corta o ruído de ponto flutuante (2.0000000000000004 → 2) para
+  // que uma quantidade já inteira não vire uma unidade a mais no ceil.
+  return Math.ceil(Number(quantidade.toFixed(3)))
+}
+
+/**
  * Dá baixa de `quantidade` unidades. Havendo lotes, consome no critério FEFO
  * (primeiro a vencer, primeiro a sair); senão debita a coluna direto.
- * Retorna o saldo resultante.
+ * Devolve saldo resultante, quanto saiu de fato e quanto faltou.
  */
-export async function darBaixaEstoque(materialId: string, quantidade: number): Promise<number> {
-  if (quantidade <= 0) return (await saldoAtual(materialId)) ?? 0
+export async function darBaixaEstoque(materialId: string, quantidade: number): Promise<ResultadoBaixa> {
+  const unidades = unidadesDeBaixa(quantidade)
+  if (unidades <= 0) {
+    return { saldo: (await saldoAtual(materialId)) ?? 0, baixado: 0, faltou: 0 }
+  }
 
   if (await temLotes(materialId)) {
     // FEFO: lote com validade mais próxima sai primeiro. Lote sem validade vai
@@ -73,7 +112,7 @@ export async function darBaixaEstoque(materialId: string, quantidade: number): P
       .where(and(eq(materialBatches.materialId, materialId), gt(materialBatches.quantity, 0)))
       .orderBy(sql`${materialBatches.expiresAt} asc nulls last`, asc(materialBatches.createdAt))
 
-    let restante = quantidade
+    let restante = unidades
     for (const lote of lotes) {
       if (restante <= 0) break
       const consumir = Math.min(lote.quantity, restante)
@@ -84,16 +123,25 @@ export async function darBaixaEstoque(materialId: string, quantidade: number): P
       restante -= consumir
     }
 
-    return (await recomputeStockFromBatches(materialId)) ?? 0
+    // O que sobrou em `restante` são unidades que os lotes não cobriram.
+    return {
+      saldo: (await recomputeStockFromBatches(materialId)) ?? 0,
+      baixado: unidades - restante,
+      faltou: restante,
+    }
   }
+
+  // Saldo anterior lido antes do UPDATE: o `GREATEST(0, ...)` impede estoque
+  // negativo, mas também apaga o rastro de quanto ficou faltando.
+  const antes = (await saldoAtual(materialId)) ?? 0
 
   const [m] = await db
     .update(materials)
-    .set({ currentStock: sql`GREATEST(0, current_stock - ${quantidade})`, updatedAt: new Date() })
+    .set({ currentStock: sql`GREATEST(0, current_stock - ${unidades})`, updatedAt: new Date() })
     .where(eq(materials.id, materialId))
     .returning({ currentStock: materials.currentStock, minimumStock: materials.minimumStock })
 
-  if (!m) return 0
+  if (!m) return { saldo: 0, baixado: 0, faltou: unidades }
   // O status era esquecido nas baixas por tratamento: o material caía abaixo do
   // mínimo e continuava marcado como 'ok' na tela e na lista de compras.
   await db
@@ -101,7 +149,8 @@ export async function darBaixaEstoque(materialId: string, quantidade: number): P
     .set({ status: computeStockStatus(m.currentStock, m.minimumStock) })
     .where(eq(materials.id, materialId))
 
-  return m.currentStock
+  const baixado = Math.max(0, antes - m.currentStock)
+  return { saldo: m.currentStock, baixado, faltou: Math.max(0, unidades - baixado) }
 }
 
 /**

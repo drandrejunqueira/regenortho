@@ -9,11 +9,36 @@ import { z } from 'zod'
 import type { UserRole } from '@/types'
 import { notify } from '@/lib/notifications'
 import { LEAD_SOURCE_LABELS } from '@/lib/constants'
+import { parseLeadPeriod, resolveLeadPeriodRange } from '@/lib/leadPeriod'
+import { TAG_NAME_RE } from '@/lib/promptSafety'
+
+/**
+ * Teto de cards devolvidos ao quadro.
+ *
+ * Buscamos um a mais para saber se sobrou lead fora da janela e devolver
+ * `meta.truncated` — o corte antigo era silencioso.
+ */
+const LEADS_LIMIT = 300
 
 const LEAD_STATUSES = ['new', 'contacted', 'scheduled', 'attended', 'active_patient', 'lost'] as const
 const LEAD_SOURCES = ['google_ads', 'meta_ads', 'instagram_organic', 'facebook_organic', 'google_organic', 'referral', 'whatsapp', 'other'] as const
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
 const DATE_RE = /^\d{4}-\d{2}-\d{2}$/
+
+// 40 = o varchar(40) do registro de tags; 20 tags já é mais vocabulário do que a
+// clínica usa em um lead.
+const TAG_MAX_LEN = 40
+const TAGS_MAX = 20
+
+/**
+ * A tag acompanha o lead até o contexto da IA que responde no grupo da clínica.
+ * Sem o TAG_NAME_RE, uma tag com quebra de linha forja uma linha de instrução
+ * dentro do prompt — exatamente o furo que promptSafety.ts existe para fechar.
+ * O teto de quantidade impede que uma única requisição encha o jsonb (e o prompt).
+ */
+const leadTagsSchema = z
+  .array(z.string().trim().min(1).max(TAG_MAX_LEN).regex(TAG_NAME_RE, 'Tag inválida'))
+  .max(TAGS_MAX, `Máximo de ${TAGS_MAX} tags`)
 
 const createLeadSchema = z.object({
   name: z.string().min(2, 'Nome obrigatório'),
@@ -27,7 +52,7 @@ const createLeadSchema = z.object({
   notes: z.string().optional(),
   utmSource: z.string().optional(),
   utmCampaign: z.string().optional(),
-  tags: z.array(z.string()).optional(),
+  tags: leadTagsSchema.optional(),
 })
 
 export async function GET(req: NextRequest) {
@@ -75,25 +100,37 @@ export async function GET(req: NextRequest) {
     conditions.push(eq(leads.assignedToId, assignedTo))
   }
 
-  // Período de entrada (YYYY-MM-DD, fuso da clínica). `to` é inclusivo: o usuário
-  // escolhe "até 06/08" esperando que o dia 06 inteiro entre.
-  const from = searchParams.get('from')
+  // Período de entrada. O preset (hoje/7/15/30) manda sobre as datas soltas;
+  // `custom` usa as da tela e `all` não recorta nada. Sem `period` na query
+  // valem as datas — é o contrato que a tela usava antes deste filtro.
+  const period = parseLeadPeriod(searchParams.get('period'))
+  const preset = resolveLeadPeriodRange(period)
+  const from = period === 'all' ? null : (preset?.from ?? searchParams.get('from'))
+  const to = period === 'all' ? null : (preset?.to ?? searchParams.get('to'))
+
+  // `to` é inclusivo: o usuário escolhe "até 06/08" esperando que o dia 06
+  // inteiro entre.
   if (from && DATE_RE.test(from)) {
     conditions.push(gte(leads.createdAt, new Date(`${from}T00:00:00.000-03:00`)))
   }
-  const to = searchParams.get('to')
   if (to && DATE_RE.test(to)) {
     conditions.push(lte(leads.createdAt, new Date(`${to}T23:59:59.999-03:00`)))
   }
 
-  const data = await db.query.leads.findMany({
+  const rows = await db.query.leads.findMany({
     where: conditions.length ? and(...conditions) : undefined,
     orderBy: [desc(leads.createdAt)],
     with: { assignedTo: { columns: { id: true, name: true } } },
-    limit: 200,
+    limit: LEADS_LIMIT + 1,
   })
 
-  return NextResponse.json({ data })
+  const truncated = rows.length > LEADS_LIMIT
+  const data = truncated ? rows.slice(0, LEADS_LIMIT) : rows
+
+  return NextResponse.json({
+    data,
+    meta: { period, from, to, limit: LEADS_LIMIT, truncated },
+  })
 }
 
 export async function POST(req: NextRequest) {

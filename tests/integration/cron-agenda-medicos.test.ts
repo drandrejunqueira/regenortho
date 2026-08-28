@@ -23,10 +23,16 @@ const ORIGINAL_SECRET = process.env.CRON_SECRET
 
 describe('GET /api/cron/agenda-medicos', () => {
   beforeEach(() => {
+  // O dedupe compara `dailyAgendaLastSent` com o dia de HOJE. Com o relógio real
+  // este arquivo só passava em 06/08/2026 — a partir do dia seguinte o médico
+  // voltava a ficar elegível e o teste caía num mock não configurado.
+  vi.useFakeTimers()
+  vi.setSystemTime(new Date('2026-08-06T12:00:00.000Z'))
     process.env.CRON_SECRET = 'test-cron-secret'
     ;(db.update as unknown as Mock).mockReturnValue(chain(undefined))
   })
   afterEach(() => {
+  vi.useRealTimers()
     process.env.CRON_SECRET = ORIGINAL_SECRET
     vi.clearAllMocks()
   })

@@ -43,6 +43,127 @@ export const TIPO_COR: Record<TipoMudanca, { cor: string; fundo: string; icone: 
 
 export const VERSOES: Versao[] = [
   {
+    versao: '1.5.0',
+    data: '2026-08-28',
+    resumo: 'Jornada do paciente auditada: agendamento seguro, cobrança sem duplicidade e filtro de período no CRM',
+    mudancas: [
+      {
+        tipo: 'novidade',
+        titulo: 'Filtro de período no CRM de Leads',
+        detalhe:
+          'O quadro abre com os últimos 30 dias e você troca o recorte num clique: Hoje, 7, 15, 30 dias, um período personalizado ou tudo. Antes o CRM carregava o funil inteiro e cortava em 200 cards sem avisar — os leads mais antigos simplesmente sumiam da tela. Agora, quando ainda há lead fora da janela, o quadro diz isso na cara.',
+      },
+      {
+        tipo: 'correcao',
+        titulo: 'A consulta não é mais cobrada duas vezes',
+        detalhe:
+          'Consulta paga marcada no agendamento e depois finalizada na agenda gerava DOIS lançamentos no contas a receber — uma consulta de R$ 350 virava R$ 700. Agora o sistema reconhece a cobrança que já existe e atualiza em vez de duplicar. A tela de finalizar consulta também avisa quando a consulta já foi cobrada.',
+      },
+      {
+        tipo: 'novidade',
+        titulo: 'Aviso de conflito de horário',
+        detalhe:
+          'O sistema agora impede marcar dois atendimentos para o mesmo médico ou na mesma sala em horários que se sobrepõem, e mostra qual é o agendamento que está no caminho. Encostar continua permitido: 14h–15h e 15h–16h convivem normalmente.',
+      },
+      {
+        tipo: 'correcao',
+        titulo: 'Agendar pelo CRM ficou seguro contra falha no meio do caminho',
+        detalhe:
+          'Agendar a partir de um lead eram três operações separadas: se a última falhasse, sobrava uma ficha de paciente criada, o lead marcado como "Agendado" e nenhuma consulta na agenda. Agora é uma operação só, e tentar de novo reaproveita a ficha em vez de abrir um segundo prontuário para a mesma pessoa.',
+      },
+      {
+        tipo: 'correcao',
+        titulo: 'Paciente repetido não vira dois prontuários',
+        detalhe:
+          'Quem preenchia o formulário do site e depois chamava no WhatsApp virava dois cadastros, rachando histórico clínico e financeiro em dois. O sistema agora reconhece o telefone já cadastrado e avisa, oferecendo a ficha que já existe.',
+      },
+      {
+        tipo: 'correcao',
+        titulo: 'O médico consegue finalizar a própria consulta',
+        detalhe:
+          'Faltava permissão: o médico clicava em "Compareceu", recebia acesso negado e perdia a evolução do prontuário e o tratamento que estava criando junto. Corrigido — marcar e cancelar consulta continua sendo da recepção.',
+      },
+      {
+        tipo: 'correcao',
+        titulo: 'Concluir tratamento não trava mais no financeiro',
+        detalhe:
+          'Concluir exigia duas permissões que ninguém tinha ao mesmo tempo: o médico era barrado no financeiro e o financeiro era barrado no tratamento, então só o administrador conseguia faturar. Agora quem conduz o tratamento consegue concluí-lo.',
+      },
+      {
+        tipo: 'correcao',
+        titulo: 'Tratamento concluído não fica sem as parcelas',
+        detalhe:
+          'Se algo falhasse no meio da conclusão, o tratamento ficava marcado como concluído com zero parcelas no contas a receber e não dava para tentar de novo — dinheiro que ninguém ia cobrar. Agora, se der erro, o tratamento volta ao estado anterior e a conclusão pode ser refeita.',
+      },
+      {
+        tipo: 'correcao',
+        titulo: 'Novo Tratamento parou de dar erro sem explicação',
+        detalhe:
+          'Criar um tratamento sem escolher modelo do catálogo e forma de pagamento — ambos opcionais na tela — falhava com "Erro ao criar tratamento" e o trabalho era perdido. Criar tratamento pela ficha do paciente, sem itens, também quebrava.',
+      },
+      {
+        tipo: 'correcao',
+        titulo: 'O modelo de tratamento leva os materiais junto',
+        detalhe:
+          'Iniciar um tratamento pela agenda copiava só o nome e o preço do modelo: os materiais ficavam para trás, o custo aparecia como zero e o insumo saía do armário sem baixa no estoque. Agora os itens do modelo vão junto, com o custo atual do estoque.',
+      },
+      {
+        tipo: 'correcao',
+        titulo: 'Baixa de estoque com quantidade fracionada e aviso de saldo insuficiente',
+        detalhe:
+          'Meio frasco de material era arredondado para zero e não saía do estoque. E quando não havia saldo suficiente, a conclusão dizia que deu tudo certo. Agora a fração é respeitada e, faltando material, você é avisado na hora.',
+      },
+      {
+        tipo: 'correcao',
+        titulo: 'Consulta da noite deixou de vencer no dia seguinte',
+        detalhe:
+          'Toda consulta a partir das 21h entrava no contas a receber com vencimento um dia à frente, por diferença de fuso horário. Corrigido também nas parcelas de tratamento.',
+      },
+      {
+        tipo: 'correcao',
+        titulo: 'A forma de pagamento chega ao financeiro',
+        detalhe:
+          'A recepção agendava a consulta no PIX e o financeiro recebia a receita sem forma de pagamento nenhuma — qualquer relatório por meio de recebimento perdia todas as taxas de consulta.',
+      },
+      {
+        tipo: 'correcao',
+        titulo: 'O lead avança no funil quando o paciente comparece',
+        detalhe:
+          'O card ficava preso em "Agendado" para sempre, mesmo depois do atendimento, e a etapa seguinte do funil no painel mostrava zero permanentemente. Agora marcar a consulta como atendida move o lead junto.',
+      },
+      {
+        tipo: 'correcao',
+        titulo: 'Consulta paga sem ficha de paciente não é mais aceita em silêncio',
+        detalhe:
+          'Marcar uma consulta paga para alguém sem ficha gravava o valor e não gerava receita nenhuma no financeiro, sem erro nem aviso. Agora o sistema pede a ficha antes.',
+      },
+      {
+        tipo: 'novidade',
+        titulo: 'Registrar o resultado do exame',
+        detalhe:
+          'Na aba Exames da ficha do paciente agora dá para atualizar a situação do pedido (agendado, coletado, resultado disponível, arquivado) e anexar o link do resultado. Antes o pedido ficava em "Aguardando resultado" para sempre, porque não havia onde registrar.',
+      },
+      {
+        tipo: 'seguranca',
+        titulo: 'Dados clínicos e trilha de auditoria',
+        detalhe:
+          'A lista de exames deixou de poder devolver hipótese diagnóstica e CID-10 de pacientes que não são os da consulta em questão. Prontuário, exames e tratamentos passaram a registrar quem fez o quê no log de auditoria — antes eram os únicos módulos sem esse rastro.',
+      },
+      {
+        tipo: 'seguranca',
+        titulo: 'Tags e origem do lead',
+        detalhe:
+          'As tags do lead passaram pela mesma validação das tags do sistema, fechando uma brecha em que um texto forjado podia chegar ao assistente de WhatsApp. E a atribuição completa da campanha passou a ser guardada, o que permite medir de verdade qual anúncio trouxe o paciente.',
+      },
+      {
+        tipo: 'melhoria',
+        titulo: 'Sistema mais rápido nas telas de paciente e agenda',
+        detalhe:
+          'Índices no banco para as consultas mais usadas: ficha do paciente, agenda por médico, funil de leads e extrato financeiro.',
+      },
+    ],
+  },
+  {
     versao: '1.4.0',
     data: '2026-08-06',
     resumo: 'Filtros no CRM de Leads e tags cadastradas do sistema',
