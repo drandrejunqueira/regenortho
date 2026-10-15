@@ -7,7 +7,9 @@ dotenv.config({ path: path.resolve(process.cwd(), '.env.local') })
 
 async function run(sql: NeonQueryFunction<false, false>, query: string, desc: string) {
   try {
-    await sql.unsafe(query)
+    // sql.query() executa o texto cru. sql.unsafe() só monta um fragmento para
+    // interpolar dentro de sql`...` e não roda nada sozinho.
+    await sql.query(query)
     console.log(`✓ ${desc}`)
   } catch (e: unknown) {
     const err = e as { message?: string }
@@ -15,6 +17,7 @@ async function run(sql: NeonQueryFunction<false, false>, query: string, desc: st
       console.log(`- ${desc} (already exists, skipped)`)
     } else {
       console.error(`✗ ${desc}: ${err.message}`)
+      process.exitCode = 1
     }
   }
 }
