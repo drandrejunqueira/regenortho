@@ -14,6 +14,11 @@ export const metadata: Metadata = {
 export default async function GlossarioPage() {
   const termos = await getTermosPublicados()
 
+  // A listagem trafega só o resumo. O card do glossário lê `conteudo` para
+  // montar a prévia e para a busca local, então o resumo entra nesse campo —
+  // o artigo completo fica na página do verbete.
+  const termosParaLista = termos.map(t => ({ ...t, conteudo: t.resumo }))
+
   return (
     <div className="site-skin min-h-screen" style={{ background: '#f5f6f8' }}>
       <SiteNav />
@@ -41,8 +46,7 @@ export default async function GlossarioPage() {
           </div>
 
           {/* Client Interactive Area */}
-          {/* @ts-ignore */}
-          <GlossarioPublicClient termos={termos} />
+          <GlossarioPublicClient termos={termosParaLista} />
 
         </div>
       </main>

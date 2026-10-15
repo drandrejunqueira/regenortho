@@ -48,7 +48,7 @@ export function ConfiguracoesClient({
         setSaved(true)
         toast.success('Configurações salvas com sucesso!')
         setTimeout(() => setSaved(false), 3000)
-      } catch (err) {
+      } catch {
         toast.error('Erro ao salvar configurações.')
       }
     })
@@ -485,7 +485,7 @@ export function ConfiguracoesClient({
                       placeholder="https://regenortho.com.br/"
                       className="w-full bg-[#f5f6f8] border border-[rgba(2,21,65,0.12)] rounded-xl px-3 py-2.5 text-xs text-[#021541] focus:outline-none focus:ring-2 focus:ring-[rgba(0,188,228,0.2)] font-mono"
                     />
-                    <p className="text-[10px] text-[#718096]">Deve corresponder exatamente à URL (com barra) ou domínio "sc-domain:..."</p>
+                    <p className="text-[10px] text-[#718096]">Deve corresponder exatamente à URL (com barra) ou domínio &quot;sc-domain:...&quot;</p>
                   </div>
 
                   <div className="space-y-1.5">

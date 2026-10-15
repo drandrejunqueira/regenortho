@@ -82,7 +82,7 @@ export function ScheduleLeadDialog({ open, onOpenChange, lead, onScheduled }: Pr
     fetch('/api/rooms')
       .then(r => r.json())
       .then(res => {
-        if (res.data) setRooms(res.data.filter((r: any) => r.isActive !== false))
+        if (res.data) setRooms(res.data.filter((r: Room) => r.isActive !== false))
       })
       .catch(() => {})
 
@@ -90,7 +90,7 @@ export function ScheduleLeadDialog({ open, onOpenChange, lead, onScheduled }: Pr
     fetch('/api/configuracoes/pagamentos')
       .then(r => r.json())
       .then(res => {
-        if (res.data) setPaymentMethods(res.data.filter((pm: any) => pm.isActive !== false))
+        if (res.data) setPaymentMethods(res.data.filter((pm: PaymentMethod) => pm.isActive !== false))
       })
       .catch(() => {})
 
@@ -169,8 +169,8 @@ export function ScheduleLeadDialog({ open, onOpenChange, lead, onScheduled }: Pr
       toast.success('Consulta agendada e paciente cadastrado com sucesso!')
       onScheduled()
       onOpenChange(false)
-    } catch (err: any) {
-      toast.error(err.message || 'Ocorreu um erro no agendamento.')
+    } catch (err: unknown) {
+      toast.error((err instanceof Error && err.message) || 'Ocorreu um erro no agendamento.')
     } finally {
       setLoading(false)
     }
@@ -343,7 +343,7 @@ export function ScheduleLeadDialog({ open, onOpenChange, lead, onScheduled }: Pr
                     <label className={labelCls}>Momento</label>
                     <select
                       value={paymentTiming}
-                      onChange={e => setPaymentTiming(e.target.value as any)}
+                      onChange={e => setPaymentTiming(e.target.value as typeof paymentTiming)}
                       className={inputCls}
                     >
                       <option value="no_ato">No ato da consulta</option>
@@ -354,7 +354,7 @@ export function ScheduleLeadDialog({ open, onOpenChange, lead, onScheduled }: Pr
                     <label className={labelCls}>Status</label>
                     <select
                       value={paymentStatus}
-                      onChange={e => setPaymentStatus(e.target.value as any)}
+                      onChange={e => setPaymentStatus(e.target.value as typeof paymentStatus)}
                       className={inputCls}
                     >
                       <option value="pending">Pendente</option>

@@ -1,5 +1,6 @@
 import { NextResponse, type NextRequest } from 'next/server'
 import { auth } from '@/lib/auth/config'
+import { requireSettingsEdit } from '@/lib/apiGuards'
 import { gerarUrlConsentimento, googleConfigurado } from '@/lib/google/oauth'
 
 export const runtime = 'nodejs'
@@ -10,6 +11,11 @@ export async function GET(request: NextRequest) {
   if (!sessao?.user) {
     return NextResponse.redirect(new URL('/login', request.nextUrl.origin))
   }
+  // O refresh token gravado ao fim deste fluxo é a credencial Google da clínica
+  // inteira — a mesma exigência de /api/configuracoes/sistema, onde o client
+  // id/secret são editados. Estar logado não basta.
+  const permissao = await requireSettingsEdit()
+  if (!permissao.ok) return permissao.res
   // Só aceita caminho interno. Sem isto, ?redirect=https://site-malicioso mandava
   // o usuário para fora logo após o consentimento do Google (open redirect).
   const redirectBruto = request.nextUrl.searchParams.get('redirect')

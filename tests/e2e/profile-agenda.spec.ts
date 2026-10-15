@@ -6,6 +6,18 @@ import { buildMockAgendaHoje } from './fixtures/mock-data'
 // (banco de teste dedicado — Neon branch a ser provisionado pelo Daniel).
 test.skip(!hasE2ECredentials, 'Requer usuário de teste — ver tests/e2e/fixtures/auth.ts')
 
+
+/**
+ * No mobile a Sidebar vira drawer (Sheet) — o botão de perfil só existe depois
+ * de abrir o menu. No desktop a Sidebar já está na tela. Sem isto o spec
+ * passava no Chrome e falhava no Pixel 7, parecendo bug de produto.
+ */
+async function abrirPerfil(page: import('@playwright/test').Page) {
+  const menu = page.getByRole('button', { name: 'Abrir menu' })
+  if (await menu.isVisible().catch(() => false)) await menu.click()
+  await page.getByRole('button', { name: /Editar perfil/ }).click()
+}
+
 test.describe('Perfil → aba "Agenda do dia"', () => {
   test.beforeEach(async ({ page }) => {
     const agenda = buildMockAgendaHoje()
@@ -30,7 +42,7 @@ test.describe('Perfil → aba "Agenda do dia"', () => {
 
   test('abre pelo Sidebar e mostra os 3 tabs', async ({ page }) => {
     // O botão de perfil no rodapé do Sidebar (nome/avatar do usuário logado).
-    await page.getByRole('button', { name: /Editar perfil/ }).click()
+    await abrirPerfil(page)
 
     await expect(page.getByRole('button', { name: 'Dados' })).toBeVisible()
     await expect(page.getByRole('button', { name: 'Agenda do dia' })).toBeVisible()
@@ -38,12 +50,14 @@ test.describe('Perfil → aba "Agenda do dia"', () => {
   })
 
   test('aba Agenda do dia mostra config e prévia', async ({ page }) => {
-    await page.getByRole('button', { name: /Editar perfil/ }).click()
+    await abrirPerfil(page)
     await page.getByRole('button', { name: 'Agenda do dia' }).click()
 
     // Card de configuração
     await expect(page.getByRole('switch', { name: 'Ativar resumo diário no WhatsApp' })).toBeVisible()
-    await expect(page.getByLabel('WhatsApp')).toBeVisible()
+    // getByLabel casa por substring: 'WhatsApp' pegava também o switch
+    // (aria-label 'Ativar resumo diário no WhatsApp'). Ancorar no papel.
+    await expect(page.getByRole('textbox', { name: 'WhatsApp', exact: true })).toBeVisible()
 
     const hourSelect = page.getByLabel('Horário')
     await expect(hourSelect).toBeVisible()
@@ -54,6 +68,8 @@ test.describe('Perfil → aba "Agenda do dia"', () => {
     // Prévia da agenda de hoje (mockada)
     await expect(page.getByText('Paciente Mock 1')).toBeVisible()
     await expect(page.getByText('Paciente Mock 2')).toBeVisible()
-    await expect(page.getByText('2', { exact: true })).toBeVisible()
+    // Contador de atendimentos do dia. Texto solto '2' também casava com um
+    // <tspan> de gráfico atrás do modal — ancorar no elemento que o exibe.
+    await expect(page.locator('strong').filter({ hasText: /^2$/ })).toBeVisible()
   })
 })

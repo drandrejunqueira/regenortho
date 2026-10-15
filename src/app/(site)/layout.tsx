@@ -17,7 +17,6 @@ export async function generateMetadata(): Promise<Metadata> {
   const keywordsRaw = clinic?.seoKeywords || 'ortopedia, medicina regenerativa, PRP, BMAC, ácido hialurônico, proloterapia, Dr. André Junqueira, São José dos Campos, tratamento da dor'
   const keywords = keywordsRaw ? keywordsRaw.split(',').map((k) => k.trim()) : []
   const base = (configs.site_url || 'https://regenortho.com.br').replace(/\/$/, '')
-  const ogImage = clinic?.ogImageUrl || `${base}/image/logo.png`
 
   let metadataBase: URL | undefined
   try {
@@ -53,9 +52,10 @@ export async function generateMetadata(): Promise<Metadata> {
 
 export default async function SiteLayout({ children }: { children: React.ReactNode }) {
   const configs = await getAllConfigs()
-  let clinic = await db.query.clinicSettings.findFirst({ where: eq(clinicSettings.id, 1) })
+  let clinic: Partial<typeof clinicSettings.$inferSelect> | undefined =
+    await db.query.clinicSettings.findFirst({ where: eq(clinicSettings.id, 1) })
   if (!clinic) {
-    clinic = { id: 1 } as any
+    clinic = { id: 1 }
   }
   const clinicSchema = getClinicJsonLd(clinic || null, configs)
 

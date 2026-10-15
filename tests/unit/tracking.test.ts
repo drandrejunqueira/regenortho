@@ -1,4 +1,4 @@
-import { afterEach, beforeEach, describe, expect, it } from 'vitest'
+import { beforeEach, describe, expect, it } from 'vitest'
 import { captureTrackingParams, deriveLeadSource, getTrackingParams } from '@/lib/tracking'
 
 function setUrl(pathAndQuery: string) {

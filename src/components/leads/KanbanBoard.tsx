@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect } from 'react'
 import {
   DndContext, DragEndEvent, DragOverlay, DragStartEvent,
   PointerSensor, useSensor, useSensors, closestCorners,
@@ -9,6 +9,7 @@ import { KanbanColumn } from './KanbanColumn'
 import { LeadCard } from './LeadCard'
 import { LeadDrawer } from './LeadDrawer'
 import { ScheduleLeadDialog } from './ScheduleLeadDialog'
+import { LostReasonDialog } from './LostReasonDialog'
 import { toast } from 'sonner'
 import type { Lead, LeadStatus, LeadInteraction } from '@/types'
 
@@ -33,6 +34,8 @@ export function KanbanBoard({ initialLeads, onRefresh }: Props) {
   const [scheduleDialogOpen, setScheduleDialogOpen] = useState(false)
   const [leadToSchedule, setLeadToSchedule] = useState<Lead | null>(null)
   const [previousStatus, setPreviousStatus] = useState<LeadStatus | null>(null)
+  // Lead arrastado para "Perdido" aguardando o motivo.
+  const [leadToLose, setLeadToLose] = useState<Lead | null>(null)
 
   // Sincronizar leads locais quando initialLeads mudar no pai
   useEffect(() => {
@@ -86,6 +89,16 @@ export function KanbanBoard({ initialLeads, onRefresh }: Props) {
       return
     }
 
+    if (newStatus === 'lost') {
+      setLeadToLose(lead)
+      return
+    }
+
+    await moveLead(lead, newStatus)
+  }
+
+  async function moveLead(lead: Lead, newStatus: LeadStatus, lostReason?: string) {
+    const leadId = lead.id
     // Optimistic update para outros status (ex: contacted, lost, new)
     setLeads((prev) =>
       prev.map((l) => l.id === leadId ? { ...l, status: newStatus, updatedAt: new Date().toISOString() } : l)
@@ -95,7 +108,7 @@ export function KanbanBoard({ initialLeads, onRefresh }: Props) {
       const res = await fetch(`/api/leads/${leadId}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ status: newStatus }),
+        body: JSON.stringify({ status: newStatus, ...(lostReason && { lostReason }) }),
       })
       if (!res.ok) throw new Error()
       toast.success('Etapa atualizada!')
@@ -209,6 +222,16 @@ export function KanbanBoard({ initialLeads, onRefresh }: Props) {
         }}
         lead={leadToSchedule}
         onScheduled={handleScheduleSuccess}
+      />
+
+      <LostReasonDialog
+        open={!!leadToLose}
+        leadName={leadToLose?.name}
+        onCancel={() => setLeadToLose(null)}
+        onConfirm={(reason) => {
+          if (leadToLose) moveLead(leadToLose, 'lost', reason)
+          setLeadToLose(null)
+        }}
       />
     </>
   )

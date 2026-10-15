@@ -1,11 +1,11 @@
-// @ts-nocheck — one-time migration script, not production code
-import { neon } from '@neondatabase/serverless'
+// One-time migration script, not production code
+import { neon, type NeonQueryFunction } from '@neondatabase/serverless'
 import * as dotenv from 'dotenv'
 import path from 'path'
 
 dotenv.config({ path: path.resolve(process.cwd(), '.env.local') })
 
-async function run(sql: ReturnType<typeof neon>, query: string, desc: string) {
+async function run(sql: NeonQueryFunction<false, false>, query: string, desc: string) {
   try {
     await sql.unsafe(query)
     console.log(`✓ ${desc}`)

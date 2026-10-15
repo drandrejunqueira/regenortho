@@ -132,7 +132,10 @@ function PermissionsSheet({
     if (!mod) return
     setPerms((prev) => {
       const next = new Set(prev)
-      mod.permissions.forEach((p) => { enable ? next.add(p.id) : next.delete(p.id) })
+      mod.permissions.forEach((p) => {
+        if (enable) next.add(p.id)
+        else next.delete(p.id)
+      })
       return next
     })
   }
@@ -140,7 +143,8 @@ function PermissionsSheet({
   function toggleExpand(moduleId: string) {
     setExpandedMods((prev) => {
       const next = new Set(prev)
-      next.has(moduleId) ? next.delete(moduleId) : next.add(moduleId)
+      if (next.has(moduleId)) next.delete(moduleId)
+      else next.add(moduleId)
       return next
     })
   }

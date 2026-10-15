@@ -47,4 +47,18 @@ test.describe('Site público — acessibilidade básica', () => {
     await page.keyboard.press('Enter')
     await expect(page).toHaveURL(/\/site\/tratamentos/)
   })
+
+  // Regressão — ver docs/equipe/ACESSIBILIDADE.md, achado "FORM-01".
+  // /site/agendar é o formulário de conversão do site público (paciente
+  // idoso agendando avaliação). Os <label> não têm htmlFor/id casado com o
+  // <input> correspondente, então leitor de tela não anuncia o rótulo do
+  // campo — e getByLabel (o mesmo seletor usado nos fixtures de E2E do
+  // sistema interno) não encontra o campo.
+  test('/site/agendar — campos do formulário têm label associado (getByLabel)', async ({ page }) => {
+    await page.goto('/site/agendar')
+
+    await expect(page.getByLabel('Nome completo', { exact: false })).toBeVisible()
+    await expect(page.getByLabel('Telefone / WhatsApp', { exact: false })).toBeVisible()
+    await expect(page.getByLabel('E-mail', { exact: false })).toBeVisible()
+  })
 })

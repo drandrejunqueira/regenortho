@@ -3,12 +3,39 @@ import { auth } from '@/lib/auth/config'
 import { db } from '@/lib/db'
 import { patientAccessTokens } from '@/lib/db/schema'
 import { hasPermission } from '@/lib/permissions'
+import { logActivity } from '@/lib/db/logger'
 import type { UserRole } from '@/types'
 import { z } from 'zod'
 import { eq, and, gt } from 'drizzle-orm'
 import crypto from 'crypto'
 
 const schema = z.object({ patientId: z.string().uuid() })
+
+type SessaoPortal = { user: { id: string; name?: string | null; email?: string | null } }
+
+/**
+ * Rastro de auditoria do portal. `details` guarda só o que identifica a emissão/leitura:
+ * o token e o código de 6 dígitos SÃO a credencial e não podem ser replicados numa tabela
+ * de acesso mais amplo — quem lesse o log entraria no portal do paciente.
+ */
+async function registrarAcessoPortal(
+  req: NextRequest,
+  session: SessaoPortal,
+  dados: { action: string; patientId: string; expiresAt: Date },
+) {
+  await logActivity({
+    userId: session.user.id,
+    userName: session.user.name || session.user.email || null,
+    action: dados.action,
+    module: 'portal',
+    targetId: dados.patientId,
+    ip: req.headers.get('x-forwarded-for') || req.headers.get('x-real-ip'),
+    details: {
+      patientId: dados.patientId,
+      expiresAt: dados.expiresAt,
+    },
+  })
+}
 
 export async function GET(req: NextRequest) {
   const session = await auth()
@@ -20,6 +47,11 @@ export async function GET(req: NextRequest) {
   const { searchParams } = new URL(req.url)
   const patientId = searchParams.get('patientId')
   if (!patientId) return NextResponse.json({ error: 'patientId requerido' }, { status: 400 })
+  // Valor fora do formato de UUID nunca casaria com um paciente: barra antes de virar
+  // consulta, em vez de deixar o banco receber texto arbitrário vindo da query string.
+  if (!schema.shape.patientId.safeParse(patientId).success) {
+    return NextResponse.json({ error: 'patientId inválido' }, { status: 400 })
+  }
 
   const [activeToken] = await db.select().from(patientAccessTokens)
     .where(and(
@@ -29,6 +61,15 @@ export async function GET(req: NextRequest) {
     ))
 
   if (!activeToken) return NextResponse.json({ data: null })
+
+  // Ler o token ativo é ver a credencial de acesso ao prontuário e ao financeiro de outra
+  // pessoa — mesma sensibilidade da emissão, mesmo rastro. Só a consulta que de fato
+  // devolve a credencial é registrada; a que não acha nada não revelou nada.
+  await registrarAcessoPortal(req, session, {
+    action: 'portal:token_consultado',
+    patientId,
+    expiresAt: activeToken.expiresAt,
+  })
 
   return NextResponse.json({
     data: {
@@ -95,6 +136,15 @@ export async function POST(req: NextRequest) {
     expiresAt,
     isActive: true,
   }).returning()
+
+  // Emitir acesso ao portal entrega prontuário e financeiro do paciente a quem tiver a
+  // credencial, e antes não deixava rastro nenhum: não havia como responder quem gerou o
+  // acesso do paciente X e quando. Registra igual /api/prontuario POST já faz.
+  await registrarAcessoPortal(req, session, {
+    action: 'portal:token_emitido',
+    patientId,
+    expiresAt: row.expiresAt,
+  })
 
   return NextResponse.json({ token: row.token, code: row.code, expiresAt: row.expiresAt })
 }

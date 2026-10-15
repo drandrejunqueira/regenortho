@@ -74,8 +74,8 @@ export function GlossarioReader({ titulo, conteudoHtml }: Props) {
       }
     }
 
-    if (typeof (window as any).twixTrack === 'function') {
-      (window as any).twixTrack('click', `glossario:ouvir:${titulo}`.slice(0, 120))
+    if (typeof window.twixTrack === 'function') {
+      window.twixTrack('click', `glossario:ouvir:${titulo}`.slice(0, 120))
     }
   }
 

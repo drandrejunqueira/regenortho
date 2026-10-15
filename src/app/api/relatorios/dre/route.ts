@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { auth } from '@/lib/auth/config'
 import { db } from '@/lib/db'
-import { treatments, treatmentItems, transactions } from '@/lib/db/schema'
+import { treatments, transactions } from '@/lib/db/schema'
 import { hasPermission } from '@/lib/permissions'
 import type { UserRole } from '@/types'
 import { eq, and, gte, lte, ne, sql } from 'drizzle-orm'

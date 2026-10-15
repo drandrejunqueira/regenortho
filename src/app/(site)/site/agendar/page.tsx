@@ -172,6 +172,7 @@ export default function AgendarPage() {
                 {/* Nome */}
                 <div className="space-y-1.5">
                   <label
+                    htmlFor="agendar-nome"
                     className="text-[10px] font-bold text-[#021541]/50 uppercase tracking-wider"
                     style={{ fontFamily: 'Plus Jakarta Sans, sans-serif' }}
                   >
@@ -185,6 +186,7 @@ export default function AgendarPage() {
                       person
                     </span>
                     <input
+                      id="agendar-nome"
                       value={form.name}
                       onChange={e => setF('name', e.target.value)}
                       placeholder="Seu nome completo"
@@ -200,6 +202,7 @@ export default function AgendarPage() {
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div className="space-y-1.5">
                     <label
+                    htmlFor="agendar-telefone"
                       className="text-[10px] font-bold text-[#021541]/50 uppercase tracking-wider"
                       style={{ fontFamily: 'Plus Jakarta Sans, sans-serif' }}
                     >
@@ -214,7 +217,8 @@ export default function AgendarPage() {
                       </span>
                       <input
                         type="tel"
-                        value={form.phone}
+                        id="agendar-telefone"
+                      value={form.phone}
                         onChange={e => setF('phone', e.target.value)}
                         placeholder="(12) 99999-9999"
                         className="w-full rounded-xl pl-10 pr-4 py-3 text-sm text-[#021541] placeholder:text-[#021541]/25 transition-all duration-200"
@@ -226,6 +230,7 @@ export default function AgendarPage() {
                   </div>
                   <div className="space-y-1.5">
                     <label
+                    htmlFor="agendar-email"
                       className="text-[10px] font-bold text-[#021541]/50 uppercase tracking-wider"
                       style={{ fontFamily: 'Plus Jakarta Sans, sans-serif' }}
                     >
@@ -240,7 +245,8 @@ export default function AgendarPage() {
                       </span>
                       <input
                         type="email"
-                        value={form.email}
+                        id="agendar-email"
+                      value={form.email}
                         onChange={e => setF('email', e.target.value)}
                         placeholder="seu@email.com"
                         className="w-full rounded-xl pl-10 pr-4 py-3 text-sm text-[#021541] placeholder:text-[#021541]/25 transition-all duration-200"
@@ -254,18 +260,19 @@ export default function AgendarPage() {
 
                 {/* Procedimento */}
                 <div className="space-y-2">
-                  <label
+                  <span id="grupo-procedimento"
                     className="text-[10px] font-bold text-[#021541]/50 uppercase tracking-wider"
                     style={{ fontFamily: 'Plus Jakarta Sans, sans-serif' }}
                   >
                     Procedimento de interesse *
-                  </label>
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                  </span>
+                  <div role="group" aria-labelledby="grupo-procedimento" className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                     {PROCEDURES.map(p => (
                       <button
                         key={p.label}
                         type="button"
                         onClick={() => setF('procedure', p.label)}
+                        aria-pressed={form.procedure === p.label}
                         className="flex items-center gap-2.5 px-4 py-3 rounded-xl text-sm font-medium text-left transition-all duration-200"
                         style={
                           form.procedure === p.label
@@ -287,18 +294,19 @@ export default function AgendarPage() {
 
                 {/* Unidade */}
                 <div className="space-y-2">
-                  <label
+                  <span id="grupo-unidade"
                     className="text-[10px] font-bold text-[#021541]/50 uppercase tracking-wider"
                     style={{ fontFamily: 'Plus Jakarta Sans, sans-serif' }}
                   >
                     Unidade de preferência
-                  </label>
-                  <div className="grid grid-cols-1 gap-2">
+                  </span>
+                  <div role="group" aria-labelledby="grupo-unidade" className="grid grid-cols-1 gap-2">
                     {UNIDADES.map(u => (
                       <button
                         key={u.id}
                         type="button"
                         onClick={() => setF('unidade', u.id)}
+                        aria-pressed={form.unidade === u.id}
                         className="flex flex-col items-start px-4 py-3 rounded-xl text-sm text-left transition-all duration-200"
                         style={
                           form.unidade === u.id
@@ -316,13 +324,15 @@ export default function AgendarPage() {
                 {/* Mensagem */}
                 <div className="space-y-1.5">
                   <label
+                    htmlFor="agendar-mensagem"
                     className="text-[10px] font-bold text-[#021541]/50 uppercase tracking-wider"
                     style={{ fontFamily: 'Plus Jakarta Sans, sans-serif' }}
                   >
                     Mensagem (opcional)
                   </label>
                   <textarea
-                    value={form.message}
+                    id="agendar-mensagem"
+                      value={form.message}
                     onChange={e => setF('message', e.target.value)}
                     rows={3}
                     placeholder="Descreva brevemente sua queixa, dor ou dúvida..."

@@ -13,6 +13,15 @@ function detectarDevice(ua: string): string {
   return 'desktop'
 }
 
+// Evento como chega do navegador: nada é confiável até passar por eventoValido()
+type EventoBruto = { tipo?: unknown; path?: unknown; referrer?: unknown; rotulo?: unknown; sessionId?: unknown; meta?: unknown }
+
+function eventoValido(e: unknown): e is EventoBruto & { tipo: string; path: string } {
+  if (!e || typeof e !== 'object') return false
+  const { tipo, path } = e as EventoBruto
+  return typeof tipo === 'string' && TIPOS_VALIDOS.has(tipo) && typeof path === 'string'
+}
+
 function limita(v: unknown, max: number): string | null {
   if (typeof v !== 'string') return null
   const t = v.trim()
@@ -32,7 +41,7 @@ export async function POST(req: NextRequest) {
     if (!body) return NextResponse.json({ error: 'Payload inválido' }, { status: 400 })
 
     // Aceita um único evento ou um lote { events: [...] }
-    const raw = Array.isArray(body.events) ? body.events : [body]
+    const raw: unknown[] = Array.isArray(body.events) ? body.events : [body]
     if (raw.length === 0 || raw.length > 50) {
       return NextResponse.json({ error: 'Lote inválido' }, { status: 400 })
     }
@@ -42,8 +51,8 @@ export async function POST(req: NextRequest) {
     const pais = req.headers.get('x-vercel-ip-country') ?? null
 
     const events = raw
-      .filter((e: any) => e && TIPOS_VALIDOS.has(e.tipo) && typeof e.path === 'string')
-      .map((e: any) => ({
+      .filter(eventoValido)
+      .map((e) => ({
         tipo:      e.tipo as string,
         path:      limita(e.path, 512)!,
         referrer:  limita(e.referrer, 512),

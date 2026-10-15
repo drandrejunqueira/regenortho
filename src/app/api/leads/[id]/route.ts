@@ -30,19 +30,19 @@ const updateLeadSchema = z.object({
   specialty: z.string().nullable().optional(),
   complaint: z.string().nullable().optional(),
   notes: z.string().nullable().optional(),
-  lostReason: z.string().nullable().optional(),
+  lostReason: z.string().trim().max(300).nullable().optional(),
   assignedToId: z.string().uuid().nullable().optional(),
   tags: leadTagsSchema.optional(),
   // Conversão lead -> paciente. Sem estes dois campos o zod descartava o vínculo
   // em silêncio e cada novo agendamento criava outro paciente para o mesmo lead.
   patientId: z.string().uuid().nullable().optional(),
   convertedAt: z.string().datetime().nullable().optional(),
-})
-
-const interactionSchema = z.object({
-  type: z.enum(['call', 'whatsapp', 'email', 'note']),
-  content: z.string().min(1),
-})
+}).refine(
+  // Perda sem motivo não ensina nada: não dá para separar lead ruim (ajustar
+  // campanha) de atendimento ruim (ajustar recepção).
+  (d) => d.status !== 'lost' || (d.lostReason?.length ?? 0) >= 3,
+  { message: 'Informe o motivo da perda', path: ['lostReason'] },
+)
 
 type Params = { params: Promise<{ id: string }> }
 
@@ -85,6 +85,8 @@ export async function PATCH(req: NextRequest, { params }: Params) {
   const [updated] = await db.update(leads)
     .set({
       ...rest,
+      // Lead reativado não carrega o motivo da perda antiga.
+      ...(rest.status && rest.status !== 'lost' && { lostReason: null }),
       ...(convertedAt !== undefined && { convertedAt: convertedAt ? new Date(convertedAt) : null }),
       updatedAt: new Date(),
     })

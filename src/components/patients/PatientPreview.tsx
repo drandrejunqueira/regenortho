@@ -1,9 +1,24 @@
 'use client'
 
 import { useState, useRef } from 'react'
+import type { Appointment, Patient, Transaction } from '@/types'
+
+// Colunas que GET /api/pacientes traz nas relações (`with:`) da listagem.
+type PreviewTransaction = Pick<Transaction, 'id' | 'amount' | 'isPaid' | 'dueDate' | 'type'>
+type PreviewAppointment = Pick<Appointment, 'id' | 'startAt' | 'endAt' | 'status' | 'type'>
+interface PreviewTreatment {
+  id: string
+  name: string
+  totalSale: string
+  status: string
+}
 
 interface PatientPreviewProps {
-  patient: any
+  patient: Patient & {
+    transactions?: PreviewTransaction[]
+    appointments?: PreviewAppointment[]
+    treatments?: PreviewTreatment[]
+  }
   children: React.ReactNode
 }
 
@@ -27,26 +42,26 @@ export default function PatientPreview({ patient, children }: PatientPreviewProp
   const transactions = patient.transactions || []
   
   const totalPaid = transactions
-    .filter((t: any) => t.type === 'income' && t.isPaid)
-    .reduce((acc: number, t: any) => acc + parseFloat(t.amount || '0'), 0)
+    .filter((t: PreviewTransaction) => t.type === 'income' && t.isPaid)
+    .reduce((acc: number, t: PreviewTransaction) => acc + parseFloat(t.amount || '0'), 0)
 
   const totalPending = transactions
-    .filter((t: any) => t.type === 'income' && !t.isPaid)
-    .reduce((acc: number, t: any) => acc + parseFloat(t.amount || '0'), 0)
+    .filter((t: PreviewTransaction) => t.type === 'income' && !t.isPaid)
+    .reduce((acc: number, t: PreviewTransaction) => acc + parseFloat(t.amount || '0'), 0)
 
   const totalOverdue = transactions
-    .filter((t: any) => t.type === 'income' && !t.isPaid && t.dueDate && t.dueDate < todayStr)
-    .reduce((acc: number, t: any) => acc + parseFloat(t.amount || '0'), 0)
+    .filter((t: PreviewTransaction) => t.type === 'income' && !t.isPaid && t.dueDate && t.dueDate < todayStr)
+    .reduce((acc: number, t: PreviewTransaction) => acc + parseFloat(t.amount || '0'), 0)
 
   // Consultas
   const appointments = patient.appointments || []
   const pastAppts = appointments
-    .filter((a: any) => new Date(a.startAt) < new Date() && a.status !== 'cancelled')
-    .sort((a: any, b: any) => new Date(b.startAt).getTime() - new Date(a.startAt).getTime())
+    .filter((a: PreviewAppointment) => new Date(a.startAt) < new Date() && a.status !== 'cancelled')
+    .sort((a: PreviewAppointment, b: PreviewAppointment) => new Date(b.startAt).getTime() - new Date(a.startAt).getTime())
   
   const futureAppts = appointments
-    .filter((a: any) => new Date(a.startAt) >= new Date() && a.status !== 'cancelled')
-    .sort((a: any, b: any) => new Date(a.startAt).getTime() - new Date(b.startAt).getTime())
+    .filter((a: PreviewAppointment) => new Date(a.startAt) >= new Date() && a.status !== 'cancelled')
+    .sort((a: PreviewAppointment, b: PreviewAppointment) => new Date(a.startAt).getTime() - new Date(b.startAt).getTime())
   
   const lastAppt = pastAppts[0]
   const nextAppt = futureAppts[0]
@@ -145,7 +160,7 @@ export default function PatientPreview({ patient, children }: PatientPreviewProp
             <div className="space-y-2 pt-2 border-t border-[rgba(2,21,65,0.06)]">
               <p className="text-[9px] font-bold text-[#718096] uppercase tracking-wider">Tratamentos Recentes</p>
               <div className="space-y-1">
-                {patient.treatments.slice(0, 2).map((t: any) => (
+                {patient.treatments.slice(0, 2).map((t: PreviewTreatment) => (
                   <div key={t.id} className="flex justify-between items-center bg-[#f5f6f8]/60 p-1.5 rounded-lg border border-[rgba(2,21,65,0.02)]">
                     <span className="text-[#021541] truncate max-w-[170px] font-medium">{t.name}</span>
                     <span className="font-technical text-[#718096] font-bold">{BRL(parseFloat(t.totalSale))}</span>

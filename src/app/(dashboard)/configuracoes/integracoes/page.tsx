@@ -268,7 +268,7 @@ export default function IntegracoesPage() {
                     <div className="w-5 h-5 rounded-full bg-[#e6c364]/10 text-[#e6c364] flex items-center justify-center shrink-0 font-bold text-[10px]">1</div>
                     <div>
                       <p className="font-bold text-[#021541]">Criar Projeto no Google Cloud</p>
-                      <p className="mt-0.5">Acesse o <a href="https://console.cloud.google.com/" target="_blank" rel="noopener noreferrer" className="text-[#00BCE4] hover:underline font-semibold">Google Cloud Console</a>, faça login com a conta da clínica e crie um novo projeto (ex: "Agenda Regem Orto").</p>
+                      <p className="mt-0.5">Acesse o <a href="https://console.cloud.google.com/" target="_blank" rel="noopener noreferrer" className="text-[#00BCE4] hover:underline font-semibold">Google Cloud Console</a>, faça login com a conta da clínica e crie um novo projeto (ex: &quot;Agenda Regem Orto&quot;).</p>
                     </div>
                   </div>
 
@@ -355,7 +355,7 @@ export default function IntegracoesPage() {
               </div>
             </div>
             <p className="text-[10px] text-[#718096]/80 italic">
-              💡 Salve as alterações clicando em "Salvar integrações" no rodapé antes de realizar a conexão da conta.
+              💡 Salve as alterações clicando em &quot;Salvar integrações&quot; no rodapé antes de realizar a conexão da conta.
             </p>
           </div>
           

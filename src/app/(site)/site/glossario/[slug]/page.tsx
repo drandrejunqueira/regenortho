@@ -40,18 +40,27 @@ export default async function VerbetePage({ params }: Props) {
     notFound()
   }
 
-  // Buscar verbetes relacionados da mesma letra para linkagem interna (SEO)
-  const todosMesmaLetra = await getTermosByLetraPublicados(termo.letra)
-  const relacionados = todosMesmaLetra
-    .filter(t => t.id !== termo.id)
-    .slice(0, 5)
+  // Buscar verbetes relacionados da mesma letra para linkagem interna (SEO).
+  // O corte é feito no banco: antes vinha a letra inteira com o artigo
+  // completo de cada verbete (171 kB na letra "A") para usar só 5 links.
+  const relacionados = await getTermosByLetraPublicados(termo.letra, {
+    excluirId: termo.id,
+    limite: 5,
+  })
 
   // Flags de funcionalidade do glossário (liga/desliga no admin)
   const [leituraFlag, adsFlag, configs, clinic] = await Promise.all([
     getConfig('glossario_leitura_ativo'),
     getConfig('glossario_ads_ativo'),
     getAllConfigs(),
-    db.query.clinicSettings.findFirst({ where: eq(clinicSettings.id, 1) }),
+    // O JSON-LD do verbete usa só nome e cidade. Sem `columns`, o findFirst
+    // trazia a linha inteira — 92 kB por request, dos quais 91 kB são as
+    // imagens em base64 (og_image_url, logo_url, header_image_url) — além dos
+    // segredos de integração (smtp_pass, evolution_api_key, whatsapp_token).
+    db.query.clinicSettings.findFirst({
+      where: eq(clinicSettings.id, 1),
+      columns: { name: true, city: true },
+    }),
   ])
   const leituraAtiva = leituraFlag !== 'false'
   const adsAtivo = adsFlag !== 'false'

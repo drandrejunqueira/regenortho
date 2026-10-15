@@ -6,7 +6,7 @@ import { hasPermission } from '@/lib/permissions'
 import { logActivity } from '@/lib/db/logger'
 import type { UserRole } from '@/types'
 import { z } from 'zod'
-import { eq, desc, and } from 'drizzle-orm'
+import { eq, desc } from 'drizzle-orm'
 
 const createSchema = z.object({
   patientId: z.string().uuid(),

@@ -35,6 +35,11 @@ export async function GET(req: NextRequest) {
   if (!hasPermission(session.user.role as UserRole, 'patients:view', session.user.customPermissions)) {
     return NextResponse.json({ error: 'Acesso negado' }, { status: 403 })
   }
+  const podeVerFinanceiro = hasPermission(
+    session.user.role as UserRole,
+    'financial:view',
+    session.user.customPermissions,
+  )
 
   const { searchParams } = new URL(req.url)
   const search = searchParams.get('search')
@@ -115,9 +120,17 @@ export async function GET(req: NextRequest) {
         columns: { id: true, name: true, totalSale: true, status: true },
         limit: 5,
       },
-      transactions: {
-        columns: { id: true, amount: true, isPaid: true, dueDate: true, type: true },
-      }
+      // Transação é dado financeiro: a ficha individual (GET /api/pacientes/[id])
+      // já corta as transações de quem não tem 'financial:view', mas a listagem
+      // trazia as de TODOS os pacientes da página — sem limite — para médico e
+      // recepção. Aqui nem pedimos ao banco.
+      ...(podeVerFinanceiro
+        ? {
+            transactions: {
+              columns: { id: true, amount: true, isPaid: true, dueDate: true, type: true },
+            },
+          }
+        : {}),
     }
   })
 

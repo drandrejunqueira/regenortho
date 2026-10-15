@@ -194,8 +194,8 @@ Retorne APENAS um objeto JSON válido (sem formatação markdown, sem comentári
       success: true,
       termo: updated
     })
-  } catch (error: any) {
+  } catch (error) {
     console.error('[gerar-conteudo] Error:', error)
-    return NextResponse.json({ error: error.message ?? 'Erro interno ao gerar definição do termo.' }, { status: 500 })
+    return NextResponse.json({ error: (error as Error).message ?? 'Erro interno ao gerar definição do termo.' }, { status: 500 })
   }
 }

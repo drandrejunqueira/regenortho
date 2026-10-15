@@ -3,12 +3,12 @@
 import { useState } from 'react'
 import {
   TrendingUp, Users, Target, MousePointer, Globe, Search,
-  ExternalLink, Calendar, ChevronRight, AlertCircle, Link2,
-  TrendingDown, CheckCircle2, ListFilter, Activity
+  ExternalLink, ChevronRight, AlertCircle, Link2,
+  CheckCircle2, ListFilter, Activity
 } from 'lucide-react'
 import {
   AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer,
-  BarChart, Bar, Legend, CartesianGrid
+  CartesianGrid
 } from 'recharts'
 import { formatCurrency, cn } from '@/lib/utils'
 import { salvarConfigGoogle, salvarConfigGoogleAds } from '@/app/actions/configuracoes'

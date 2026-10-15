@@ -1,11 +1,12 @@
 'use client'
 
-import { useState, useTransition } from 'react'
+import { useState } from 'react'
 import {
-  BookOpen, Plus, Search, Bot, Sparkles, RefreshCw, Trash2, Check,
-  Loader2, CheckCircle2, XCircle, AlertCircle, ExternalLink, HelpCircle,
+  BookOpen, Plus, Search, Bot, Sparkles, Trash2, Check,
+  Loader2, CheckCircle2, XCircle, AlertCircle, ExternalLink,
   Volume2, Megaphone, Settings2
 } from 'lucide-react'
+import type { LucideIcon } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { toast } from 'sonner'
 import { setFlags } from '@/app/actions/configuracoes'
@@ -83,8 +84,6 @@ export function GlossarioClient({ initialTermos, leituraAtiva, adsAtivo }: Props
   const [bulkTermoAtual, setBulkTermoAtual] = useState('')
   const [bulkLabel, setBulkLabel] = useState('Geração em Lote Ativa')
   const [bulkUnit, setBulkUnit] = useState('verbetes')
-
-  const [pending, startTransition] = useTransition()
 
   // Atualizar a lista do banco
   const refreshList = async () => {
@@ -198,8 +197,8 @@ export function GlossarioClient({ initialTermos, leituraAtiva, adsAtivo }: Props
       toast.success(`Termo "${data.termo}" cadastrado com sucesso!`)
       setNovoTermoManual('')
       await refreshList()
-    } catch (err: any) {
-      toast.error(err.message)
+    } catch (err) {
+      toast.error((err as Error).message)
     } finally {
       setLoadingManual(false)
     }
@@ -230,8 +229,8 @@ export function GlossarioClient({ initialTermos, leituraAtiva, adsAtivo }: Props
       toast.success(`Verbete atualizado com sucesso!`)
       setEditingId(null)
       await refreshList()
-    } catch (err: any) {
-      toast.error(err.message)
+    } catch (err) {
+      toast.error((err as Error).message)
     } finally {
       setLoadingAcao(null)
     }
@@ -252,8 +251,8 @@ export function GlossarioClient({ initialTermos, leituraAtiva, adsAtivo }: Props
 
       toast.success(`Definição para "${termoNome}" gerada e publicada!`)
       await refreshList()
-    } catch (err: any) {
-      toast.error(`Erro em "${termoNome}": ${err.message}`)
+    } catch (err) {
+      toast.error(`Erro em "${termoNome}": ${(err as Error).message}`)
     } finally {
       setLoadingAcao(null)
     }
@@ -279,8 +278,8 @@ export function GlossarioClient({ initialTermos, leituraAtiva, adsAtivo }: Props
       toast.success(`Verbete "${termoNome}" excluído.`)
       setSelectedIds(prev => prev.filter(x => x !== id))
       await refreshList()
-    } catch (err: any) {
-      toast.error(err.message)
+    } catch (err) {
+      toast.error((err as Error).message)
     } finally {
       setLoadingAcao(null)
     }
@@ -450,7 +449,7 @@ export function GlossarioClient({ initialTermos, leituraAtiva, adsAtivo }: Props
               <div>
                 <h4 className="font-bold text-[#021541] text-base">{bulkLabel}</h4>
                 <p className="text-[#718096] text-xs mt-0.5">
-                  Processando <span className="text-[#021541] font-semibold">"{bulkTermoAtual}"</span>
+                  Processando <span className="text-[#021541] font-semibold">&quot;{bulkTermoAtual}&quot;</span>
                 </p>
               </div>
             </div>
@@ -917,7 +916,7 @@ export function GlossarioClient({ initialTermos, leituraAtiva, adsAtivo }: Props
 function FlagToggle({
   icon: Icon, titulo, descricao, ativo, salvando, onToggle
 }: {
-  icon: any; titulo: string; descricao: string; ativo: boolean; salvando: boolean; onToggle: () => void
+  icon: LucideIcon; titulo: string; descricao: string; ativo: boolean; salvando: boolean; onToggle: () => void
 }) {
   return (
     <div className="flex items-start justify-between p-4 rounded-xl border border-[rgba(2,21,65,0.06)] bg-[#f5f6f8]">

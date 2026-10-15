@@ -183,8 +183,8 @@ ${promptExtra ? `Instruções adicionais importantes: ${promptExtra}` : ''}`
       totalInseridos: inserted.length,
       inseridos: inserted
     })
-  } catch (error: any) {
+  } catch (error) {
     console.error('[gerar-termos] Error:', error)
-    return NextResponse.json({ error: error.message ?? 'Erro interno ao gerar termos.' }, { status: 500 })
+    return NextResponse.json({ error: (error as Error).message ?? 'Erro interno ao gerar termos.' }, { status: 500 })
   }
 }

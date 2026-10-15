@@ -188,13 +188,13 @@ export async function POST(req: NextRequest, { params }: Params) {
   let resolved: { patient: PatientRow; created: boolean }
   try {
     resolved = await resolvePatient(lead, input)
-  } catch (err: any) {
+  } catch (err: unknown) {
     console.error('[leads/converter] erro ao resolver a ficha do paciente:', err)
     return NextResponse.json(
       {
         error:
           'Não foi possível criar a ficha do paciente. Nada foi alterado: o lead segue como estava e nenhuma consulta foi agendada.',
-        details: err?.message,
+        details: err instanceof Error ? err.message : undefined,
       },
       { status: 500 },
     )
@@ -240,7 +240,7 @@ export async function POST(req: NextRequest, { params }: Params) {
       })
       .returning()
     apt = createdApt
-  } catch (err: any) {
+  } catch (err: unknown) {
     console.error('[leads/converter] erro ao criar o agendamento:', err)
     // O lead ainda NÃO foi marcado como convertido — é exatamente isso que impede o
     // card de virar "Agendado" sem nenhuma consulta por trás.
@@ -249,7 +249,7 @@ export async function POST(req: NextRequest, { params }: Params) {
         error: patientCreated
           ? 'A ficha do paciente foi criada, mas a consulta NÃO foi agendada e o lead continua no status anterior. Tente agendar de novo — a ficha existente será reaproveitada, sem duplicar o prontuário.'
           : 'A consulta NÃO foi agendada e o lead continua no status anterior. Tente de novo.',
-        details: err?.message,
+        details: err instanceof Error ? err.message : undefined,
       },
       { status: 500 },
     )

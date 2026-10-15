@@ -1193,7 +1193,7 @@ function ConcluirTratamentoDialog({ open, treatment, onClose, onCompleted }: Con
                 <label className={labelCls}>Status do Pagamento</label>
                 <select
                   value={paymentStatus}
-                  onChange={e => setPaymentStatus(e.target.value as any)}
+                  onChange={e => setPaymentStatus(e.target.value as typeof paymentStatus)}
                   className={inputCls}
                 >
                   <option value="pending">Todas Pendentes</option>

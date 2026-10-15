@@ -3,7 +3,7 @@ import { db } from '@/lib/db'
 import { rooms } from '@/lib/db/schema'
 import { hasPermission } from '@/lib/permissions'
 import { NextRequest, NextResponse } from 'next/server'
-import { asc, eq } from 'drizzle-orm'
+import { asc } from 'drizzle-orm'
 import { z } from 'zod'
 import type { UserRole } from '@/types'
 
@@ -65,8 +65,8 @@ export async function POST(req: NextRequest) {
     }).returning()
 
     return NextResponse.json({ data: newRoom }, { status: 201 })
-  } catch (err: any) {
+  } catch (err: unknown) {
     console.error('[POST /api/rooms] error:', err)
-    return NextResponse.json({ error: 'Erro no banco de dados', details: err.message }, { status: 500 })
+    return NextResponse.json({ error: 'Erro no banco de dados', details: err instanceof Error ? err.message : undefined }, { status: 500 })
   }
 }

@@ -3,9 +3,10 @@ import { db } from '@/lib/db'
 import { appointments, patients, leads, transactions } from '@/lib/db/schema'
 import { hasPermission } from '@/lib/permissions'
 import { syncAppointment } from '@/lib/google/calendar'
+import type { SyncableAppointment } from '@/lib/google/calendar'
 import { logActivity } from '@/lib/db/logger'
 import { NextRequest, NextResponse } from 'next/server'
-import { and, gte, lte, eq, isNull, ne, isNotNull } from 'drizzle-orm'
+import { and, gte, lte, eq, ne, isNotNull } from 'drizzle-orm'
 import { z } from 'zod'
 import type { UserRole } from '@/types'
 import { notify } from '@/lib/notifications'
@@ -75,7 +76,7 @@ export async function GET(req: NextRequest) {
       const { listGoogleCalendarEvents } = await import('@/lib/google/calendar')
       const { users } = await import('@/lib/db/schema')
       
-      let gcalEvents: any[] = []
+      let gcalEvents: SyncableAppointment[] = []
       
       if (doctorId) {
         gcalEvents = await listGoogleCalendarEvents(doctorId, new Date(start), new Date(end))
@@ -245,8 +246,8 @@ export async function POST(req: NextRequest) {
     })
 
     return NextResponse.json({ data: apt }, { status: 201 })
-  } catch (err: any) {
+  } catch (err: unknown) {
     console.error('DB Insert Error:', err)
-    return NextResponse.json({ error: 'Erro no banco de dados', details: err.message }, { status: 500 })
+    return NextResponse.json({ error: 'Erro no banco de dados', details: err instanceof Error ? err.message : undefined }, { status: 500 })
   }
 }

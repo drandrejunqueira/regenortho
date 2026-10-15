@@ -57,7 +57,8 @@ export default function WebhooksPage() {
   function toggleEvent(id: string) {
     setForm((prev) => {
       const next = new Set(prev.events)
-      next.has(id) ? next.delete(id) : next.add(id)
+      if (next.has(id)) next.delete(id)
+      else next.add(id)
       return { ...prev, events: next }
     })
   }

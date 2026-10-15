@@ -58,13 +58,6 @@ const CREDENTIALS = [
   },
 ]
 
-const EXPERIENCE_ITEMS = [
-  { icon: 'concierge', title: 'Concierge Dedicado', desc: 'Acompanhamento personalizado desde o agendamento até o pós-procedimento, garantindo que cada detalhe da sua jornada seja impecável.' },
-  { icon: 'coffee', title: 'Lounge de Acolhimento', desc: 'Um refúgio de tranquilidade com menu gourmet e conectividade de alta velocidade.', dark: true },
-  { icon: 'privacy_tip', title: 'Privacidade Total', desc: 'Consultórios isolados acusticamente e fluxos desenhados para discrição absoluta.', cyan: true },
-  { icon: 'health_and_safety', title: 'Segurança Sanitária', desc: 'Protocolos de esterilização e purificação de ar que excedem as normas internacionais, em um ambiente de nível hospitalar com alma de atelier.' },
-]
-
 export default function AClinicaPage() {
   return (
     <div className="site-skin min-h-screen" style={{ background: '#f5f6f8' }}>

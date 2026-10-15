@@ -58,6 +58,16 @@ export async function GET(req: NextRequest) {
   if (!hasPermission(session.user.role as UserRole, 'treatments:view', session.user.customPermissions)) {
     return NextResponse.json({ error: 'Acesso negado' }, { status: 403 })
   }
+  // `totalCost` ao lado de `totalSale` é custo x venda por procedimento: o
+  // conteúdo do DRE, protegido por 'reports:balancete' (sensível, fora do preset
+  // de médico e recepção). O mesmo vale para a receita total da clínica no bloco
+  // `stats`. Sem este corte, quem leva 403 em /api/relatorios/dre montava o
+  // demonstrativo somando o que esta rota entregava.
+  const podeVerCustoEReceita = hasPermission(
+    session.user.role as UserRole,
+    'reports:balancete',
+    session.user.customPermissions,
+  )
 
   const url = new URL(req.url)
   const patientId = url.searchParams.get('patientId')
@@ -105,7 +115,10 @@ export async function GET(req: NextRequest) {
   })()
 
   // Fetch items for returned treatments
-  const ids = (data as Array<{ id: string }>).map(t => t.id)
+  // O `.where()` condicional acima deixa `data` como união de tipos; o alias
+  // fixa as colunas que daqui para baixo realmente são lidas.
+  const linhas = data as Array<{ id: string; totalCost: string | null }>
+  const ids = linhas.map(t => t.id)
   const items = ids.length > 0
     ? await db.select().from(treatmentItems).where(inArray(treatmentItems.treatmentId, ids)).orderBy(treatmentItems.sortOrder)
     : []
@@ -132,12 +145,16 @@ export async function GET(req: NextRequest) {
     .where(filtroStats)
 
   return NextResponse.json({
-    data: (data as Array<{ id: string }>).map(t => ({ ...t, items: itemsMap[t.id] ?? [] })),
+    data: linhas.map(t => ({
+      ...t,
+      totalCost: podeVerCustoEReceita ? t.totalCost : null,
+      items: itemsMap[t.id] ?? [],
+    })),
     stats: {
       total: stats.total,
       emAndamento: stats.emAndamento,
       concluidos: stats.concluidos,
-      receitaTotal: Number(stats.receitaTotal),
+      receitaTotal: podeVerCustoEReceita ? Number(stats.receitaTotal) : 0,
     },
   })
 }

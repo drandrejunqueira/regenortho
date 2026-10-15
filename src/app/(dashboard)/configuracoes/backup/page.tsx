@@ -5,7 +5,6 @@ import { toast } from 'sonner'
 import { formatDate } from '@/lib/utils'
 
 const sectionCls = 'bg-white border border-[rgba(2,21,65,0.06)] shadow-[0_2px_12px_rgba(2,21,65,0.04)] rounded-xl p-5'
-const labelCls = 'text-[10px] font-bold text-[#718096] uppercase tracking-wider'
 
 const SCHEDULES = [
   { value: 'hourly',  label: 'A cada hora',   icon: 'schedule' },

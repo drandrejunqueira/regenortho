@@ -6,7 +6,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '
 import { toast } from 'sonner'
 import { cn } from '@/lib/utils'
 import { APPOINTMENT_TYPE_LABELS, APPOINTMENT_STATUS_LABELS } from '@/lib/constants'
-import type { Appointment, Room } from '@/types'
+import type { Appointment, Material, Room } from '@/types'
 
 const HOURS = Array.from({ length: 13 }, (_, i) => i + 7) // 7–19
 const DAYS = ['Seg', 'Ter', 'Qua', 'Qui', 'Sex']
@@ -38,6 +38,23 @@ function getWeekDays(baseDate: Date) {
 }
 
 interface Doctor { id: string; name: string; googleCalendarId: string | null }
+interface PaymentMethod { id: string; name: string; type: string; isActive: boolean }
+
+// Formato devolvido por GET /api/tratamentos/templates (numéricos chegam como string)
+interface TemplateItem {
+  type: 'procedure' | 'material' | 'fee'
+  materialId: string | null
+  description: string
+  quantity: string
+  unitPrice: string
+  sortOrder: number
+}
+interface Template {
+  id: string
+  name: string
+  defaultPrice: string
+  items: TemplateItem[]
+}
 
 interface ItemTratamento {
   type: 'procedure' | 'material' | 'fee'
@@ -60,8 +77,8 @@ interface ItemTratamento {
  * O custo unitário é relido do estoque ATUAL (o modelo guarda só preço de
  * venda), mesma lógica do applyTemplate da tela de tratamentos.
  */
-function itensDoModelo(tpl: any, materials: any[]): ItemTratamento[] {
-  return ((tpl?.items ?? []) as any[]).map((it, i) => {
+function itensDoModelo(tpl: Template | undefined, materials: Material[]): ItemTratamento[] {
+  return (tpl?.items ?? []).map((it, i) => {
     const mat = it.materialId ? materials.find(m => m.id === it.materialId) : null
     return {
       type: it.type,
@@ -93,11 +110,11 @@ export default function AgendaPage() {
   const [defaultEndAt, setDefaultEndAt] = useState('')
   const [finishDialogOpen, setFinishDialogOpen] = useState(false)
   const [quickTreatmentOpen, setQuickTreatmentOpen] = useState(false)
-  const [paymentMethods, setPaymentMethods] = useState<any[]>([])
-  const [templates, setTemplates] = useState<any[]>([])
+  const [paymentMethods, setPaymentMethods] = useState<PaymentMethod[]>([])
+  const [templates, setTemplates] = useState<Template[]>([])
   // Necessário para custear os itens do modelo com o custo unitário atual do
   // estoque — o modelo do catálogo só guarda preço de venda.
-  const [materials, setMaterials] = useState<any[]>([])
+  const [materials, setMaterials] = useState<Material[]>([])
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false)
   const [deleteReason, setDeleteReason] = useState('')
   const [deletingId, setDeletingId] = useState<string | null>(null)
@@ -130,7 +147,7 @@ export default function AgendaPage() {
     fetch('/api/configuracoes/pagamentos')
       .then((r) => r.json())
       .then(({ data }) => {
-        if (data) setPaymentMethods(data.filter((pm: any) => pm.isActive !== false))
+        if (data) setPaymentMethods(data.filter((pm: PaymentMethod) => pm.isActive !== false))
       })
       .catch(() => {})
     fetch('/api/tratamentos/templates')
@@ -369,8 +386,8 @@ export default function AgendaPage() {
       setDeletingId(null)
       setDeletingApt(null)
       fetchAppointments()
-    } catch (e: any) {
-      toast.error(e.message || 'Erro ao excluir agendamento')
+    } catch (e: unknown) {
+      toast.error((e instanceof Error && e.message) || 'Erro ao excluir agendamento')
     }
   }
 
@@ -988,7 +1005,7 @@ function PatientPicker({ value, onChange }: { value: string | null; onChange: (i
 
 function NewAppointmentDialog({ open, onOpenChange, onCreated, defaultDoctorId, doctors, rooms, defaultStartAt, defaultEndAt, paymentMethods }: {
   open: boolean; onOpenChange: (v: boolean) => void; onCreated: () => void
-  defaultDoctorId?: string; doctors: Doctor[]; rooms: Room[]; defaultStartAt?: string; defaultEndAt?: string; paymentMethods: any[]
+  defaultDoctorId?: string; doctors: Doctor[]; rooms: Room[]; defaultStartAt?: string; defaultEndAt?: string; paymentMethods: PaymentMethod[]
 }) {
   const [loading, setLoading] = useState(false)
   const [selectedDoctor, setSelectedDoctor] = useState<string>(defaultDoctorId ?? '')
@@ -1217,7 +1234,7 @@ function NewAppointmentDialog({ open, onOpenChange, onCreated, defaultDoctorId, 
                       <label className={labelCls}>Momento</label>
                       <select
                         value={paymentTiming}
-                        onChange={e => setPaymentTiming(e.target.value as any)}
+                        onChange={e => setPaymentTiming(e.target.value as typeof paymentTiming)}
                         className={inputCls}
                       >
                         <option value="no_ato">No ato da consulta</option>
@@ -1228,7 +1245,7 @@ function NewAppointmentDialog({ open, onOpenChange, onCreated, defaultDoctorId, 
                       <label className={labelCls}>Status</label>
                       <select
                         value={paymentStatus}
-                        onChange={e => setPaymentStatus(e.target.value as any)}
+                        onChange={e => setPaymentStatus(e.target.value as typeof paymentStatus)}
                         className={inputCls}
                       >
                         <option value="pending">Pendente</option>
@@ -1379,9 +1396,9 @@ function FinalizarConsultaDialog({
   open: boolean
   onOpenChange: (v: boolean) => void
   appointment: Appointment | null
-  paymentMethods: any[]
-  templates: any[]
-  materials: any[]
+  paymentMethods: PaymentMethod[]
+  templates: Template[]
+  materials: Material[]
   onCompleted: () => void
 }) {
   const [loading, setLoading] = useState(false)
@@ -1564,8 +1581,8 @@ function FinalizarConsultaDialog({
       }
       onOpenChange(false)
       onCompleted()
-    } catch (e: any) {
-      toast.error(e.message || 'Erro ao finalizar consulta')
+    } catch (e: unknown) {
+      toast.error((e instanceof Error && e.message) || 'Erro ao finalizar consulta')
     } finally {
       setLoading(false)
     }
@@ -1829,8 +1846,8 @@ function QuickTreatmentDialog({
   onOpenChange: (v: boolean) => void
   patient: { id: string; name: string } | null
   doctor: { id: string; name: string } | null
-  templates: any[]
-  materials: any[]
+  templates: Template[]
+  materials: Material[]
   onCompleted: () => void
 }) {
   const [loading, setLoading] = useState(false)

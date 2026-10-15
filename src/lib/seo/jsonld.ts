@@ -1,4 +1,3 @@
-import type { InferSelectModel } from 'drizzle-orm'
 import type { clinicSettings, glossarioTermos } from '@/lib/db/schema'
 
 type ClinicSettingsModel = typeof clinicSettings.$inferSelect;
@@ -25,7 +24,7 @@ export function getClinicJsonLd(
     ? configs.geo_specialties.split(',').map((s) => s.trim()).filter(Boolean)
     : ['Ortopedia', 'Medicina Regenerativa', 'Tratamento da Dor']
 
-  const schema: Record<string, any> = {
+  const schema: Record<string, unknown> = {
     '@context': 'https://schema.org',
     '@type': type,
     '@id': `${base}/#clinic`,
@@ -64,7 +63,7 @@ export function getClinicJsonLd(
 
   // Medical Director
   if (configs.geo_medical_director) {
-    schema.medicalDirector = {
+    const medicalDirector: Record<string, unknown> = {
       '@type': 'Person',
       name: configs.geo_medical_director,
       jobTitle: 'Diretor Clínico',
@@ -74,12 +73,13 @@ export function getClinicJsonLd(
       },
     }
     if (configs.geo_crm) {
-      schema.medicalDirector.identifier = {
+      medicalDirector.identifier = {
         '@type': 'PropertyValue',
         name: 'CRM',
         value: configs.geo_crm,
       }
     }
+    schema.medicalDirector = medicalDirector
   }
 
   // Opening hours parsing

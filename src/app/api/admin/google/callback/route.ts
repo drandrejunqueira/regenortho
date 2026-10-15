@@ -1,5 +1,6 @@
 import { NextResponse, type NextRequest } from 'next/server'
 import { auth } from '@/lib/auth/config'
+import { requireSettingsEdit } from '@/lib/apiGuards'
 import { trocarCodePorToken } from '@/lib/google/oauth'
 
 export const runtime = 'nodejs'
@@ -10,6 +11,10 @@ export async function GET(request: NextRequest) {
   if (!sessao?.user) {
     return NextResponse.redirect(new URL('/login', request.nextUrl.origin))
   }
+  // Mesma guarda do connect: quem conclui o consentimento sobrescreve o
+  // google_refresh_token global em `configuracoes`.
+  const permissao = await requireSettingsEdit()
+  if (!permissao.ok) return permissao.res
 
   // Only accept an internal path as the post-callback destination. An attacker-supplied
   // absolute URL (e.g. `https://evil.com`) in `state` would otherwise become an open

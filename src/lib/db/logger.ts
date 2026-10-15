@@ -9,7 +9,7 @@ export interface LogActivityParams {
   targetId?: string | null
   targetName?: string | null
   ip?: string | null
-  details?: any
+  details?: unknown
 }
 
 export async function logActivity(params: LogActivityParams) {

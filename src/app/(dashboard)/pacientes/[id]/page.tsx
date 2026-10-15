@@ -9,7 +9,6 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import ImageUploader from '@/components/shared/ImageUploader'
 import { hasPermission } from '@/lib/permissions'
 import type { UserRole } from '@/types'
-import { cn } from '@/lib/utils'
 
 // ── Types ────────────────────────────────────────────────
 interface Patient {

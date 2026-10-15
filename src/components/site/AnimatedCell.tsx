@@ -22,7 +22,7 @@ export function AnimatedCell() {
     // Usamos o translateZ para separar as camadas no eixo Z (profundidade)
     anime({
       targets: '.iso-layer',
-      translateZ: function(_el: any, i: number, _l: number) {
+      translateZ: function(_el: HTMLElement, i: number) {
         // Aumenta o espaçamento das camadas (layer 0 fica em baixo, layer 2 sobe mais)
         return (i * 40) + 10; 
       },

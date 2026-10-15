@@ -580,6 +580,10 @@ function SidebarContent({ onNavigate }: { onNavigate?: () => void }) {
           <button
             onClick={() => setProfileOpen(true)}
             className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl hover:bg-[#f5f6f8] transition-colors group text-left"
+            // O conteúdo do botão é o avatar + nome do usuário, então o nome
+            // acessível seria só "QA Admin" — o leitor de tela não diz o que o
+            // botão FAZ. title não vira nome acessível quando há conteúdo.
+            aria-label={`Editar perfil de ${userName}`}
             title="Editar perfil"
           >
             {avatar ? (

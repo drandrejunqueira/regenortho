@@ -2,7 +2,6 @@
 
 import { useState, useEffect } from 'react'
 import Image from 'next/image'
-import Link from 'next/link'
 import { useParams, notFound } from 'next/navigation'
 import { toast, Toaster } from 'sonner'
 import { captureTrackingParams, getTrackingParams } from '@/lib/tracking'
@@ -336,8 +335,8 @@ export default function DynamicLP() {
       toast.success('Recebemos seus dados! Nossa equipe entrará em contato em breve.')
 
       // Tracking do Lead no First-Party Analytics
-      if (typeof (window as any).twixTrack === 'function') {
-        (window as any).twixTrack('click', `Conversão Lead LP ${treatmentSlug.toUpperCase()}`, { joint: form.joint })
+      if (typeof window.twixTrack === 'function') {
+        window.twixTrack('click', `Conversão Lead LP ${treatmentSlug.toUpperCase()}`, { joint: form.joint })
       }
     } catch {
       toast.error('Ocorreu um erro ao enviar seus dados. Tente novamente ou nos chame no WhatsApp.')

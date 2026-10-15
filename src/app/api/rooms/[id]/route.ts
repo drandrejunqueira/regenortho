@@ -37,9 +37,9 @@ export async function PATCH(req: NextRequest, { params }: Params) {
 
     if (!updated) return NextResponse.json({ error: 'Sala não encontrada' }, { status: 404 })
     return NextResponse.json({ data: updated })
-  } catch (err: any) {
+  } catch (err: unknown) {
     console.error(`[PATCH /api/rooms/${id}] error:`, err)
-    return NextResponse.json({ error: 'Erro no banco de dados', details: err.message }, { status: 500 })
+    return NextResponse.json({ error: 'Erro no banco de dados', details: err instanceof Error ? err.message : undefined }, { status: 500 })
   }
 }
 
@@ -58,8 +58,8 @@ export async function DELETE(req: NextRequest, { params }: Params) {
 
     if (!deleted) return NextResponse.json({ error: 'Sala não encontrada' }, { status: 404 })
     return NextResponse.json({ success: true, data: deleted })
-  } catch (err: any) {
+  } catch (err: unknown) {
     console.error(`[DELETE /api/rooms/${id}] error:`, err)
-    return NextResponse.json({ error: 'Erro no banco de dados', details: err.message }, { status: 500 })
+    return NextResponse.json({ error: 'Erro no banco de dados', details: err instanceof Error ? err.message : undefined }, { status: 500 })
   }
 }

@@ -3,7 +3,7 @@
 import { useState, useTransition } from 'react'
 import {
   Brain, Cpu, CheckCircle2, RefreshCw, HelpCircle,
-  MapPin, Clock, Info, ShieldAlert, Award
+  MapPin, Info, ShieldAlert, Award
 } from 'lucide-react'
 import { toast } from 'sonner'
 import { saveConfigs } from '@/app/actions/configuracoes'
@@ -12,8 +12,6 @@ const inputCls = 'w-full bg-[#f5f6f8] border border-[rgba(2,21,65,0.12)] rounded
 const selectCls = 'w-full bg-[#f5f6f8] border border-[rgba(2,21,65,0.12)] rounded-xl px-3 py-2.5 text-sm text-[#021541] focus:outline-none focus:ring-2 focus:ring-[rgba(0,188,228,0.2)]'
 const textareaCls = inputCls + ' resize-none font-sans leading-relaxed'
 const labelCls = 'text-[10px] font-bold text-[#718096] uppercase tracking-wider'
-const sectionCls = 'bg-white border border-[rgba(2,21,65,0.06)] shadow-[0_2px_12px_rgba(2,21,65,0.04)] rounded-xl p-5 space-y-4'
-const sectionTitleCls = 'text-sm font-bold text-[#021541] flex items-center gap-2 mb-1'
 
 interface Props {
   initialConfigs: Record<string, string>
@@ -34,7 +32,7 @@ export function GeoClient({ initialConfigs }: Props) {
         setSaved(true)
         toast.success('Configurações de GEO salvas com sucesso!')
         setTimeout(() => setSaved(false), 3000)
-      } catch (err) {
+      } catch {
         toast.error('Erro ao salvar configurações de GEO.')
       }
     })
@@ -98,11 +96,11 @@ export function GeoClient({ initialConfigs }: Props) {
                   </p>
                   {aiSummaryText ? (
                     <p className="border-l-2 border-[#00BCE4]/40 pl-2.5 italic text-slate-300/80 font-light">
-                      "{aiSummaryText}"
+                      &quot;{aiSummaryText}&quot;
                     </p>
                   ) : (
                     <p className="text-slate-400 font-light italic">
-                      (Preencha o "Resumo Estruturado" ao lado para alimentar os modelos com dados detalhados.)
+                      (Preencha o &quot;Resumo Estruturado&quot; ao lado para alimentar os modelos com dados detalhados.)
                     </p>
                   )}
                 </div>
@@ -225,7 +223,7 @@ export function GeoClient({ initialConfigs }: Props) {
             </div>
             <p className="text-[10px] text-[#718096]/80 flex items-start gap-1">
               <Info className="size-3.5 shrink-0 mt-0.5" />
-              Fornecer coordenadas e horários exatos permite que assistentes de IA recomendem sua clínica em buscas locais baseadas em proximidade ("clinica de ortopedia perto de mim").
+              Fornecer coordenadas e horários exatos permite que assistentes de IA recomendem sua clínica em buscas locais baseadas em proximidade (&quot;clinica de ortopedia perto de mim&quot;).
             </p>
           </div>
 
@@ -249,7 +247,7 @@ export function GeoClient({ initialConfigs }: Props) {
                 className={textareaCls}
               />
               <p className="text-[10px] text-[#718096]">
-                Evite superlativos de marketing (ex: "o melhor da cidade"). Opte por descrições objetivas, científicas e baseadas em fatos. Os robôs de IA indexam esse parágrafo como o resumo canônico da clínica.
+                Evite superlativos de marketing (ex: &quot;o melhor da cidade&quot;). Opte por descrições objetivas, científicas e baseadas em fatos. Os robôs de IA indexam esse parágrafo como o resumo canônico da clínica.
               </p>
             </div>
           </div>

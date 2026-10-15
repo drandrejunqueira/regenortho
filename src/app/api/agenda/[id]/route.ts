@@ -269,7 +269,7 @@ export async function DELETE(req: NextRequest, { params }: Params) {
     } else {
       return NextResponse.json({ error: 'Motivo da exclusão é obrigatório (mínimo 3 caracteres)' }, { status: 400 })
     }
-  } catch (e) {
+  } catch {
     return NextResponse.json({ error: 'Dados de requisição inválidos' }, { status: 400 })
   }
 

@@ -78,7 +78,7 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
   if (data.action === 'update') {
     if (order.status !== 'draft') return NextResponse.json({ error: 'Apenas rascunhos podem ser editados' }, { status: 409 })
 
-    const updates: Record<string, unknown> = { updatedAt: new Date() }
+    const updates: Partial<typeof purchaseOrders.$inferInsert> = { updatedAt: new Date() }
     if (data.supplier     !== undefined) updates.supplier     = data.supplier
     if (data.orderDate    !== undefined) updates.orderDate    = data.orderDate
     if (data.expectedDate !== undefined) updates.expectedDate = data.expectedDate ?? null
@@ -101,7 +101,7 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
     }
 
     await db.update(purchaseOrders)
-      .set(updates as Parameters<typeof db.update>[0] extends infer T ? never : never)
+      .set(updates)
       .where(eq(purchaseOrders.id, id))
   }
 

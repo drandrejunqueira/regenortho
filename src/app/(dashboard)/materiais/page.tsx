@@ -18,7 +18,7 @@ import { formatDate, formatCurrency } from '@/lib/utils'
 import { EditMaterialDialog } from '@/components/materiais/EditMaterialDialog'
 import { SuggestedPurchaseListDrawer } from '@/components/materiais/SuggestedPurchaseListDrawer'
 import { useMaterialCategories } from '@/components/materiais/shared'
-import type { Material, PurchaseOrder, PurchaseOrderItem, PurchaseOrderStatus, UserRole } from '@/types'
+import type { Material, PurchaseOrder, PurchaseOrderStatus, UserRole } from '@/types'
 
 const inputCls =
   'w-full bg-[#f5f6f8] border border-[rgba(2,21,65,0.12)] rounded-xl px-3 py-2.5 text-sm text-[#021541] placeholder:text-[#718096]/60 focus:outline-none focus:ring-2 focus:ring-[#00BCE4]/30'
@@ -63,7 +63,6 @@ export default function MateriaisPage() {
   const canDelete = role ? hasPermission(role, 'materials:delete', custom) : false
   // Botões que a API rejeitaria com 403 não devem aparecer.
   const canCreate = role ? hasPermission(role, 'materials:create', custom) : false
-  const canEdit = role ? hasPermission(role, 'materials:edit', custom) : false
   const { roots: categoryRoots } = useMaterialCategories()
 
   async function toggleMaterialActive(mat: Material) {
@@ -561,7 +560,7 @@ export default function MateriaisPage() {
                 shopping_cart
               </span>
               <p className="font-medium">Nenhuma compra registrada</p>
-              <p className="text-sm mt-1">Clique em "Nova Compra" para começar</p>
+              <p className="text-sm mt-1">Clique em &quot;Nova Compra&quot; para começar</p>
             </div>
           ) : (
             <div className="space-y-3">

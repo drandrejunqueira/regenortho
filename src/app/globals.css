@@ -811,6 +811,294 @@ body {
   }
 }
 
+/* ============================================================
+   DASHBOARD — "Prancheta de plantão"
+   Skin claro, escopado em .dash-skin. Toda cor dos componentes de
+   src/components/dashboard/ vem daqui — nunca hex no TSX.
+   Texto: contraste mínimo 4.5:1 sobre --dash-surface.
+   ============================================================ */
+.dash-skin {
+  color-scheme: light;
+
+  /* Superfícies */
+  --dash-canvas:            #f5f6f8;
+  --dash-surface:           #ffffff;
+  --dash-surface-2:         #f6f7f9;
+  --dash-surface-ink:       #021541;
+  --dash-hairline:          rgba(2, 21, 65, 0.08);
+  --dash-hairline-strong:   rgba(2, 21, 65, 0.18);
+
+  /* Tinta (sobre branco) */
+  --dash-ink:               #021541;   /* 15.9:1 */
+  --dash-ink-2:             #2d3748;   /* 11.0:1 */
+  --dash-ink-3:             #5b6577;   /*  5.9:1 — menor contraste usado em texto */
+  --dash-ink-on-dark:       #f5f6f8;
+  --dash-ink-on-dark-2:     rgba(245, 246, 248, 0.72);
+
+  /* Marca */
+  --dash-brand:             #00BCE4;   /* preenchimento e decoração; não usar como texto em branco */
+  --dash-brand-ink:         #0e7490;   /* 5.4:1 */
+  --dash-brand-soft:        rgba(0, 188, 228, 0.12);
+  --dash-gold:              #e6c364;
+  --dash-gold-ink:          #8a6d00;   /* 4.9:1 */
+
+  /* Estados semânticos — cada um tem tinta (texto) e fundo */
+  --dash-late:              #b42318;   /* atrasado, vencido, sem registro — 6.9:1 */
+  --dash-late-bg:           #fef3f2;
+  --dash-now:               #0e7490;   /* hoje, agora, próximo */
+  --dash-now-bg:            #ecfeff;
+  --dash-wait:              #b54708;   /* aguardando confirmação / contato — 5.6:1 */
+  --dash-wait-bg:           #fffaeb;
+  --dash-ok:                #067647;   /* confirmado, pago, atendido — 5.8:1 */
+  --dash-ok-bg:             #ecfdf3;
+  --dash-forecast:          #5925dc;   /* previsto, a vencer — 6.4:1 */
+  --dash-forecast-bg:       #f4f3ff;
+  --dash-neutral-bg:        #f2f4f7;
+
+  /* Dataviz (paleta própria do sistema) */
+  --dash-viz-1:             #021541;
+  --dash-viz-2:             #00BCE4;
+  --dash-viz-3:             #e6c364;
+  --dash-viz-4:             #5925dc;
+  --dash-viz-muted:         rgba(2, 21, 65, 0.16);
+  --dash-viz-grid:          rgba(2, 21, 65, 0.07);
+  --dash-viz-axis:          #5b6577;
+
+  /* Tipografia — serifa para o que se lê, mono para o que se compara */
+  --dash-font-display:      'Noto Serif', Georgia, 'Times New Roman', serif;
+  --dash-font-body:         'Plus Jakarta Sans', 'Manrope', system-ui, sans-serif;
+  --dash-font-data:         'Space Mono', ui-monospace, SFMono-Regular, Menlo, monospace;
+
+  /* Forma */
+  --dash-radius:            16px;
+  --dash-radius-sm:         8px;
+  --dash-shadow:            0 1px 2px rgba(2, 21, 65, 0.04), 0 8px 24px -12px rgba(2, 21, 65, 0.12);
+  --dash-shadow-raised:     0 2px 4px rgba(2, 21, 65, 0.06), 0 24px 48px -16px rgba(2, 21, 65, 0.22);
+
+  /* Movimento */
+  --dash-ease:              cubic-bezier(0.2, 0.8, 0.2, 1);
+  --dash-dur:               420ms;
+
+  color: var(--dash-ink);
+  font-family: var(--dash-font-body);
+}
+
+/* Cartão base e cartão "tinta" (hero invertido, com atmosfera) */
+.dash-card {
+  position: relative;
+  background: var(--dash-surface);
+  border: 1px solid var(--dash-hairline);
+  border-radius: var(--dash-radius);
+  box-shadow: var(--dash-shadow);
+}
+.dash-card--ink {
+  background: var(--dash-surface-ink);
+  color: var(--dash-ink-on-dark);
+  border-color: transparent;
+  box-shadow: var(--dash-shadow-raised);
+  overflow: hidden;
+  isolation: isolate;
+}
+.dash-card--ink::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  background:
+    radial-gradient(120% 90% at 100% 0%, rgba(0, 188, 228, 0.28) 0%, transparent 55%),
+    radial-gradient(circle, rgba(255, 255, 255, 0.06) 1px, transparent 1px);
+  background-size: auto, 22px 22px;
+  pointer-events: none;
+}
+
+/* Linha clicável — hover por pseudo-elemento (só opacity/transform animam) */
+.dash-row {
+  position: relative;
+  isolation: isolate;
+  border-radius: var(--dash-radius-sm);
+  transition: transform 160ms var(--dash-ease);
+}
+.dash-row::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  border-radius: inherit;
+  background: var(--dash-surface-2);
+  opacity: 0;
+  transition: opacity 160ms var(--dash-ease);
+}
+.dash-row:hover::before,
+.dash-row:focus-visible::before { opacity: 1; }
+.dash-row:hover { transform: translateX(2px); }
+.dash-row:active { transform: translateX(2px) scale(0.995); }
+.dash-row:focus-visible {
+  outline: 2px solid var(--dash-brand-ink);
+  outline-offset: 2px;
+}
+.dash-card--ink .dash-row::before { background: rgba(255, 255, 255, 0.08); }
+.dash-card--ink .dash-row:focus-visible { outline-color: var(--dash-brand); }
+
+/* Link de ação (cabeçalho do bloco) */
+.dash-action {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  min-height: 44px;
+  padding: 0 8px;
+  margin-right: -8px;
+  border-radius: var(--dash-radius-sm);
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  color: var(--dash-brand-ink);
+  transition: transform 160ms var(--dash-ease);
+}
+.dash-action:hover { transform: translateX(2px); }
+.dash-action:focus-visible { outline: 2px solid var(--dash-brand-ink); outline-offset: 2px; }
+.dash-card--ink .dash-action { color: var(--dash-ink-on-dark); }
+
+/* Entrada escalonada por prioridade: --dash-i é a ordem do bloco */
+@keyframes dash-rise {
+  from { opacity: 0; transform: translateY(12px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+.dash-rise {
+  animation: dash-rise var(--dash-dur) var(--dash-ease) both;
+  animation-delay: calc(var(--dash-i, 0) * 70ms);
+}
+
+/* Marcador "agora" na linha do tempo */
+@keyframes dash-now-pulse {
+  0%, 100% { transform: scale(1); opacity: 1; }
+  50%      { transform: scale(1.6); opacity: 0.45; }
+}
+.dash-now-dot::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: 9999px;
+  background: var(--dash-now);
+  animation: dash-now-pulse 2.4s ease-in-out infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .dash-rise { animation: none; }
+  .dash-now-dot::after { animation: none; }
+  .dash-row, .dash-action { transition: none; }
+  .dash-row:hover, .dash-row:active, .dash-action:hover { transform: none; }
+}
+
+/* Utilitários tipográficos e semânticos do dashboard */
+.dash-display { font-family: var(--dash-font-display); letter-spacing: -0.02em; }
+.dash-data { font-family: var(--dash-font-data); font-variant-numeric: tabular-nums; letter-spacing: -0.02em; }
+.dash-label {
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--dash-ink-3);
+}
+.dash-card--ink .dash-label { color: var(--dash-ink-on-dark-2); }
+
+/* Chip de estado: a cor carrega significado, não decoração */
+.dash-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  height: 24px;
+  padding: 0 8px;
+  border-radius: 9999px;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  white-space: nowrap;
+  color: var(--dash-ink-2);
+  background: var(--dash-neutral-bg);
+}
+.dash-chip[data-tone="late"]     { color: var(--dash-late);     background: var(--dash-late-bg); }
+.dash-chip[data-tone="now"]      { color: var(--dash-now);      background: var(--dash-now-bg); }
+.dash-chip[data-tone="wait"]     { color: var(--dash-wait);     background: var(--dash-wait-bg); }
+.dash-chip[data-tone="ok"]       { color: var(--dash-ok);       background: var(--dash-ok-bg); }
+.dash-chip[data-tone="forecast"] { color: var(--dash-forecast); background: var(--dash-forecast-bg); }
+
+/* Sobre tinta (hero): variantes claras dos mesmos estados, contraste ≥ 7:1 no navy */
+.dash-skin {
+  --dash-late-on-dark:     #ffb4ab;
+  --dash-wait-on-dark:     #f9d48b;
+  --dash-ok-on-dark:       #86efac;
+  --dash-now-on-dark:      #67e8f9;
+  --dash-forecast-on-dark: #d3bbff;
+}
+.dash-card--ink .dash-chip { color: var(--dash-ink-on-dark); background: rgba(255, 255, 255, 0.12); }
+.dash-card--ink .dash-chip[data-tone="late"]     { color: var(--dash-late-on-dark); }
+.dash-card--ink .dash-chip[data-tone="now"]      { color: var(--dash-now-on-dark); }
+.dash-card--ink .dash-chip[data-tone="wait"]     { color: var(--dash-wait-on-dark); }
+.dash-card--ink .dash-chip[data-tone="ok"]       { color: var(--dash-ok-on-dark); }
+.dash-card--ink .dash-chip[data-tone="forecast"] { color: var(--dash-forecast-on-dark); }
+
+/* Ponto de estado (linha do tempo) */
+.dash-dot { width: 10px; height: 10px; border-radius: 9999px; background: var(--dash-hairline-strong); flex: none; }
+.dash-dot[data-tone="late"]     { background: var(--dash-late); }
+.dash-dot[data-tone="now"]      { background: var(--dash-now); }
+.dash-dot[data-tone="wait"]     { background: var(--dash-wait); }
+.dash-dot[data-tone="ok"]       { background: var(--dash-ok); }
+.dash-dot[data-tone="forecast"] { background: var(--dash-forecast); }
+.dash-card--ink .dash-dot { background: rgba(255,255,255,0.35); }
+.dash-card--ink .dash-dot[data-tone="late"] { background: var(--dash-late-on-dark); }
+.dash-card--ink .dash-dot[data-tone="now"]  { background: var(--dash-now-on-dark); }
+.dash-card--ink .dash-dot[data-tone="wait"] { background: var(--dash-wait-on-dark); }
+.dash-card--ink .dash-dot[data-tone="ok"]   { background: var(--dash-ok-on-dark); }
+
+/* Texto com tom semântico */
+.dash-tone[data-tone="late"]     { color: var(--dash-late); }
+.dash-tone[data-tone="now"]      { color: var(--dash-now); }
+.dash-tone[data-tone="wait"]     { color: var(--dash-wait); }
+.dash-tone[data-tone="ok"]       { color: var(--dash-ok); }
+.dash-tone[data-tone="forecast"] { color: var(--dash-forecast); }
+.dash-card--ink .dash-tone[data-tone="late"]     { color: var(--dash-late-on-dark); }
+.dash-card--ink .dash-tone[data-tone="now"]      { color: var(--dash-now-on-dark); }
+.dash-card--ink .dash-tone[data-tone="wait"]     { color: var(--dash-wait-on-dark); }
+.dash-card--ink .dash-tone[data-tone="ok"]       { color: var(--dash-ok-on-dark); }
+.dash-card--ink .dash-tone[data-tone="forecast"] { color: var(--dash-forecast-on-dark); }
+
+/* Segmentos da barra de meta */
+.dash-seg[data-tone="ok"]       { background: var(--dash-ok); }
+.dash-seg[data-tone="forecast"] { background: var(--dash-forecast); }
+.dash-seg[data-tone="late"]     { background: var(--dash-late); }
+.dash-seg[data-tone="rest"]     { background: var(--dash-viz-muted); }
+.dash-card--ink .dash-seg[data-tone="ok"]       { background: var(--dash-ok-on-dark); }
+.dash-card--ink .dash-seg[data-tone="forecast"] { background: var(--dash-forecast-on-dark); }
+.dash-card--ink .dash-seg[data-tone="rest"]     { background: rgba(255,255,255,0.14); }
+
+/* Botão utilitário (44px de alvo) */
+.dash-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  min-height: 44px;
+  min-width: 44px;
+  padding: 0 16px;
+  border-radius: var(--dash-radius-sm);
+  border: 1px solid var(--dash-hairline);
+  background: var(--dash-surface);
+  color: var(--dash-ink-2);
+  font-size: 13px;
+  font-weight: 700;
+  transition: transform 160ms var(--dash-ease);
+}
+.dash-btn:hover { transform: translateY(-1px); }
+.dash-btn:active { transform: translateY(0) scale(0.98); }
+.dash-btn:focus-visible { outline: 2px solid var(--dash-brand-ink); outline-offset: 2px; }
+.dash-btn--primary { background: var(--dash-surface-ink); color: var(--dash-ink-on-dark); border-color: transparent; }
+.dash-card--ink .dash-btn { background: rgba(255,255,255,0.1); color: var(--dash-ink-on-dark); border-color: rgba(255,255,255,0.16); }
+.dash-card--ink .dash-btn--primary { background: var(--dash-brand); color: var(--dash-ink); }
+@media (prefers-reduced-motion: reduce) {
+  .dash-btn { transition: none; }
+  .dash-btn:hover, .dash-btn:active { transform: none; }
+}
+
 /* ── Relatório de leads (PDF) ─────────────────────────────────────────────
    Página nomeada para não mexer na impressão das outras telas. A folha já tem
    210mm de largura com 12mm de respiro lateral, então a página só define as

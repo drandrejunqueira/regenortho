@@ -2,7 +2,6 @@
 
 import { useState, useEffect } from 'react'
 import Image from 'next/image'
-import Link from 'next/link'
 import { toast, Toaster } from 'sonner'
 import { captureTrackingParams, getTrackingParams } from '@/lib/tracking'
 
@@ -66,8 +65,8 @@ export default function ArticulacoesLP() {
       toast.success('Recebemos seus dados! Nossa equipe entrará em contato em breve.')
       
       // Tracking manual do lead no Analytics First Party
-      if (typeof (window as any).twixTrack === 'function') {
-        (window as any).twixTrack('click', 'Conversão Lead LP Articulações', { joint: form.joint })
+      if (typeof window.twixTrack === 'function') {
+        window.twixTrack('click', 'Conversão Lead LP Articulações', { joint: form.joint })
       }
     } catch {
       toast.error('Ocorreu um erro ao enviar seus dados. Tente novamente ou nos chame no WhatsApp.')

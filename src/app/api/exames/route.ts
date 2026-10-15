@@ -44,22 +44,41 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ error: 'patientId é obrigatório' }, { status: 400 })
   }
 
+  // 'exams:view' está no preset da recepção, mas hipótese diagnóstica, CID-10, link do laudo
+  // e observações são prontuário — exatamente o que 'patients:view_clinical' existe para
+  // proteger e o que /api/prontuario e /api/pacientes/[id] já barram para a recepção. Sem
+  // essa permissão a coluna clínica nem sai do banco: o corte é na projeção, não na resposta.
+  const podeVerClinico = hasPermission(
+    session.user.role as UserRole,
+    'patients:view_clinical',
+    session.user.customPermissions,
+  )
+
+  // O que o fluxo administrativo precisa: o que foi pedido, para quem, por quem e em que
+  // situação está — sem nenhum conteúdo clínico.
+  const projecaoAdministrativa = {
+    id: examOrders.id,
+    exams: examOrders.exams,
+    urgency: examOrders.urgency,
+    status: examOrders.status,
+    resultDate: examOrders.resultDate,
+    validUntil: examOrders.validUntil,
+    createdAt: examOrders.createdAt,
+    patient: { id: patients.id, name: patients.name },
+    doctor: { id: users.id, name: users.name },
+  }
+
+  const projecaoClinica = {
+    hypothesis: examOrders.hypothesis,
+    cid10: examOrders.cid10,
+    resultUrl: examOrders.resultUrl,
+    notes: examOrders.notes,
+  }
+
   const data = await db
-    .select({
-      id: examOrders.id,
-      exams: examOrders.exams,
-      hypothesis: examOrders.hypothesis,
-      cid10: examOrders.cid10,
-      urgency: examOrders.urgency,
-      status: examOrders.status,
-      resultUrl: examOrders.resultUrl,
-      resultDate: examOrders.resultDate,
-      validUntil: examOrders.validUntil,
-      notes: examOrders.notes,
-      createdAt: examOrders.createdAt,
-      patient: { id: patients.id, name: patients.name },
-      doctor: { id: users.id, name: users.name },
-    })
+    .select(podeVerClinico
+      ? { ...projecaoAdministrativa, ...projecaoClinica }
+      : projecaoAdministrativa)
     .from(examOrders)
     .leftJoin(patients, eq(examOrders.patientId, patients.id))
     .leftJoin(users, eq(examOrders.doctorId, users.id))

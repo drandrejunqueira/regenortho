@@ -52,4 +52,15 @@ next-env.d.ts
 .agent/
 .claude/
 /dino-skill/
+graphify-out/
 
+
+
+# galeria de telas (gerada) e saídas de agente
+/tests/visual/gallery/*.png
+/tests/visual/gallery/index.html
+/tests/visual/gallery/manifest.json
+/.codex/out/
+
+# sessão salva do Playwright (contém cookie de sessão)
+/playwright/.auth/

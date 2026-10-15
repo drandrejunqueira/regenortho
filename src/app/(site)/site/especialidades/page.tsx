@@ -16,42 +16,6 @@ export const metadata: Metadata = {
     'Especialidades em ortopedia e traumatologia: Joelho, Ombro e Cotovelo, Coluna, Quadril, Pé e Tornozelo. Tratamentos regenerativos e cirurgia minimamente invasiva em SJC — CRM SP 150430.',
 }
 
-const SPECIALTIES = [
-  {
-    icon: 'skateboarding',
-    title: 'Joelho',
-    featured: true,
-    chips: ['Artrose (Gonartrose)', 'Lesão de LCA/LCP', 'Lesão de Menisco', 'Tendinite Patelar', 'Condropatia', 'Desgaste Articular'],
-    desc: 'Tratamentos focados na regeneração cartilaginosa e estabilização ligamentar. Utilizamos PRP, BMAC, SVF e viscosuplementação com ácido hialurônico para evitar ou postergar próteses. Infiltrações guiadas por ultrassom para máxima precisão.',
-  },
-  {
-    icon: 'fitness_center',
-    title: 'Ombro & Cotovelo',
-    featured: false,
-    dark: true,
-    chips: ['Manguito Rotador', 'Luxação Recidivante', 'Lesão de SLAP', 'Epicondilite Lateral', 'Artroscopia', 'PRP & Infiltrações USG'],
-    desc: 'Especialidade principal do Dr. André. Cirurgia artroscópica do ombro e cotovelo, tratamento regenerativo de tendinites e instabilidade articular.',
-  },
-  {
-    icon: 'accessibility_new',
-    title: 'Coluna',
-    featured: false,
-    desc: 'Tratamento da hérnia de disco (L4-L5, L5-S1), dor lombar crônica e cervicalgia com bloqueios guiados por USG, rizotomia, discectomia a laser e neuromodulação. Foco em evitar cirurgia aberta.',
-  },
-  {
-    icon: 'recent_actors',
-    title: 'Quadril',
-    featured: false,
-    desc: 'Tratamento da artrose do quadril, impacto femoroacetabular e bursites trocantéricas com PRP, ácido hialurônico e infiltrações guiadas por ultrassom. Preservação articular e reabilitação funcional acelerada.',
-  },
-  {
-    icon: 'pan_tool',
-    title: 'Mão & Punho',
-    featured: false,
-    desc: 'Tratamento de tendinites, artroses das pequenas articulações, síndrome do túnel do carpo e lesões tendíneas com infiltrações de precisão guiadas por ultrassonografia.',
-  },
-]
-
 export default async function EspecialidadesPage() {
   const configs = await getAllConfigs()
   const clinic = await db.query.clinicSettings.findFirst({ where: eq(clinicSettings.id, 1) })

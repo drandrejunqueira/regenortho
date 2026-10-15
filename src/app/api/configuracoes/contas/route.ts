@@ -28,14 +28,50 @@ export async function GET() {
   // Concluir tratamento exige escolher forma de pagamento e conta. Sem esta
   // abertura, o médico levava 403 e via um seletor vazio com um botão de
   // faturar que nunca funcionava.
+  const podeVerDadosBancarios = hasPermission(
+    session.user.role as UserRole,
+    'payments:view',
+    session.user.customPermissions,
+  )
   const podeLer =
-    hasPermission(session.user.role as UserRole, 'payments:view', session.user.customPermissions) ||
+    podeVerDadosBancarios ||
     hasPermission(session.user.role as UserRole, 'treatments:edit', session.user.customPermissions)
   if (!podeLer) {
     return NextResponse.json({ error: 'Acesso negado' }, { status: 403 })
   }
 
-  const data = await db.select().from(bankAccounts).where(eq(bankAccounts.isActive, true)).orderBy(bankAccounts.name)
+  // Sem projeção a rota devolvia a linha inteira de `bank_accounts` — agência,
+  // número da conta, chave PIX e saldo — para quem entrou só por
+  // 'treatments:edit'. O seletor de conta da tela de faturar precisa de id,
+  // nome e banco para montar o rótulo; o resto é dado financeiro e sai apenas
+  // com 'payments:view'.
+  const colunasSeletor = {
+    id: bankAccounts.id,
+    name: bankAccounts.name,
+    bank: bankAccounts.bank,
+    type: bankAccounts.type,
+    isDefault: bankAccounts.isDefault,
+    isActive: bankAccounts.isActive,
+  }
+
+  const filtroAtivas = eq(bankAccounts.isActive, true)
+
+  const data = podeVerDadosBancarios
+    ? await db
+        .select({
+          ...colunasSeletor,
+          agency: bankAccounts.agency,
+          account: bankAccounts.account,
+          pixKey: bankAccounts.pixKey,
+          currentBalance: bankAccounts.currentBalance,
+          createdAt: bankAccounts.createdAt,
+          updatedAt: bankAccounts.updatedAt,
+        })
+        .from(bankAccounts)
+        .where(filtroAtivas)
+        .orderBy(bankAccounts.name)
+    : await db.select(colunasSeletor).from(bankAccounts).where(filtroAtivas).orderBy(bankAccounts.name)
+
   return NextResponse.json({ data })
 }
 

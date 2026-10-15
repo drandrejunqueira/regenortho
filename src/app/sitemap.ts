@@ -7,11 +7,10 @@ import { getConfig } from '@/lib/db/queries/configuracoes'
 export const revalidate = 3600 // regenera a cada 1 hora
 
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
-  const [siteUrl, frequencia, prioridade, includeBlog] = await Promise.all([
+  const [siteUrl, frequencia, prioridade] = await Promise.all([
     getConfig('site_url'),
     getConfig('sitemap_frequencia'),
     getConfig('sitemap_prioridade'),
-    getConfig('sitemap_include_blog'),
   ])
 
   const base = (siteUrl ?? 'https://regenortho.com.br').replace(/\/$/, '')

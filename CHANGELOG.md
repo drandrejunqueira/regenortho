@@ -5,6 +5,36 @@ Todas as alterações notáveis neste projeto serão documentadas neste arquivo.
 O formato é baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/),
 e este projeto adere ao [Semantic Versioning](https://semver.org/lang/pt-BR/).
 
+## [1.6.0] - 2026-10-15
+
+Relatório de captação de leads para enviar ao cliente, filtro por canal no CRM e um pacote
+de correções de permissão que fechava vazamentos de dado financeiro e clínico entre papéis.
+
+### Adicionado
+- **Filtro por canal no CRM de Leads**: botões Google / Instagram / Outros, combináveis com o período. Google = Google Ads + orgânico; Instagram = Instagram, Facebook e anúncios Meta; Outros = WhatsApp, indicação e sem origem (`src/lib/leadChannels.ts`). O cabeçalho mostra quantos leads o recorte tem e `GET /api/leads` aceita `channel`.
+- **Relatório de leads em PDF** (`/leads/relatorio`, `GET /api/leads/relatorio`): total com variação contra o período anterior, média por dia, agendamentos, pacientes, leads por canal, série diária (mensal acima de 92 dias) empilhada por canal, origem detalhada, situação no funil e interesse. Períodos: hoje, 7/15/30 dias, este mês, mês passado e personalizado (até 366 dias). "Baixar PDF" imprime a folha em A4.
+- **Motivo de perda obrigatório**: marcar lead como perdido (no detalhe ou arrastando no quadro) abre o `LostReasonDialog`; a API exige `lostReason` e o limpa quando o lead é reativado.
+- **Alerta de SLA de leads** no WhatsApp da recepção (cron a cada 15 minutos).
+- **Galeria visual de telas** (`npm run screens`) e semente de usuários de teste (`npm run seed:e2e`).
+
+### Segurança
+- `GET /api/configuracoes/contas`: quem não tem `payments:view` recebe só id, nome e banco — agência, conta, chave PIX e saldo saíam para quem entrava por `treatments:edit`.
+- `GET /api/exames`: hipótese, CID-10, laudo e observações só com `patients:view_clinical`; o corte é na projeção do banco.
+- `GET /api/pacientes`: a listagem não traz mais as transações de todos os pacientes da página para médico e recepção.
+- `GET /api/tratamentos`: custo por procedimento e receita total só com `reports:balancete` — dava para remontar o DRE somando a resposta.
+- `GET /api/dashboard`: blocos financeiro, leads, agenda e estoque recortados pelas permissões de cada papel.
+- `GET /api/portal/token`: valida o formato do UUID e registra auditoria quando a credencial do portal é lida.
+- Conexão Google (`/api/admin/google/connect` e `callback`): exige a mesma permissão de configuração do sistema; estar logado não bastava para sobrescrever o token da clínica.
+
+### Corrigido
+- **Lint voltou a rodar**: a config do ESLint era incompatível com o `eslint-config-next` 14 sob ESLint 9 e quebrava antes de checar qualquer arquivo. Os 148 erros que estavam escondidos foram corrigidos e o `next build` volta a barrar erro de lint.
+- **Glossário público**: a listagem trafega só o resumo de cada verbete, não o artigo inteiro.
+- **Acessibilidade**: campos do `/site/agendar` com label associado e nome acessível no botão de perfil do menu lateral.
+
+### Testes
+- 579 testes de unidade e integração passando (eram 443 na 1.5.0) e 177 cenários E2E (desktop e Pixel 7).
+- Novos: 9 suítes `rbac-*` de permissão por papel, `financeiro`, `prontuario`, `lead-motivo-perda`, `leads-relatorio` e `unit/leadReport`.
+
 ## [1.5.0] - 2026-08-28
 
 Auditoria ponta a ponta da jornada do paciente (lead → agendamento → paciente → tratamento),

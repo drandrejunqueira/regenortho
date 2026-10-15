@@ -5,7 +5,7 @@ import { treatmentTemplates, treatmentTemplateItems, materials } from '@/lib/db/
 import { hasPermission } from '@/lib/permissions'
 import type { UserRole } from '@/types'
 import { z } from 'zod'
-import { desc, eq, inArray } from 'drizzle-orm'
+import { desc, inArray } from 'drizzle-orm'
 
 const CATEGORIES = [
   'consultation_fee', 'prp_procedure', 'bmac_procedure', 'hyaluronic_procedure',

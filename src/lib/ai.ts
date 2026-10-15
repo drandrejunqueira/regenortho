@@ -35,6 +35,15 @@ export interface CallOptions {
   config?: AiConfig
 }
 
+// Only the response fields we read; all optional because the JSON is external.
+interface OpenAiChatResponse {
+  choices?: { message?: { content?: string | null } }[]
+}
+
+interface AnthropicMessagesResponse {
+  content?: { text?: string }[]
+}
+
 // Reads the configured provider/model/key from `configuracoes`. Mirrors the
 // resolution used by admin/glossario/gerar-conteudo (provider-specific key with a
 // generic `ia_api_key` fallback).
@@ -78,7 +87,7 @@ async function callOpenAiCompatible(
     signal,
   })
   if (!res.ok) return ''
-  const data = (await res.json()) as any
+  const data = (await res.json()) as OpenAiChatResponse | null
   return (data?.choices?.[0]?.message?.content || '').trim()
 }
 
@@ -107,7 +116,7 @@ async function callAnthropic(
     signal,
   })
   if (!res.ok) return ''
-  const data = (await res.json()) as any
+  const data = (await res.json()) as AnthropicMessagesResponse | null
   return (data?.content?.[0]?.text || '').trim()
 }
 

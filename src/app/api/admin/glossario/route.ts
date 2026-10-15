@@ -73,7 +73,7 @@ export async function PUT(req: NextRequest) {
       return NextResponse.json({ error: 'id é obrigatório' }, { status: 400 })
     }
 
-    const updateData: any = {}
+    const updateData: Parameters<typeof updateTermo>[1] = {}
     if (termo !== undefined) {
       updateData.termo = termo.trim()
       updateData.slug = slugify(termo)

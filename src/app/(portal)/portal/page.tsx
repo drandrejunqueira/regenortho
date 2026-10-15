@@ -134,8 +134,8 @@ function PortalContent() {
         window.history.replaceState({}, '', `/portal?token=${data.token}`)
       }
       toast.success('Acesso autorizado!')
-    } catch (err: any) {
-      setLoginError(err.message || 'Código inválido ou expirado')
+    } catch (err) {
+      setLoginError((err instanceof Error ? err.message : '') || 'Código inválido ou expirado')
     } finally {
       setLoginLoading(false)
     }

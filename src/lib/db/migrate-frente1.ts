@@ -1,12 +1,12 @@
-// @ts-nocheck — migração idempotente Frente 1 (Catálogo de tratamentos + parcelas)
+// Migração idempotente Frente 1 (Catálogo de tratamentos + parcelas)
 // Rodar com: npx tsx src/lib/db/migrate-frente1.ts
-import { neon } from '@neondatabase/serverless'
+import { neon, type NeonQueryFunction } from '@neondatabase/serverless'
 import * as dotenv from 'dotenv'
 import path from 'path'
 
 dotenv.config({ path: path.resolve(process.cwd(), '.env.local') })
 
-async function run(sql: ReturnType<typeof neon>, query: string, desc: string) {
+async function run(sql: NeonQueryFunction<false, false>, query: string, desc: string) {
   try {
     await sql.unsafe(query)
     console.log(`✓ ${desc}`)

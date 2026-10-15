@@ -3,7 +3,6 @@
 import { useSortable } from '@dnd-kit/sortable'
 import { CSS } from '@dnd-kit/utilities'
 import { getInitials, timeAgo } from '@/lib/utils'
-import { StatusBadge } from '@/components/shared/StatusBadge'
 import { LEAD_SOURCE_LABELS } from '@/lib/constants'
 import type { Lead } from '@/types'
 

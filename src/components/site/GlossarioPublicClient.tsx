@@ -13,10 +13,6 @@ interface Termo {
   nicho: string
   conteudo: string | null
   status: string
-  seoTitle: string | null
-  seoDescription: string | null
-  createdAt: Date
-  updatedAt: Date
 }
 
 interface Props {
@@ -34,8 +30,8 @@ export function GlossarioPublicClient({ termos }: Props) {
     const termo = busca.trim()
     if (termo.length < 3) return
     const id = setTimeout(() => {
-      if (typeof (window as any).twixTrack === 'function') {
-        (window as any).twixTrack('search', termo.toLowerCase())
+      if (typeof window.twixTrack === 'function') {
+        window.twixTrack('search', termo.toLowerCase())
       }
     }, 1200)
     return () => clearTimeout(id)

@@ -6,6 +6,13 @@ import { captureTrackingParams } from '@/lib/tracking'
 
 const SID_KEY = 'twix_sid'
 
+// API global de tracking manual exposta pelo PageTracker (ver useEffect abaixo)
+declare global {
+  interface Window {
+    twixTrack?: (tipo: string, rotulo?: string, meta?: Record<string, unknown>) => void
+  }
+}
+
 function getSessionId(): string {
   try {
     let sid = localStorage.getItem(SID_KEY)
@@ -88,7 +95,7 @@ export function PageTracker() {
     document.addEventListener('click', onClick, { capture: true })
 
     // API global para tracking manual
-    ;(window as any).twixTrack = (tipo: string, rotulo?: string, meta?: Record<string, unknown>) =>
+    window.twixTrack = (tipo: string, rotulo?: string, meta?: Record<string, unknown>) =>
       send([{ tipo, path: window.location.pathname, rotulo: rotulo ?? null, meta: meta ?? null }])
 
     return () => document.removeEventListener('click', onClick, { capture: true })

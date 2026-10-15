@@ -1,5 +1,5 @@
 import Link from 'next/link'
-import { Stethoscope, ArrowRight, MessageSquare } from 'lucide-react'
+import { Stethoscope, MessageSquare } from 'lucide-react'
 
 /**
  * Bloco de anúncio/CTA inserido dentro do conteúdo do glossário.

@@ -9,6 +9,7 @@ import { hasPermission } from '@/lib/permissions'
 import { LEAD_STATUS_LABELS, LEAD_SOURCE_LABELS } from '@/lib/constants'
 import type { Lead, LeadInteraction, LeadStatus, UserRole } from '@/types'
 import type { PersonOption, TagOption } from '@/components/leads/LeadFilters'
+import { LostReasonDialog } from '@/components/leads/LostReasonDialog'
 
 interface Props {
   lead: Lead | null
@@ -58,6 +59,7 @@ export function LeadDrawer({ lead, interactions, open, onOpenChange, onUpdate, o
   const [savingNote, setSavingNote] = useState(false)
   const [updatingStatus, setUpdatingStatus] = useState(false)
   const [deleting, setDeleting] = useState(false)
+  const [askLostReason, setAskLostReason] = useState(false)
 
   // Estados para Tags
   const [updatingTags, setUpdatingTags] = useState(false)
@@ -83,12 +85,16 @@ export function LeadDrawer({ lead, interactions, open, onOpenChange, onUpdate, o
 
   if (!lead) return null
 
-  async function updateStatus(status: string) {
+  async function updateStatus(status: string, lostReason?: string) {
     if (!lead) return
     if (status === 'scheduled') {
       if (onScheduleLead) {
         onScheduleLead(lead)
       }
+      return
+    }
+    if (status === 'lost' && !lostReason) {
+      setAskLostReason(true)
       return
     }
 
@@ -97,10 +103,11 @@ export function LeadDrawer({ lead, interactions, open, onOpenChange, onUpdate, o
       const res = await fetch(`/api/leads/${lead.id}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ status }),
+        body: JSON.stringify({ status, ...(lostReason && { lostReason }) }),
       })
       if (!res.ok) throw new Error()
       toast.success('Status atualizado')
+      if (status === 'lost') onOpenChange(false)
       onUpdate()
     } catch {
       toast.error('Erro ao atualizar status')
@@ -547,7 +554,7 @@ export function LeadDrawer({ lead, interactions, open, onOpenChange, onUpdate, o
             Agendar Consulta
           </button>
           <button
-            onClick={() => { updateStatus('lost'); onOpenChange(false) }}
+            onClick={() => updateStatus('lost')}
             disabled={updatingStatus || deleting || lead.status === 'lost'}
             className="w-12 flex items-center justify-center rounded-2xl bg-red-50 border border-red-100 text-red-400 hover:bg-red-500 hover:text-white hover:border-red-500 transition-all disabled:opacity-30 disabled:cursor-not-allowed cursor-pointer"
             aria-label="Marcar como perdido"
@@ -566,6 +573,12 @@ export function LeadDrawer({ lead, interactions, open, onOpenChange, onUpdate, o
           )}
         </div>
       </SheetContent>
+      <LostReasonDialog
+        open={askLostReason}
+        leadName={lead.name}
+        onCancel={() => setAskLostReason(false)}
+        onConfirm={(reason) => { setAskLostReason(false); updateStatus('lost', reason) }}
+      />
     </Sheet>
   )
 }
