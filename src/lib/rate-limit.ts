@@ -51,9 +51,21 @@ export function rateLimit(key: string, limit: number, windowMs: number): RateLim
   return { ok: true, remaining: limit - existing.count, retryAfterSec: 0 }
 }
 
-/** Extract the best-effort client IP from a request behind Vercel's proxy. */
+/**
+ * IP do cliente para chave de rate limit.
+ *
+ * `x-vercel-forwarded-for` e `x-real-ip` são escritos pela própria Vercel e o
+ * cliente não consegue forjá-los. `x-forwarded-for` fica só como fallback
+ * (self-hosted / dev): atrás de um proxy que *acrescenta* ao header, o elemento
+ * mais à esquerda é o que o cliente mandou — usado como fonte primária, cada
+ * valor inventado virava um balde novo de tentativas.
+ */
 export function getClientIp(req: Request): string {
+  const vercel = req.headers.get('x-vercel-forwarded-for')
+  if (vercel) return vercel.split(',')[0]!.trim()
+  const realIp = req.headers.get('x-real-ip')
+  if (realIp) return realIp.trim()
   const xff = req.headers.get('x-forwarded-for')
   if (xff) return xff.split(',')[0]!.trim()
-  return req.headers.get('x-real-ip') || 'unknown'
+  return 'unknown'
 }

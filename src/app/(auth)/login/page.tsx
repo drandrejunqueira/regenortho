@@ -42,7 +42,9 @@ export default function LoginPage() {
         password: data.password,
         redirect: false,
       })
-      if (result?.error) {
+      if (result?.code === 'muitas_tentativas') {
+        toast.error('Muitas tentativas de login. Aguarde alguns minutos e tente novamente.')
+      } else if (result?.error) {
         toast.error('E-mail ou senha inválidos. Tente novamente.')
       } else {
         toast.success('Bem-vindo!')

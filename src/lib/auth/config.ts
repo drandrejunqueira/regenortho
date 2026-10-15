@@ -3,13 +3,7 @@ import Credentials from 'next-auth/providers/credentials'
 import { db } from '@/lib/db'
 import { users } from '@/lib/db/schema'
 import { eq } from 'drizzle-orm'
-import bcrypt from 'bcryptjs'
-import { z } from 'zod'
-
-const loginSchema = z.object({
-  email: z.string().email(),
-  password: z.string().min(6),
-})
+import { autorizarCredenciais } from '@/lib/auth/credentials'
 
 // De quanto em quanto tempo o JWT é reconferido contra o banco. Curto o
 // bastante para revogar acesso rápido, longo o bastante para não fazer uma
@@ -23,36 +17,9 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
         email: { label: 'Email', type: 'email' },
         password: { label: 'Senha', type: 'password' },
       },
-      async authorize(credentials) {
-        const parsed = loginSchema.safeParse(credentials)
-        if (!parsed.success) return null
-
-        const { email, password } = parsed.data
-
-        const user = await db.query.users.findFirst({
-          where: eq(users.email, email),
-        })
-
-        if (!user || !user.isActive) return null
-
-        const passwordMatch = await bcrypt.compare(password, user.passwordHash)
-        if (!passwordMatch) return null
-
-        await db
-          .update(users)
-          .set({ lastLoginAt: new Date() })
-          .where(eq(users.id, user.id))
-
-        // NÃO incluir avatar aqui: a foto é base64 e estouraria o cookie do JWT.
-        // O avatar é lido do banco via /api/perfil (hook useProfile).
-        return {
-          id: user.id,
-          name: user.name,
-          email: user.email,
-          role: user.role,
-          customPermissions: user.customPermissions ?? null,
-        }
-      },
+      // Rate limit, bloqueio progressivo e registro de falha ficam em
+      // autorizarCredenciais (src/lib/auth/credentials.ts).
+      authorize: autorizarCredenciais,
     }),
   ],
   callbacks: {
