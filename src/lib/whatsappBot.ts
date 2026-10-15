@@ -13,12 +13,17 @@ import { randomUUID } from 'node:crypto'
 import { db } from '@/lib/db'
 import { and, gte, lte, eq, ilike } from 'drizzle-orm'
 import { patients, appointments, clinicalRecords, users, treatments } from '@/lib/db/schema'
+import { logActivity } from '@/lib/db/logger'
+import { identificarRemetente, jidDoRemetente, type RemetenteBot } from '@/lib/whatsappRemetente'
 
 
 export interface IncomingMessage {
   instance: string
   groupJid: string // remoteJid ending in @g.us
   fromMe: boolean
+  // JID de telefone do autor (null para fromMe e para @lid sem telefone):
+  // é o que liga a mensagem a um usuário do sistema — ver whatsappRemetente.ts.
+  senderJid: string | null
   messageId: string
   text: string
   timestamp: number // epoch seconds
@@ -97,6 +102,7 @@ export function parseWebhookMessage(payload: any): IncomingMessage | null {
     instance,
     groupJid,
     fromMe: Boolean(key.fromMe),
+    senderJid: jidDoRemetente(data),
     messageId: String(key.id || ''),
     text,
     timestamp,
@@ -256,11 +262,39 @@ Regras:
   return { searchPatientName, dateRange, needAllAppointments }
 }
 
-async function executeDatabaseQueries(params: DBQueryParams): Promise<string> {
-  const contexts: string[] = []
+// Texto que vai para o modelo quando quem perguntou não pode ver paciente.
+const CONSULTA_PACIENTE_NEGADA =
+  'Consulta individual de paciente NÃO autorizada: quem perguntou não está vinculado a um usuário ' +
+  'ativo do sistema com permissão para ver pacientes (o vínculo é pelo telefone do perfil do usuário). ' +
+  'Não forneça nenhum dado de paciente. Oriente a consultar pelo sistema, ou a perguntar do próprio ' +
+  'WhatsApp cadastrado no perfil.'
 
-  // 1. Search Patient Information
-  if (params.searchPatientName) {
+interface ResultadoConsulta {
+  contexto: string
+  /** O contexto traz dado individual de paciente: a resposta não pode ir para o grupo. */
+  dadosIndividuais: boolean
+}
+
+async function executeDatabaseQueries(
+  params: DBQueryParams,
+  remetente: RemetenteBot | null,
+): Promise<ResultadoConsulta> {
+  const contexts: string[] = []
+  let dadosIndividuais = false
+
+  // 1. Dado individual de paciente — o mesmo controle de /api/pacientes/[id] e
+  // /api/prontuario: patients:view para a ficha, patients:view_clinical para o
+  // prontuário. Antes qualquer participante do grupo recebia tudo, sem rastro.
+  if (params.searchPatientName && !remetente?.podeVerPaciente) {
+    contexts.push(CONSULTA_PACIENTE_NEGADA)
+    await logActivity({
+      userId: remetente?.userId ?? null,
+      userName: remetente?.nome ?? null,
+      action: 'whatsapp:consulta_negada',
+      module: 'whatsapp',
+      details: { canal: 'whatsapp_grupo', motivo: remetente ? 'sem_permissao' : 'remetente_nao_identificado' },
+    })
+  } else if (params.searchPatientName && remetente) {
     const queryName = `%${params.searchPatientName.trim()}%`
     const foundPatients = await db
       .select()
@@ -306,51 +340,72 @@ async function executeDatabaseQueries(params: DBQueryParams): Promise<string> {
           pContext += `\nNão há histórico de consultas registrado.\n`
         }
 
-        // Fetch clinical records (prontuário/medical history)
-        const pRecords = await db
-          .select({
-            id: clinicalRecords.id,
-            type: clinicalRecords.type,
-            content: clinicalRecords.content,
-            createdAt: clinicalRecords.createdAt,
-            doctorName: users.name
-          })
-          .from(clinicalRecords)
-          .leftJoin(users, eq(clinicalRecords.doctorId, users.id))
-          .where(eq(clinicalRecords.patientId, p.id))
-          .orderBy(clinicalRecords.createdAt)
-          .limit(10)
+        // Prontuário só com patients:view_clinical — recepção e financeiro não
+        // enxergam no sistema, e não passam a enxergar pelo WhatsApp.
+        if (remetente.podeVerProntuario) {
+          const pRecords = await db
+            .select({
+              id: clinicalRecords.id,
+              type: clinicalRecords.type,
+              content: clinicalRecords.content,
+              createdAt: clinicalRecords.createdAt,
+              doctorName: users.name
+            })
+            .from(clinicalRecords)
+            .leftJoin(users, eq(clinicalRecords.doctorId, users.id))
+            .where(eq(clinicalRecords.patientId, p.id))
+            .orderBy(clinicalRecords.createdAt)
+            .limit(10)
 
-        if (pRecords.length > 0) {
-          pContext += `\nProntuário / Histórico Médico de ${sanitizeForPrompt(p.name)}:\n`
-          for (const r of pRecords) {
-            const dateStr = new Date(r.createdAt).toLocaleString('pt-BR', { timeZone: 'America/Sao_Paulo' })
-            pContext += `- [${dateStr}] (${r.type}) por Dr(a). ${sanitizeForPrompt(r.doctorName) || 'Desconhecido'}:\n  ${sanitizeForPrompt(r.content)}\n`
+          if (pRecords.length > 0) {
+            pContext += `\nProntuário / Histórico Médico de ${sanitizeForPrompt(p.name)}:\n`
+            for (const r of pRecords) {
+              const dateStr = new Date(r.createdAt).toLocaleString('pt-BR', { timeZone: 'America/Sao_Paulo' })
+              pContext += `- [${dateStr}] (${r.type}) por Dr(a). ${sanitizeForPrompt(r.doctorName) || 'Desconhecido'}:\n  ${sanitizeForPrompt(r.content)}\n`
+            }
+          } else {
+            pContext += `\nNão há registros no prontuário/histórico médico.\n`
           }
         } else {
-          pContext += `\nNão há registros no prontuário/histórico médico.\n`
+          pContext += `\nProntuário: não autorizado para este usuário (exige permissão clínica). Não comente o conteúdo clínico.\n`
         }
 
-        // Fetch active treatments
-        const pTreatments = await db
-          .select()
-          .from(treatments)
-          .where(eq(treatments.patientId, p.id))
-          .limit(5)
+        if (remetente.podeVerTratamentos) {
+          const pTreatments = await db
+            .select()
+            .from(treatments)
+            .where(eq(treatments.patientId, p.id))
+            .limit(5)
 
-        if (pTreatments.length > 0) {
-          pContext += `\nTratamentos de ${sanitizeForPrompt(p.name)}:\n`
-          for (const t of pTreatments) {
-            pContext += `- ${sanitizeForPrompt(t.name) || 'Sem nome'} | Status: ${t.status} | Total: R$ ${Number(t.totalSale || 0).toFixed(2)}\n`
+          if (pTreatments.length > 0) {
+            pContext += `\nTratamentos de ${sanitizeForPrompt(p.name)}:\n`
+            for (const t of pTreatments) {
+              pContext += `- ${sanitizeForPrompt(t.name) || 'Sem nome'} | Status: ${t.status} | Total: R$ ${Number(t.totalSale || 0).toFixed(2)}\n`
+            }
           }
         }
 
         contexts.push(pContext)
+        dadosIndividuais = true
+
+        // Toda leitura de ficha pelo bot fica na auditoria, como no sistema:
+        // quem, qual paciente, por qual canal — sem conteúdo clínico no log.
+        await logActivity({
+          userId: remetente.userId,
+          userName: remetente.nome,
+          action: remetente.podeVerProntuario ? 'prontuario:read' : 'paciente:read',
+          module: 'whatsapp',
+          targetId: p.id,
+          targetName: 'Consulta pelo bot do WhatsApp',
+          details: { canal: 'whatsapp', prontuario: remetente.podeVerProntuario },
+        })
       }
     }
   }
 
   // 2. Search Appointments in Date Range
+  // A agenda é respondida no grupo, para todos os participantes: vai sem as
+  // notas da consulta, que costumam trazer queixa e conduta (dado clínico).
   if (params.dateRange) {
     const start = new Date(params.dateRange.start + 'T00:00:00')
     const end = new Date(params.dateRange.end + 'T23:59:59')
@@ -360,7 +415,6 @@ async function executeDatabaseQueries(params: DBQueryParams): Promise<string> {
         startAt: appointments.startAt,
         status: appointments.status,
         type: appointments.type,
-        notes: appointments.notes,
         title: appointments.title,
         patientName: patients.name,
         doctorName: users.name
@@ -386,7 +440,7 @@ async function executeDatabaseQueries(params: DBQueryParams): Promise<string> {
       for (const a of dateAppts) {
         const timeStr = new Intl.DateTimeFormat('pt-BR', { timeZone: 'America/Sao_Paulo', hour: '2-digit', minute: '2-digit' }).format(new Date(a.startAt))
         const pName = sanitizeForPrompt(a.patientName || a.title) || 'Paciente não informado'
-        dateCtx += `- ${timeStr} | Paciente: ${pName} | Médico: ${sanitizeForPrompt(a.doctorName) || 'Não designado'} | Tipo: ${a.type} | Status: ${a.status} | Notas: ${sanitizeForPrompt(a.notes)}\n`
+        dateCtx += `- ${timeStr} | Paciente: ${pName} | Médico: ${sanitizeForPrompt(a.doctorName) || 'Não designado'} | Tipo: ${a.type} | Status: ${a.status}\n`
       }
     }
     contexts.push(dateCtx)
@@ -406,7 +460,6 @@ async function executeDatabaseQueries(params: DBQueryParams): Promise<string> {
         startAt: appointments.startAt,
         status: appointments.status,
         type: appointments.type,
-        notes: appointments.notes,
         title: appointments.title,
         patientName: patients.name,
         doctorName: users.name
@@ -433,21 +486,37 @@ async function executeDatabaseQueries(params: DBQueryParams): Promise<string> {
     contexts.push(genCtx)
   }
 
-  return contexts.join('\n\n')
+  return { contexto: contexts.join('\n\n'), dadosIndividuais }
 }
 
 // ── Dispatch ─────────────────────────────────────────────────
 
-// Full flow of a group message. Returns the reply text, or null when the message
+export interface RespostaBot {
+  /** Texto publicado no grupo. */
+  grupo: string
+  /**
+   * Resposta com dado individual de paciente: vai só para o privado de quem
+   * perguntou. No grupo ela chegaria a todos os participantes, inclusive os
+   * que não têm permissão nenhuma no sistema.
+   */
+  privado?: { jid: string; texto: string }
+}
+
+// Full flow of a group message. Returns the reply, or null when the message
 // isn't addressed to the bot (normal chatter) — the webhook then stays silent.
-export async function dispatchGroupMessage(text: string): Promise<string | null> {
+// `senderJid` identifica o autor (ver whatsappRemetente.ts); sem ele, o bot só
+// responde agenda e números agregados.
+export async function dispatchGroupMessage(
+  text: string,
+  senderJid: string | null = null,
+): Promise<RespostaBot | null> {
   const t = (text || '').trim()
   if (!t) return null
 
   // 1) Explicit request for the clinic report.
   if (isReportRequest(t)) {
     const r = await buildClinicReport({ refine: true })
-    return r.whatsappText
+    return { grupo: r.whatsappText }
   }
 
   // 2) A question directed to the assistant (ends with '?' or uses a trigger word).
@@ -456,7 +525,9 @@ export async function dispatchGroupMessage(text: string): Promise<string | null>
 
   const report = await buildClinicReport() // deterministic numbers as context
   const params = await extractQueryParams(t)
-  const dbContent = await executeDatabaseQueries(params)
+  // O remetente só é resolvido (consulta a users) quando há paciente em jogo.
+  const remetente = params.searchPatientName ? await identificarRemetente(senderJid) : null
+  const { contexto: dbContent, dadosIndividuais } = await executeDatabaseQueries(params, remetente)
 
   // Marcador único por requisição: o conteúdo do banco não tem como forjá-lo,
   // diferente dos delimitadores fixos `=== Seção ===` que usávamos antes.
@@ -489,10 +560,18 @@ export async function dispatchGroupMessage(text: string): Promise<string | null>
     { timeoutMs: 15000 },
   )
 
-  if (answer && answer.trim()) return `📊 ${answer.trim()}`
+  // No AI engine configured → fall back to the full deterministic report
+  // (só números agregados, pode ir para o grupo).
+  if (!answer || !answer.trim()) return { grupo: report.whatsappText }
 
-  // No AI engine configured → fall back to the full deterministic report.
-  return report.whatsappText
+  const texto = `📊 ${answer.trim()}`
+  if (dadosIndividuais && remetente) {
+    return {
+      grupo: `🩺 ${remetente.nome.trim()}, respondi no seu privado: a resposta tem dados de paciente.`,
+      privado: { jid: remetente.jid, texto },
+    }
+  }
+  return { grupo: texto }
 }
 
 // Send a text message to the group and mark our own message id as seen, so the

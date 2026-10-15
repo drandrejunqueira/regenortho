@@ -45,10 +45,17 @@ async function handle(body: any, token: string): Promise<void> {
     return
   }
 
-  const reply = await dispatchGroupMessage(text)
+  // O autor da mensagem decide o que o bot pode responder: estar no grupo não
+  // dá acesso a dado de paciente (ver src/lib/whatsappRemetente.ts).
+  const reply = await dispatchGroupMessage(text, msg.senderJid)
   if (reply) {
     const prefix = fromAudio ? `🎙️ Entendi: "${text}"\n\n` : ''
-    await sendGroupMessage(msg.groupJid, prefix + reply)
+    if (reply.privado) {
+      await sendGroupMessage(reply.privado.jid, prefix + reply.privado.texto)
+      await sendGroupMessage(msg.groupJid, reply.grupo)
+    } else {
+      await sendGroupMessage(msg.groupJid, prefix + reply.grupo)
+    }
   }
 }
 
