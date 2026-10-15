@@ -64,7 +64,16 @@ const ESTRANHO_JID = '5511900000000@s.whatsapp.net'
 
 let tabelasConsultadas: unknown[] = []
 
-function mockBanco(usuarios = [
+interface UsuarioMock {
+  id: string
+  name: string
+  role: string
+  customPermissions: string[] | null
+  phone: string | null
+  dailyAgendaWhatsapp: string | null
+}
+
+function mockBanco(usuarios: UsuarioMock[] = [
   { id: 'u-medico', name: 'Dra. Ana Souza', role: 'doctor', customPermissions: null, phone: '(12) 98888-1111', dailyAgendaWhatsapp: null },
   { id: 'u-recepcao', name: 'Bia Recepção', role: 'receptionist', customPermissions: null, phone: null, dailyAgendaWhatsapp: '12977772222' },
 ]) {
