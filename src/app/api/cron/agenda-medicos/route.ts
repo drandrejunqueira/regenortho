@@ -1,7 +1,9 @@
 // Resumo diário da agenda por médico — rota PÚBLICA, protegida por CRON_SECRET.
-// Roda de hora em hora (vercel.json) e envia para quem configurou aquele horário
-// no perfil. A deduplicação por dia-calendário BR (daily_agenda_last_sent) garante
-// um envio por médico por dia mesmo se o cron disparar duas vezes.
+// Disparada a cada 15 min pelo GitHub Actions (.github/workflows/crons.yml) e uma
+// vez por dia pela Vercel (vercel.json) como rede de segurança; envia para quem
+// já passou do horário configurado no perfil. A deduplicação por dia-calendário
+// BR (daily_agenda_last_sent) garante um envio por médico por dia mesmo com os
+// dois disparos.
 import { NextRequest, NextResponse } from 'next/server'
 import { db } from '@/lib/db'
 import { users } from '@/lib/db/schema'

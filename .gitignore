@@ -62,5 +62,9 @@ graphify-out/
 /tests/visual/gallery/manifest.json
 /.codex/out/
 
+# documentos internos da equipe (auditoria de segurança, credenciais, kanban):
+# o repositório é público — ficam só na máquina até ele virar privado
+/docs/equipe/
+
 # sessão salva do Playwright (contém cookie de sessão)
 /playwright/.auth/

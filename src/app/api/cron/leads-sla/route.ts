@@ -1,7 +1,8 @@
 // Alerta de SLA de leads — rota PÚBLICA, protegida por CRON_SECRET.
-// Roda a cada 15 min (vercel.json). Lead que continua "new" há mais de 15 min
-// gera um aviso no WhatsApp da recepção (notify_new_lead_number) e recebe a tag
-// "sla-15min" — a tag é a trava de duplicidade e fica visível no Kanban, então a
+// Roda a cada 15 min pelo GitHub Actions (.github/workflows/crons.yml) — o plano
+// Hobby da Vercel não aceita cron mais frequente que diário. Lead que continua
+// "new" há mais de 15 min gera um aviso no WhatsApp da recepção
+// (notify_new_lead_number) e recebe a tag "sla-15min" — a tag é a trava de duplicidade e fica visível no Kanban, então a
 // equipe enxerga na hora quais leads furaram o SLA. Só alerta em horário
 // comercial: um lead que entra de madrugada é cobrado às 8h, não às 3h.
 import { NextRequest, NextResponse } from 'next/server'

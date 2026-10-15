@@ -27,6 +27,7 @@ de correções de permissão que fechava vazamentos de dado financeiro e clínic
 - Conexão Google (`/api/admin/google/connect` e `callback`): exige a mesma permissão de configuração do sistema; estar logado não bastava para sobrescrever o token da clínica.
 
 ### Corrigido
+- **Deploy travado desde a 1.4.0**: os crons de hora em hora (`agenda-medicos`) e de 15 minutos (`leads-sla`) no `vercel.json` não são aceitos no plano Hobby, e a Vercel recusava todo deploy — a produção ficou na 1.2.2. O `vercel.json` agora só tem crons diários; os frequentes rodam pelo GitHub Actions (`.github/workflows/crons.yml`, secrets `APP_URL` e `CRON_SECRET`).
 - **Lint voltou a rodar**: a config do ESLint era incompatível com o `eslint-config-next` 14 sob ESLint 9 e quebrava antes de checar qualquer arquivo. Os 148 erros que estavam escondidos foram corrigidos e o `next build` volta a barrar erro de lint.
 - **Glossário público**: a listagem trafega só o resumo de cada verbete, não o artigo inteiro.
 - **Acessibilidade**: campos do `/site/agendar` com label associado e nome acessível no botão de perfil do menu lateral.
