@@ -1,7 +1,6 @@
 'use client'
 
-import { useState, useEffect, Suspense } from 'react'
-import { useSearchParams } from 'next/navigation'
+import { useState, useEffect, useRef, Suspense } from 'react'
 import { AuroraBackground } from '@/components/ui/aurora-background'
 import { toast } from 'sonner'
 
@@ -46,12 +45,17 @@ const TABS = [
   { id: 'pagamentos', label: 'Pagamentos',  icon: 'payments' },
 ]
 
-function PortalContent() {
-  const params = useSearchParams()
-  const urlToken = params.get('token')
+interface PortalData {
+  patient: Patient
+  appointments: Appointment[]
+  treatments: Treatment[]
+  exams: ExamOrder[]
+  transactions: Transaction[]
+}
 
-  const [currentToken, setCurrentToken] = useState<string | null>(null)
+function PortalContent() {
   const [inputCode, setInputCode] = useState('')
+  const [inputBirthDate, setInputBirthDate] = useState('')
   const [loginError, setLoginError] = useState<string | null>(null)
   const [loginLoading, setLoginLoading] = useState(false)
 
@@ -63,49 +67,56 @@ function PortalContent() {
   const [exams, setExams] = useState<ExamOrder[]>([])
   const [transactions, setTransactions] = useState<Transaction[]>([])
   const [activeTab, setActiveTab] = useState('agenda')
+  const iniciado = useRef(false)
 
-  // Resolve o token inicial
+  function aplicarDados(data: PortalData) {
+    setPatient(data.patient)
+    setAppointments(data.appointments)
+    setTreatments(data.treatments)
+    setExams(data.exams)
+    setTransactions(data.transactions)
+  }
+
+  // A sessão é um cookie HttpOnly emitido por /api/portal/me: a página nunca
+  // guarda nem reenvia o token.
   useEffect(() => {
+    if (iniciado.current) return
+    iniciado.current = true
+
+    // Resquício da versão antiga, que mantinha o token de 7 dias aqui.
+    try { localStorage.removeItem('portal_token') } catch {}
+
+    const urlToken = new URLSearchParams(window.location.search).get('token')
     if (urlToken) {
-      setCurrentToken(urlToken)
-      localStorage.setItem('portal_token', urlToken)
-    } else {
-      const stored = localStorage.getItem('portal_token')
-      if (stored) {
-        setCurrentToken(stored)
-      }
-    }
-  }, [urlToken])
-
-  // Busca dados do paciente quando o token muda
-  useEffect(() => {
-    if (!currentToken) {
-      setLoading(false)
+      // O link do WhatsApp é só a porta de entrada: o token sai da barra de
+      // endereço antes de qualquer outra coisa (histórico, print, compartilhar).
+      window.history.replaceState({}, '', '/portal')
+      fetch('/api/portal/me', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ token: urlToken }),
+      })
+        .then(async r => {
+          const json = await r.json()
+          if (!r.ok) throw new Error(json.error || 'Acesso inválido ou expirado')
+          aplicarDados(json.data)
+        })
+        .catch(e => setError(e instanceof Error ? e.message : 'Acesso inválido ou expirado'))
+        .finally(() => setLoading(false))
       return
     }
-    setLoading(true)
-    fetch(`/api/portal/me?token=${currentToken}`)
-      .then(r => r.json())
-      .then(({ data, error: err }) => {
-        if (err) throw new Error(err)
-        setPatient(data.patient)
-        setAppointments(data.appointments)
-        setTreatments(data.treatments)
-        setExams(data.exams)
-        setTransactions(data.transactions)
-        
-        // Sincroniza a URL com o token atual
-        if (typeof window !== 'undefined' && !window.location.search.includes('token=')) {
-          window.history.replaceState({}, '', `/portal?token=${currentToken}`)
-        }
+
+    // Sem link: retoma a sessão se o cookie ainda vale; 401 só mostra o login.
+    fetch('/api/portal/me')
+      .then(async r => {
+        if (r.status === 401) return
+        const json = await r.json()
+        if (!r.ok) throw new Error(json.error || 'Erro ao carregar seus dados')
+        aplicarDados(json.data)
       })
-      .catch(e => {
-        setError(e.message)
-        localStorage.removeItem('portal_token')
-        setCurrentToken(null)
-      })
+      .catch(e => setError(e instanceof Error ? e.message : 'Erro ao carregar seus dados'))
       .finally(() => setLoading(false))
-  }, [currentToken])
+  }, [])
 
   async function handleCodeLogin(e: React.FormEvent) {
     e.preventDefault()
@@ -113,97 +124,37 @@ function PortalContent() {
       setLoginError('Digite o código de 6 dígitos')
       return
     }
+    if (!inputBirthDate) {
+      setLoginError('Informe sua data de nascimento')
+      return
+    }
     setLoginLoading(true)
     setLoginError(null)
     try {
-      const res = await fetch(`/api/portal/me?code=${inputCode.trim()}`)
+      const res = await fetch('/api/portal/me', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ code: inputCode.trim(), birthDate: inputBirthDate }),
+      })
       const resJson = await res.json()
       if (!res.ok) throw new Error(resJson.error || 'Erro ao validar código')
-      
-      const { data } = resJson
-      setPatient(data.patient)
-      setAppointments(data.appointments)
-      setTreatments(data.treatments)
-      setExams(data.exams)
-      setTransactions(data.transactions)
-      
-      setCurrentToken(data.token)
-      localStorage.setItem('portal_token', data.token)
-      
-      if (typeof window !== 'undefined') {
-        window.history.replaceState({}, '', `/portal?token=${data.token}`)
-      }
+
+      aplicarDados(resJson.data)
       toast.success('Acesso autorizado!')
     } catch (err) {
-      setLoginError((err instanceof Error ? err.message : '') || 'Código inválido ou expirado')
+      setLoginError((err instanceof Error ? err.message : '') || 'Código ou data de nascimento inválidos')
     } finally {
       setLoginLoading(false)
     }
   }
 
-  if (!currentToken) return (
-    <AuroraBackground className="!h-screen">
-      <div className="relative z-10 text-center py-12 px-4 max-w-md w-full">
-        <div className="w-20 h-20 rounded-3xl bg-white/10 backdrop-blur-xl border border-white/20 flex items-center justify-center mx-auto mb-6 shadow-2xl">
-          <span className="material-symbols-outlined text-[#61d8dd]" style={{ fontSize: '40px' }}>person_pin</span>
-        </div>
-        <h1 className="text-3xl font-bold text-white mb-2 tracking-tight">Área do Paciente</h1>
-        <p className="text-white/70 text-xs mb-8 max-w-xs mx-auto leading-relaxed">
-          Digite o código de 6 dígitos recebido ou use o link de acesso direto para visualizar seus tratamentos e históricos.
-        </p>
-        
-        <div className="bg-black/40 backdrop-blur-2xl rounded-3xl p-6 shadow-2xl border border-white/10 space-y-5 text-left">
-          <form onSubmit={handleCodeLogin} className="space-y-4">
-            <div className="space-y-2">
-              <label className="text-[10px] font-bold text-white/40 uppercase tracking-[0.2em] block">Código de Acesso</label>
-              <input
-                type="text"
-                maxLength={6}
-                value={inputCode}
-                onChange={e => setInputCode(e.target.value.replace(/\D/g, ''))}
-                placeholder="000000"
-                className="w-full text-center text-3xl font-bold bg-white/5 border border-white/10 rounded-2xl py-3.5 text-[#61d8dd] placeholder:text-white/20 focus:outline-none focus:ring-2 focus:ring-[#61d8dd]/40 focus:border-[#61d8dd]/30 tracking-[0.3em] font-technical"
-              />
-            </div>
-
-            {loginError && (
-              <p className="text-xs text-rose-400 font-medium text-center">{loginError}</p>
-            )}
-
-            <button
-              type="submit"
-              disabled={loginLoading || inputCode.length !== 6}
-              className="w-full py-3.5 rounded-2xl bg-gradient-to-br from-[#006e72] to-[#61d8dd] text-[#003739] text-xs font-extrabold hover:opacity-95 transition-opacity flex items-center justify-center gap-1.5 shadow-lg border-0 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-              {loginLoading ? (
-                <div className="w-4 h-4 rounded-full border-2 border-[#003739] border-t-transparent animate-spin" />
-              ) : (
-                <>
-                  <span className="material-symbols-outlined" style={{ fontSize: '16px' }}>login</span>
-                  Acessar Minha Área
-                </>
-              )}
-            </button>
-          </form>
-
-          <div className="border-t border-white/10 pt-4 text-center">
-            <p className="text-[10px] text-white/40 uppercase tracking-wider font-bold mb-3">Não possui um código?</p>
-            <a href="https://wa.me/5512981767896" className="flex items-center justify-center gap-2 p-3 bg-white/5 rounded-2xl hover:bg-white/10 transition-all border border-white/5 group text-xs text-white font-bold decoration-transparent">
-              <span className="material-symbols-outlined text-[#25d366]" style={{ fontSize: '18px' }}>chat</span>
-              Solicitar Código via WhatsApp
-            </a>
-          </div>
-        </div>
-
-        <div className="mt-8 flex flex-col items-center gap-4">
-          <a href="/site" className="inline-flex items-center gap-2 text-[10px] font-bold text-white/40 hover:text-white uppercase tracking-widest transition-colors decoration-transparent">
-            <span className="material-symbols-outlined" style={{ fontSize: '14px' }}>arrow_back</span>
-            Voltar ao site institucional
-          </a>
-        </div>
-      </div>
-    </AuroraBackground>
-  )
+  async function sair() {
+    await fetch('/api/portal/me', { method: 'DELETE' }).catch(() => {})
+    setPatient(null)
+    setError(null)
+    setInputCode('')
+    setInputBirthDate('')
+  }
 
   const renderLayout = (content: React.ReactNode) => (
     <>
@@ -240,6 +191,86 @@ function PortalContent() {
     </div>
   )
 
+  if (!patient && !error) return (
+    <AuroraBackground className="!h-screen">
+      <div className="relative z-10 text-center py-12 px-4 max-w-md w-full">
+        <div className="w-20 h-20 rounded-3xl bg-white/10 backdrop-blur-xl border border-white/20 flex items-center justify-center mx-auto mb-6 shadow-2xl">
+          <span className="material-symbols-outlined text-[#61d8dd]" style={{ fontSize: '40px' }}>person_pin</span>
+        </div>
+        <h1 className="text-3xl font-bold text-white mb-2 tracking-tight">Área do Paciente</h1>
+        <p className="text-white/70 text-xs mb-8 max-w-xs mx-auto leading-relaxed">
+          Digite o código de 6 dígitos recebido e sua data de nascimento, ou use o link de acesso direto para visualizar seus tratamentos e históricos.
+        </p>
+        
+        <div className="bg-black/40 backdrop-blur-2xl rounded-3xl p-6 shadow-2xl border border-white/10 space-y-5 text-left">
+          <form onSubmit={handleCodeLogin} className="space-y-4">
+            <div className="space-y-2">
+              <label htmlFor="portal-codigo" className="text-[10px] font-bold text-white/40 uppercase tracking-[0.2em] block">Código de Acesso</label>
+              <input
+                id="portal-codigo"
+                type="text"
+                inputMode="numeric"
+                autoComplete="one-time-code"
+                maxLength={6}
+                value={inputCode}
+                onChange={e => setInputCode(e.target.value.replace(/\D/g, ''))}
+                placeholder="000000"
+                className="w-full text-center text-3xl font-bold bg-white/5 border border-white/10 rounded-2xl py-3.5 text-[#61d8dd] placeholder:text-white/20 focus:outline-none focus:ring-2 focus:ring-[#61d8dd]/40 focus:border-[#61d8dd]/30 tracking-[0.3em] font-technical"
+              />
+            </div>
+
+            {/* Segundo fator: o código sozinho tem só 900 mil combinações. */}
+            <div className="space-y-2">
+              <label htmlFor="portal-nascimento" className="text-[10px] font-bold text-white/40 uppercase tracking-[0.2em] block">Data de Nascimento</label>
+              <input
+                id="portal-nascimento"
+                type="date"
+                autoComplete="bday"
+                value={inputBirthDate}
+                onChange={e => setInputBirthDate(e.target.value)}
+                className="w-full text-center text-base font-bold bg-white/5 border border-white/10 rounded-2xl py-3 text-[#dfe2eb] focus:outline-none focus:ring-2 focus:ring-[#61d8dd]/40 focus:border-[#61d8dd]/30 [color-scheme:dark]"
+              />
+            </div>
+
+            {loginError && (
+              <p className="text-xs text-rose-400 font-medium text-center">{loginError}</p>
+            )}
+
+            <button
+              type="submit"
+              disabled={loginLoading || inputCode.length !== 6 || !inputBirthDate}
+              className="w-full py-3.5 rounded-2xl bg-gradient-to-br from-[#006e72] to-[#61d8dd] text-[#003739] text-xs font-extrabold hover:opacity-95 transition-opacity flex items-center justify-center gap-1.5 shadow-lg border-0 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              {loginLoading ? (
+                <div className="w-4 h-4 rounded-full border-2 border-[#003739] border-t-transparent animate-spin" />
+              ) : (
+                <>
+                  <span className="material-symbols-outlined" style={{ fontSize: '16px' }}>login</span>
+                  Acessar Minha Área
+                </>
+              )}
+            </button>
+          </form>
+
+          <div className="border-t border-white/10 pt-4 text-center">
+            <p className="text-[10px] text-white/40 uppercase tracking-wider font-bold mb-3">Não possui um código?</p>
+            <a href="https://wa.me/5512981767896" className="flex items-center justify-center gap-2 p-3 bg-white/5 rounded-2xl hover:bg-white/10 transition-all border border-white/5 group text-xs text-white font-bold decoration-transparent">
+              <span className="material-symbols-outlined text-[#25d366]" style={{ fontSize: '18px' }}>chat</span>
+              Solicitar Código via WhatsApp
+            </a>
+          </div>
+        </div>
+
+        <div className="mt-8 flex flex-col items-center gap-4">
+          <a href="/site" className="inline-flex items-center gap-2 text-[10px] font-bold text-white/40 hover:text-white uppercase tracking-widest transition-colors decoration-transparent">
+            <span className="material-symbols-outlined" style={{ fontSize: '14px' }}>arrow_back</span>
+            Voltar ao site institucional
+          </a>
+        </div>
+      </div>
+    </AuroraBackground>
+  )
+
   if (error || !patient) return renderLayout(
     <div className="text-center py-16">
       <span className="material-symbols-outlined text-[#ffb4ab]" style={{ fontSize: '48px' }}>error</span>
@@ -247,7 +278,7 @@ function PortalContent() {
       <p className="text-sm text-[#bec9c9] mt-2">{error ?? 'Token não encontrado'}</p>
       <p className="text-xs text-[#bec9c9]/60 mt-4">Solicite um novo link de acesso na clínica.</p>
       <div className="flex flex-col items-center gap-3 mt-6">
-        <button onClick={() => { localStorage.removeItem('portal_token'); setCurrentToken(null); setError(null); }} className="px-4 py-2 rounded-xl text-xs font-bold bg-white/5 text-[#bec9c9] hover:text-white border-0 cursor-pointer">
+        <button onClick={() => setError(null)} className="px-4 py-2 rounded-xl text-xs font-bold bg-white/5 text-[#bec9c9] hover:text-white border-0 cursor-pointer">
           Digitar outro código
         </button>
         <a href="/site" className="inline-flex items-center gap-2 text-sm text-[#bec9c9] hover:text-[#dfe2eb] no-underline">
@@ -274,14 +305,7 @@ function PortalContent() {
             <p className="text-sm text-[#bec9c9] truncate">{patient.phone}{patient.email ? ` · ${patient.email}` : ''}</p>
           </div>
           <button
-            onClick={() => {
-              localStorage.removeItem('portal_token')
-              setCurrentToken(null)
-              setPatient(null)
-              if (typeof window !== 'undefined') {
-                window.history.replaceState({}, '', '/portal')
-              }
-            }}
+            onClick={sair}
             className="text-xs text-[#bec9c9] hover:text-white flex items-center gap-1 bg-white/5 hover:bg-white/10 border border-white/10 px-2.5 py-1.5 rounded-lg transition-colors border-0 shrink-0 cursor-pointer"
           >
             <span className="material-symbols-outlined" style={{ fontSize: '14px' }}>logout</span>

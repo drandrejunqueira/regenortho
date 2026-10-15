@@ -492,7 +492,7 @@ function NovoTratamentoDialog({ open, onOpenChange, patientId, doctors, onCreate
 }
 
 // ── Portal Tab ───────────────────────────────────────────
-function PortalTab({ patientId }: { patientId: string }) {
+function PortalTab({ patientId, hasBirthDate }: { patientId: string; hasBirthDate: boolean }) {
   const [token, setToken] = useState<string | null>(null)
   const [code, setCode] = useState<string | null>(null)
   const [expiresAt, setExpiresAt] = useState<string | null>(null)
@@ -568,7 +568,16 @@ function PortalTab({ patientId }: { patientId: string }) {
                   </button>
                 </div>
               )}
-              
+
+              {/* O código só entra junto com a data de nascimento (segundo fator). */}
+              {code && (
+                <p className={`text-[11px] ${hasBirthDate ? 'text-[#718096]' : 'text-[#b45309] font-medium'}`}>
+                  {hasBirthDate
+                    ? 'Ao entrar pelo código, o paciente informa também a data de nascimento.'
+                    : 'Paciente sem data de nascimento cadastrada: o código não funciona. Cadastre a data ou envie o link.'}
+                </p>
+              )}
+
               <p className="text-[11px] text-[#718096]/60 mt-1">Válido até: {expiresAt ? fDateTime(expiresAt) : '—'}</p>
             </div>
             <div className="flex gap-2">
@@ -1192,7 +1201,7 @@ export default function PacienteDetailPage({ params }: { params: { id: string } 
         )}
 
         {/* ── Portal ── */}
-        {activeTab === 'portal' && <PortalTab patientId={patient.id} />}
+        {activeTab === 'portal' && <PortalTab patientId={patient.id} hasBirthDate={!!patient.birthDate} />}
       </div>
 
       {/* Dialogs */}
