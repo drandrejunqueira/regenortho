@@ -4,12 +4,13 @@ import { leads } from '@/lib/db/schema'
 import { hasPermission } from '@/lib/permissions'
 import { logActivity } from '@/lib/db/logger'
 import { NextRequest, NextResponse } from 'next/server'
-import { and, gte, lte, eq, ilike, or, desc, sql, isNull } from 'drizzle-orm'
+import { and, gte, lte, eq, ilike, or, desc, sql, isNull, inArray } from 'drizzle-orm'
 import { z } from 'zod'
 import type { UserRole } from '@/types'
 import { notify } from '@/lib/notifications'
 import { LEAD_SOURCE_LABELS } from '@/lib/constants'
 import { parseLeadPeriod, resolveLeadPeriodRange } from '@/lib/leadPeriod'
+import { isLeadChannel, LEAD_CHANNEL_SOURCES } from '@/lib/leadChannels'
 import { TAG_NAME_RE } from '@/lib/promptSafety'
 
 /**
@@ -82,6 +83,12 @@ export async function GET(req: NextRequest) {
   const source = searchParams.get('source')
   if (source && (LEAD_SOURCES as readonly string[]).includes(source)) {
     conditions.push(eq(leads.source, source as (typeof LEAD_SOURCES)[number]))
+  }
+  // Canal agrupa origens (Google = Ads + orgânico). Combina com `source` em E:
+  // origem fora do canal devolve vazio em vez de ignorar um dos dois filtros.
+  const channel = searchParams.get('channel')
+  if (isLeadChannel(channel)) {
+    conditions.push(inArray(leads.source, [...LEAD_CHANNEL_SOURCES[channel]]))
   }
 
   // Múltiplas tags com semântica E: o lead precisa ter todas as selecionadas.

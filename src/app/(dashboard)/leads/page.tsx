@@ -1,6 +1,7 @@
 'use client'
 
-import { useState, useEffect, useCallback, useRef } from 'react'
+import { useState, useEffect, useCallback } from 'react'
+import Link from 'next/link'
 import { PageHeader } from '@/components/shared/PageHeader'
 import { KanbanBoard } from '@/components/leads/KanbanBoard'
 import { NewLeadDialog } from '@/components/leads/NewLeadDialog'
@@ -13,17 +14,29 @@ import {
   type TagOption,
 } from '@/components/leads/LeadFilters'
 import type { Lead } from '@/types'
+import type { LeadPeriod } from '@/lib/leadPeriod'
+import { LEAD_CHANNEL_LABELS } from '@/lib/leadChannels'
 import { toast } from 'sonner'
 
 // Digitar dispara uma busca por tecla sem isto. O filtro roda no servidor agora,
 // então cada tecla seria uma consulta ao banco.
 const SEARCH_DEBOUNCE_MS = 350
 
+const PERIOD_PHRASE: Record<LeadPeriod, string> = {
+  today: 'hoje',
+  '7d': 'nos últimos 7 dias',
+  '15d': 'nos últimos 15 dias',
+  '30d': 'nos últimos 30 dias',
+  custom: 'no período escolhido',
+  all: 'no total',
+}
+
 function buildQuery(f: LeadFilterState): string {
   const params = new URLSearchParams()
   if (f.search.trim()) params.set('search', f.search.trim())
   // Repetido, não separado por vírgula: nome de tag pode conter vírgula.
   f.tags.forEach((t) => params.append('tag', t))
+  if (f.channel) params.set('channel', f.channel)
   if (f.source) params.set('source', f.source)
   if (f.assignedTo) params.set('assignedTo', f.assignedTo)
   // Sempre explícito: sem `period` a rota cai no contrato antigo e carrega o
@@ -34,6 +47,27 @@ function buildQuery(f: LeadFilterState): string {
     if (f.to) params.set('to', f.to)
   }
   return params.toString()
+}
+
+/** Abre o relatório no mesmo recorte de tempo e canal que está na tela. */
+function reportHref(f: LeadFilterState): string {
+  const params = new URLSearchParams()
+  // O relatório não tem "Tudo": a comparação com o período anterior e a série
+  // diária precisam de uma janela fechada.
+  params.set('period', f.period === 'all' ? '30d' : f.period)
+  if (f.period === 'custom') {
+    if (f.from) params.set('from', f.from)
+    if (f.to) params.set('to', f.to)
+  }
+  if (f.channel) params.set('channel', f.channel)
+  return `/leads/relatorio?${params.toString()}`
+}
+
+function describeCount(count: number, truncated: boolean, f: LeadFilterState): string {
+  const n = truncated ? `${count}+` : String(count)
+  const noun = count === 1 && !truncated ? 'lead' : 'leads'
+  const channel = f.channel ? ` · ${LEAD_CHANNEL_LABELS[f.channel]}` : ''
+  return `${n} ${noun} ${PERIOD_PHRASE[f.period]}${channel}`
 }
 
 export default function LeadsPage() {
@@ -100,15 +134,26 @@ export default function LeadsPage() {
     <div className="h-full flex flex-col">
       <PageHeader
         title="CRM de Leads"
-        description="Gerencie o funil de leads da clínica"
+        description={
+          loading ? 'Gerencie o funil de leads da clínica' : describeCount(leads.length, truncated, filters)
+        }
         action={
-          <button
-            onClick={() => setNewDialogOpen(true)}
-            className="flex items-center gap-2 px-4 py-2 rounded-full bg-[#021541] text-white text-sm font-bold hover:bg-[#032170] transition-colors cursor-pointer"
-          >
-            <span className="material-symbols-outlined" style={{ fontSize: '18px' }}>add</span>
-            Novo Lead
-          </button>
+          <div className="flex items-center gap-2">
+            <Link
+              href={reportHref(filters)}
+              className="flex items-center gap-2 px-4 py-2 rounded-full border border-[rgba(2,21,65,0.15)] bg-white text-[#021541] text-sm font-bold hover:bg-[#021541]/[0.04] transition-colors"
+            >
+              <span className="material-symbols-outlined" style={{ fontSize: '18px' }}>bar_chart</span>
+              Relatório
+            </Link>
+            <button
+              onClick={() => setNewDialogOpen(true)}
+              className="flex items-center gap-2 px-4 py-2 rounded-full bg-[#021541] text-white text-sm font-bold hover:bg-[#032170] transition-colors cursor-pointer"
+            >
+              <span className="material-symbols-outlined" style={{ fontSize: '18px' }}>add</span>
+              Novo Lead
+            </button>
+          </div>
         }
       />
 

@@ -810,3 +810,33 @@ body {
     opacity: 1;
   }
 }
+
+/* ── Relatório de leads (PDF) ─────────────────────────────────────────────
+   Página nomeada para não mexer na impressão das outras telas. A folha já tem
+   210mm de largura com 12mm de respiro lateral, então a página só define as
+   margens de cima e de baixo — que se repetem a cada folha nova. */
+@page lead-report {
+  size: A4;
+  margin: 12mm 0;
+}
+@media print {
+  /* A página nomeada vai no body inteiro, não só na folha: trocar de página
+     nomeada entre irmãos força quebra, e o que vem depois da folha (toaster,
+     portais) abria uma última página em branco. O body é escuro no app —
+     sem o branco, o fim da última folha saía azul-marinho. */
+  html:has(.report-paper),
+  html:has(.report-paper) body {
+    background: #fff !important;
+    /* O <html> tem a classe `dark`: no esquema escuro o navegador pinta a
+       margem da página de preto, por fora do fundo do documento. */
+    color-scheme: light !important;
+  }
+  html:has(.report-paper) body {
+    page: lead-report;
+  }
+  .report-paper {
+    /* Sem isto o navegador descarta fundos e as barras saem em branco. */
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+}

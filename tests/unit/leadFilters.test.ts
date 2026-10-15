@@ -50,6 +50,10 @@ describe('countActiveFilters', () => {
     expect(countActiveFilters(withFilters({ period: 'custom', from: '2026-08-01' }))).toBe(1)
   })
 
+  it('canal conta como um filtro', () => {
+    expect(countActiveFilters(withFilters({ channel: 'google' }))).toBe(1)
+  })
+
   it('soma filtros de tipos diferentes', () => {
     const f = withFilters({
       search: 'maria',

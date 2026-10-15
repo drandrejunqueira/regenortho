@@ -16,6 +16,7 @@ vi.mock('drizzle-orm', async (importOriginal) => {
     gte: vi.fn(actual.gte),
     lte: vi.fn(actual.lte),
     isNull: vi.fn(actual.isNull),
+    inArray: vi.fn(actual.inArray),
     // `sql` é template tag e carrega utilitários (`sql.raw`, `sql.join`) que o
     // Drizzle usa internamente — o Object.assign preserva todos eles.
     sql: Object.assign(
@@ -27,7 +28,7 @@ vi.mock('drizzle-orm', async (importOriginal) => {
 
 import { auth } from '@/lib/auth/config'
 import { db } from '@/lib/db'
-import { eq, gte, isNull, lte, sql } from 'drizzle-orm'
+import { eq, gte, inArray, isNull, lte, sql } from 'drizzle-orm'
 import { GET } from '@/app/api/leads/route'
 
 const call = (qs: string) => GET(new NextRequest(`http://localhost/api/leads?${qs}`))
@@ -77,6 +78,28 @@ describe('GET /api/leads — filtros', () => {
   it('origem fora do enum é ignorada', async () => {
     await call('source=tiktok_ads')
     expect(eq).not.toHaveBeenCalled()
+  })
+
+  it('canal Google filtra pelas origens Google Ads e Google orgânico', async () => {
+    await call('channel=google')
+    expect(inArray).toHaveBeenCalledTimes(1)
+    expect((inArray as unknown as Mock).mock.calls[0][1]).toEqual(['google_ads', 'google_organic'])
+  })
+
+  it('canal Instagram inclui anúncios Meta e Facebook', async () => {
+    await call('channel=instagram')
+    expect((inArray as unknown as Mock).mock.calls[0][1]).toEqual([
+      'meta_ads',
+      'instagram_organic',
+      'facebook_organic',
+    ])
+  })
+
+  it('canal desconhecido é ignorado', async () => {
+    await call('channel=tiktok')
+    expect(inArray).not.toHaveBeenCalled()
+    const arg = (db.query.leads.findMany as unknown as Mock).mock.calls[0][0]
+    expect(arg.where).toBeUndefined()
   })
 
   it('status válido vira condição', async () => {

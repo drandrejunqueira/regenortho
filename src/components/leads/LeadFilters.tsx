@@ -12,6 +12,14 @@ import {
   LEAD_PERIOD_LABELS,
   type LeadPeriod,
 } from '@/lib/leadPeriod'
+import {
+  LEAD_CHANNELS,
+  LEAD_CHANNEL_COLORS,
+  LEAD_CHANNEL_HINTS,
+  LEAD_CHANNEL_LABELS,
+  LEAD_CHANNEL_SOURCES,
+  type LeadChannel,
+} from '@/lib/leadChannels'
 
 export interface TagOption {
   id: string
@@ -28,6 +36,7 @@ export interface PersonOption {
 export interface LeadFilterState {
   search: string
   tags: string[]
+  channel: LeadChannel | ''
   source: string
   assignedTo: string
   period: LeadPeriod
@@ -38,6 +47,7 @@ export interface LeadFilterState {
 export const EMPTY_FILTERS: LeadFilterState = {
   search: '',
   tags: [],
+  channel: '',
   source: '',
   assignedTo: '',
   period: DEFAULT_LEAD_PERIOD,
@@ -59,6 +69,7 @@ export function countActiveFilters(f: LeadFilterState): number {
     // isso o botão "Limpar (1)" apareceria sem haver filtro aplicado.
     (f.search.trim() ? 1 : 0) +
     f.tags.length +
+    (f.channel ? 1 : 0) +
     (f.source ? 1 : 0) +
     (f.assignedTo ? 1 : 0) +
     periodo
@@ -106,6 +117,14 @@ export function LeadFilters({ value, onChange, tags, people }: LeadFiltersProps)
     )
   }
 
+  // A origem detalhada precisa caber no canal: trocar de canal com uma origem de
+  // outro canal ainda marcada devolveria um quadro vazio sem motivo aparente.
+  function selectChannel(channel: LeadChannel | '') {
+    const keepSource =
+      !channel || (LEAD_CHANNEL_SOURCES[channel] as readonly string[]).includes(value.source)
+    onChange({ ...value, channel, source: keepSource ? value.source : '' })
+  }
+
   function toggleTag(name: string) {
     const next = value.tags.includes(name)
       ? value.tags.filter((t) => t !== name)
@@ -117,6 +136,9 @@ export function LeadFilters({ value, onChange, tags, people }: LeadFiltersProps)
   // Tag desativada no registro some do seletor, mas continua listada enquanto
   // estiver selecionada — senão o usuário não consegue tirar o próprio filtro.
   const visibleTags = tags.filter((t) => t.isActive || value.tags.includes(t.name))
+  const sourceOptions = Object.entries(LEAD_SOURCE_LABELS).filter(
+    ([id]) => !value.channel || (LEAD_CHANNEL_SOURCES[value.channel] as readonly string[]).includes(id),
+  )
 
   return (
     <div className="mb-4 flex flex-wrap items-center gap-2.5">
@@ -210,15 +232,52 @@ export function LeadFilters({ value, onChange, tags, people }: LeadFiltersProps)
         )}
       </div>
 
-      {/* Origem */}
+      {/* Canal — o recorte rápido Google / Instagram / Outros */}
+      <div
+        role="group"
+        aria-label="Filtrar por canal"
+        className="flex items-center gap-0.5 rounded-full bg-[#f5f6f8] p-1 border border-[rgba(2,21,65,0.10)]"
+      >
+        {(['', ...LEAD_CHANNELS] as const).map((c) => {
+          const selected = value.channel === c
+          return (
+            <button
+              key={c || 'todos'}
+              type="button"
+              onClick={() => selectChannel(c)}
+              aria-pressed={selected}
+              title={c ? LEAD_CHANNEL_HINTS[c] : 'Todos os canais'}
+              className={cn(
+                'flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-bold whitespace-nowrap transition-colors cursor-pointer',
+                selected
+                  ? 'bg-[#021541] text-white'
+                  : 'text-[#718096] hover:text-[#021541] hover:bg-[#021541]/[0.06]',
+              )}
+            >
+              {c && (
+                <span
+                  aria-hidden
+                  className="w-2 h-2 rounded-full shrink-0"
+                  style={{ background: LEAD_CHANNEL_COLORS[c] }}
+                />
+              )}
+              {c ? LEAD_CHANNEL_LABELS[c] : 'Todos'}
+            </button>
+          )
+        })}
+      </div>
+
+      {/* Origem detalhada — limitada ao canal escolhido */}
       <select
         value={value.source}
         onChange={(e) => set('source', e.target.value)}
         aria-label="Filtrar por origem"
         className={cn(controlCls, 'cursor-pointer font-medium', value.source && 'border-[#00BCE4]')}
       >
-        <option value="">Todas as origens</option>
-        {Object.entries(LEAD_SOURCE_LABELS).map(([id, label]) => (
+        <option value="">
+          {value.channel ? `Todas de ${LEAD_CHANNEL_LABELS[value.channel]}` : 'Todas as origens'}
+        </option>
+        {sourceOptions.map(([id, label]) => (
           <option key={id} value={id}>{label}</option>
         ))}
       </select>
