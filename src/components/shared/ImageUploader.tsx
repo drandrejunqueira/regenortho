@@ -20,14 +20,16 @@ interface Props {
 
 const ACCEPT: Record<UploadType, string> = {
   logo:   'image/png,image/jpeg,image/svg+xml,image/webp',
-  icon:   'image/png,image/x-icon,image/svg+xml',
+  // Sem SVG: o ícone é servido pela origem da app em /api/favicon, e SVG servido
+  // como documento executa script. O servidor recusa o formato na gravação.
+  icon:   'image/png,image/x-icon,image/vnd.microsoft.icon',
   header: 'image/png,image/jpeg,image/webp',
   og:     'image/png,image/jpeg,image/webp',
 }
 
 const LABELS: Record<UploadType, string> = {
   logo:   '2 MB · PNG, JPG, SVG, WEBP',
-  icon:   '1 MB · PNG, ICO, SVG',
+  icon:   '1 MB · PNG, ICO',
   header: '4 MB · PNG, JPG, WEBP',
   og:     '4 MB · PNG, JPG, WEBP (1200×630px)',
 }

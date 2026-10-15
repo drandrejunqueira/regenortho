@@ -8,6 +8,14 @@ import { z } from 'zod'
 import type { UserRole } from '@/types'
 import { getConfig } from '@/lib/db/queries/configuracoes'
 import { GKEYS } from '@/lib/google/oauth'
+import { valorImagemServivelValido } from '@/lib/imagemDataUrl'
+
+const MSG_IMAGEM_INVALIDA = 'Imagem em formato não aceito: use PNG, JPG, WEBP ou ICO (até 5 MB).'
+
+// og-image e favicon são servidos pela origem da app em rota pública com o tipo
+// declarado no data URL — validar aqui impede que um SVG/HTML chegue ao banco.
+const imagemServidaSchema = z.string().nullable().optional()
+  .refine(valorImagemServivelValido, { message: MSG_IMAGEM_INVALIDA })
 
 const settingsSchema = z.object({
   name: z.string().min(1).optional(),
@@ -22,14 +30,14 @@ const settingsSchema = z.object({
   state: z.string().max(2).nullable().optional(),
   zipCode: z.string().nullable().optional(),
   logoUrl: z.string().nullable().optional(),
-  headerImageUrl: z.string().nullable().optional(),
+  headerImageUrl: imagemServidaSchema,
   primaryColor: z.string().nullable().optional(),
   documentHeader: z.string().nullable().optional(),
   documentFooter: z.string().nullable().optional(),
   seoTitle: z.string().max(70).nullable().optional(),
   seoDescription: z.string().max(160).nullable().optional(),
   seoKeywords: z.string().nullable().optional(),
-  ogImageUrl: z.string().nullable().optional(),
+  ogImageUrl: imagemServidaSchema,
   gaId: z.string().nullable().optional(),
   gtmId: z.string().nullable().optional(),
   whatsappToken: z.string().nullable().optional(),
@@ -101,7 +109,10 @@ export async function PATCH(req: NextRequest) {
 
   const body = await req.json()
   const parsed = settingsSchema.safeParse(body)
-  if (!parsed.success) return NextResponse.json({ error: 'Dados inválidos' }, { status: 400 })
+  if (!parsed.success) {
+    const imagemInvalida = parsed.error.issues.some(i => i.message === MSG_IMAGEM_INVALIDA)
+    return NextResponse.json({ error: imagemInvalida ? MSG_IMAGEM_INVALIDA : 'Dados inválidos' }, { status: 400 })
+  }
 
   const { googleClientId, googleClientSecret, ...clinicData } = parsed.data
 

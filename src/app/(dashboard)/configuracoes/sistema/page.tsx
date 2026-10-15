@@ -72,10 +72,14 @@ export default function SistemaPage() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(form),
       })
-      if (!res.ok) throw new Error()
+      if (!res.ok) {
+        // Mostra o motivo (ex.: favicon em formato não aceito) em vez do genérico.
+        const { error } = await res.json().catch(() => ({ error: null }))
+        throw new Error(error || '')
+      }
       toast.success('Configurações salvas!')
-    } catch {
-      toast.error('Erro ao salvar')
+    } catch (e) {
+      toast.error((e instanceof Error && e.message) || 'Erro ao salvar')
     } finally {
       setSaving(false)
     }

@@ -2,6 +2,7 @@ import { db } from '@/lib/db'
 import { clinicSettings } from '@/lib/db/schema'
 import { eq } from 'drizzle-orm'
 import { NextResponse } from 'next/server'
+import { decodificarImagemDataUrl, respostaImagem } from '@/lib/imagemDataUrl'
 
 export const dynamic = 'force-dynamic'
 
@@ -13,21 +14,10 @@ export async function GET(request: Request) {
     const url = clinic?.ogImageUrl
 
     if (url?.startsWith('data:')) {
-      const commaIdx = url.indexOf(',')
-      const header = url.slice(0, commaIdx)
-      const b64 = url.slice(commaIdx + 1)
-      const mimeMatch = header.match(/data:([^;]+);base64/)
-      const mime = mimeMatch?.[1] ?? 'image/png'
-      const buffer = Buffer.from(b64, 'base64')
-      return new NextResponse(buffer, {
-        headers: {
-          'Content-Type': mime,
-          'Cache-Control': 'public, max-age=3600, s-maxage=3600',
-        },
-      })
-    }
-
-    if (url?.startsWith('http')) {
+      // Só imagem da allowlist sai com o tipo declarado; o resto cai no fallback.
+      const imagem = decodificarImagemDataUrl(url)
+      if (imagem) return respostaImagem(imagem)
+    } else if (url?.startsWith('http')) {
       return NextResponse.redirect(url)
     }
 

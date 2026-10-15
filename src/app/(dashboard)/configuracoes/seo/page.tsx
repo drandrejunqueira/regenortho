@@ -40,9 +40,12 @@ export default function SeoPage() {
     setSaving(true)
     try {
       const res = await fetch('/api/configuracoes/sistema', { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(form) })
-      if (!res.ok) throw new Error()
+      if (!res.ok) {
+        const { error } = await res.json().catch(() => ({ error: null }))
+        throw new Error(error || '')
+      }
       toast.success('SEO salvo!')
-    } catch { toast.error('Erro ao salvar') } finally { setSaving(false) }
+    } catch (e) { toast.error((e instanceof Error && e.message) || 'Erro ao salvar') } finally { setSaving(false) }
   }
 
   if (loading) return <p className="text-sm text-[#718096] py-8 text-center">Carregando...</p>
